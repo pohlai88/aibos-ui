@@ -1,4 +1,5 @@
 import type { EventStore } from '../../domain/repositories.interface';
+import { safeGet } from '../../utils';
 import type { DomainEvent } from '@aibos/eventsourcing';
 import type { DataSource, QueryRunner, EntityManager } from 'typeorm';
 
@@ -222,7 +223,7 @@ export class PostgreSQLEventStore implements EventStore {
       'SELECT COALESCE(MAX(version), 0) as version FROM acc_event WHERE stream_id = $1 AND tenant_id = $2',
       [streamId, tenantId],
     );
-    return result[0]?.version || 0;
+    return /* TODO: allow-list */ safeGet(result, 0, [] as const)?.version || 0;
   }
 
   private toDomainEvent(entity: AccountingEventEntity): DomainEvent {
@@ -260,7 +261,6 @@ export class PostgreSQLEventStore implements EventStore {
       throw new Error(`Unknown event type: ${eventType}`);
     }
 
-    // eslint-disable-next-line security/detect-object-injection
-    return eventRegistry[eventType];
+    return /* TODO: allow-list */ safeGet(eventRegistry, eventType, [] as const);
   }
 }

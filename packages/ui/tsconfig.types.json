@@ -9,5 +9,8 @@
     "stripInternal": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["**/*.test.*", "**/*.stories.*", "**/__tests__/**"]
+  "exclude": [
+    "src/examples/**",
+    "src/scripts/**"
+  ]
 }

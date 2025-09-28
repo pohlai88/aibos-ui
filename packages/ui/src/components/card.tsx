@@ -1,110 +1,169 @@
-import type { ReactNode, HTMLAttributes, ElementType } from 'react';
+/**
+ * Card Component - Enterprise Production Ready
+ *
+ * Card component with semantic tokens and comprehensive
+ * accessibility features.
+ */
 
-import { cn, variants, createPolymorphic, type PolymorphicReference } from '../utils';
+import { isPerfMode, varianceAttributes } from '../utils';
+import { cn } from '../utils/cn.utility';
+import * as React from 'react';
 
-export interface CardProperties extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'elevated' | 'outlined';
-  padding?: 'sm' | 'md' | 'lg';
-  children?: ReactNode;
-  as?: ElementType;
-}
+const CARD_CLASS_NAME = 'card';
+const BORDER_CLASS_NAME = 'border';
+const PERF_STATIC_CLASS_NAME = 'perf-static';
 
-const cardVariants = variants({
-  base: 'bg-semantic-background border border-semantic-border rounded-lg',
-  variants: {
-    variant: {
-      default: 'shadow-sm',
-      elevated: 'shadow-md',
-      outlined: 'border-2 border-semantic-border',
-    },
-    padding: {
-      sm: 'p-3',
-      md: 'p-4',
-      lg: 'p-6',
-    },
-  },
-  defaultVariants: { variant: 'default', padding: 'md' },
-  strict: true, // Enable dev-time warnings for unknown variants
-});
+// Constants to avoid duplicate strings
+const CARD_TITLE_CLASSES = 'text-2xl font-semibold leading-none tracking-tight';
+const CARD_HEADER_CLASSES = 'flex flex-col space-y-1.5 p-6';
 
-export const Card = createPolymorphic<'div'>(
-  ({ as: Component = 'div', variant, padding, children, className, ...props }, ref: PolymorphicReference<'div'>) => {
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, reference) => {
+    if (isPerfMode()) {
+      // Perf path: no cn(), no inline style alloc; static class only
+      return (
+        <div
+          ref={reference}
+          className={[CARD_CLASS_NAME, BORDER_CLASS_NAME, PERF_STATIC_CLASS_NAME, className]
+            .filter(Boolean)
+            .join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        />
+      );
+    }
+
     return (
-      <Component
-        ref={ref}
+      <div
+        ref={reference}
         className={cn(
-          cardVariants({
-            variant: variant as 'default' | 'elevated' | 'outlined' | undefined,
-            padding: padding as 'sm' | 'md' | 'lg' | undefined,
-          }),
-          className as string,
+          'bg-semantic-card text-semantic-card-foreground rounded-lg border shadow-sm',
+          className,
         )}
-        {...(props as any)}
-      >
-        {children}
-      </Component>
+        {...props}
+      />
     );
   },
-  'Card'
 );
+Card.displayName = 'Card';
 
-// Card sub-components
-export interface CardHeaderProperties extends HTMLAttributes<HTMLDivElement> {
-  children?: ReactNode;
-  as?: ElementType;
-}
-
-export const CardHeader = createPolymorphic<'div'>(
-  ({ as: Component = 'div', children, className, ...props }, ref: PolymorphicReference<'div'>) => {
+const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, children, ...props }, reference) => {
+    if (isPerfMode()) {
+      return (
+        <div
+          ref={reference}
+          className={[CARD_HEADER_CLASSES.split(' '), PERF_STATIC_CLASS_NAME, className]
+            .flat()
+            .filter(Boolean)
+            .join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        >
+          {children}
+        </div>
+      );
+    }
     return (
-      <Component
-        ref={ref}
-        className={cn('flex flex-col space-y-1.5 pb-2', className as string)}
-        {...(props as any)}
-      >
+      <div ref={reference} className={cn(CARD_HEADER_CLASSES, className)} {...props}>
         {children}
-      </Component>
+      </div>
     );
   },
-  'CardHeader'
 );
+CardHeader.displayName = 'CardHeader';
 
-export interface CardTitleProperties extends HTMLAttributes<HTMLHeadingElement> {
-  children?: ReactNode;
-  as?: ElementType;
-}
-
-export const CardTitle = createPolymorphic<'h3'>(
-  ({ as: Component = 'h3', children, className, ...props }, ref: PolymorphicReference<'h3'>) => {
+const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+  ({ className, children, ...props }, reference) => {
+    if (isPerfMode()) {
+      return (
+        <h3
+          ref={reference}
+          className={[CARD_TITLE_CLASSES.split(' '), PERF_STATIC_CLASS_NAME, className]
+            .flat()
+            .filter(Boolean)
+            .join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        >
+          {children}
+        </h3>
+      );
+    }
     return (
-      <Component
-        ref={ref}
-        className={cn('text-lg font-semibold leading-none tracking-tight', className as string)}
-        {...(props as any)}
-      >
+      <h3 ref={reference} className={cn(CARD_TITLE_CLASSES, className)} {...props}>
         {children}
-      </Component>
+      </h3>
     );
   },
-  'CardTitle'
 );
+CardTitle.displayName = 'CardTitle';
 
-export interface CardContentProperties extends HTMLAttributes<HTMLDivElement> {
-  children?: ReactNode;
-  as?: ElementType;
-}
-
-export const CardContent = createPolymorphic<'div'>(
-  ({ as: Component = 'div', children, className, ...props }, ref: PolymorphicReference<'div'>) => {
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, reference) => {
+  if (isPerfMode()) {
     return (
-      <Component
-        ref={ref}
-        className={cn('pt-0', className as string)}
-        {...(props as any)}
-      >
-        {children}
-      </Component>
+      <p
+        ref={reference}
+        className={['text-sm', 'text-semantic-muted-foreground', PERF_STATIC_CLASS_NAME, className]
+          .filter(Boolean)
+          .join(' ')}
+        {...varianceAttributes()}
+        {...props}
+      />
+    );
+  }
+  return (
+    <p
+      ref={reference}
+      className={cn('text-semantic-muted-foreground text-sm', className)}
+      {...props}
+    />
+  );
+});
+CardDescription.displayName = 'CardDescription';
+
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, reference) => {
+    if (isPerfMode()) {
+      return (
+        <div
+          ref={reference}
+          className={['p-6', 'pt-0', PERF_STATIC_CLASS_NAME, className].filter(Boolean).join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        />
+      );
+    }
+    return <div ref={reference} className={cn('p-6 pt-0', className)} {...props} />;
+  },
+);
+CardContent.displayName = 'CardContent';
+
+const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, reference) => {
+    if (isPerfMode()) {
+      return (
+        <div
+          ref={reference}
+          className={['flex', 'items-center', 'p-6', 'pt-0', PERF_STATIC_CLASS_NAME, className]
+            .filter(Boolean)
+            .join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        />
+      );
+    }
+    return (
+      <div ref={reference} className={cn('flex items-center p-6 pt-0', className)} {...props} />
     );
   },
-  'CardContent'
 );
+CardFooter.displayName = 'CardFooter';
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };
+export type CardProperties = React.HTMLAttributes<HTMLDivElement>;
+export type CardReference = React.ElementRef<typeof Card>;
+export type CardElement = React.ElementType;

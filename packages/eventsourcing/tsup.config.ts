@@ -7,6 +7,8 @@ export default defineConfig({
   sourcemap: true,
   clean: false,
   splitting: false,
-  target: 'node18',
-  external: ['pg', 'kafkajs'],
+  target: 'es2022',
+  treeshake: true,
+  minify: true,
+  external: ['pg', 'kafkajs', 'node:*'],
 });

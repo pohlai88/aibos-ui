@@ -5,6 +5,9 @@ import { CreateAccountCommand } from '../commands/create-account.command';
 import { PostJournalEntryCommand } from '../commands/post-journal-entry.command';
 // import { JournalEntryLine } from '../../domain/journal-entry-line'; // No longer needed
 
+// Constants for error messages
+const INVALID_AS_OF_DATE = 'Invalid asOfDate';
+
 // Types
 interface JournalEntryLineData {
   accountCode: string;
@@ -23,6 +26,17 @@ const FAILED_TO_POST_JOURNAL_ENTRY = 'Failed to post journal entry';
 const UNKNOWN_ERROR = 'Unknown error';
 const AS_OF_DATE_REQUIRED = 'asOfDate parameter is required';
 
+// Small helpers (controller-local; keep service API unchanged)
+const respond = (res: Response, status: number, payload: Record<string, unknown>) =>
+  res.status(status).json({ ...payload, timestamp: new Date().toISOString() });
+
+const badRequest = (res: Response, message: string) =>
+  respond(res, 400, { success: false, message, error: message });
+
+const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
+const parseISO = (v: string) => new Date(v);
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
 export class AccountingController {
   constructor(private readonly accountingService: AccountingService) {}
 
@@ -32,23 +46,8 @@ export class AccountingController {
    */
   public async createAccount(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId } = req.params;
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      if (!tenantId) return void badRequest(res, TENANT_ID_REQUIRED);
 
       const {
         accountCode,
@@ -56,8 +55,8 @@ export class AccountingController {
         accountType,
         parentAccountCode,
         isActive,
-        _description,
-        _naturalBalance,
+        // @ts-ignore - intentionally unused fields for API compatibility
+        ..._unusedAccountFields
       } = req.body;
 
       const command = new CreateAccountCommand({
@@ -72,20 +71,17 @@ export class AccountingController {
 
       await this.accountingService.createAccount(command);
 
-      res.status(201).json({
+      respond(res, 201, {
         success: true,
         message: 'Account created successfully',
-        data: {
-          accountCode,
-          accountName,
-          accountType,
-        },
+        data: { accountCode, accountName, accountType },
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : FAILED_TO_CREATE_ACCOUNT;
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : FAILED_TO_CREATE_ACCOUNT,
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -96,23 +92,8 @@ export class AccountingController {
    */
   public async postJournalEntry(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId } = req.params;
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      if (!tenantId) return void badRequest(res, TENANT_ID_REQUIRED);
 
       const {
         journalEntryId,
@@ -120,47 +101,58 @@ export class AccountingController {
         reference,
         description,
         postedBy,
-        _postingDate,
-        _book,
-        _accountingPeriod,
-        _periodStatus,
-        _isAdjustingEntry,
-        _isClosingEntry,
-        _isReversingEntry,
         _currencyCode,
-        _baseCurrencyCode,
-        _exchangeRate,
-        _exchangeRateDate,
-        _isFXRevaluation,
-        _taxLines,
-        _totalTaxAmount,
-        _reportingStandard,
-        _countryCode,
-        _industryType,
-        _fiscalYear,
-        _approval,
-        _supportingDocuments,
+        // @ts-ignore - intentionally unused fields for API compatibility
+        ..._unusedJournalEntryFields
       } = req.body;
+
+      // Lightweight guards (heavy validation should live in middleware)
+      if (!Array.isArray(entries) || entries.length === 0) {
+        return void badRequest(res, 'entries array is required and cannot be empty');
+      }
+      const normalized = entries.map((e: JournalEntryLineData) => ({
+        accountCode: e.accountCode,
+        debitAmount: Number(e.debitAmount ?? 0),
+        creditAmount: Number(e.creditAmount ?? 0),
+        currency: _currencyCode || DEFAULT_CURRENCY,
+        description: e.description ?? '',
+      }));
+      // Non-negative and not both sides populated per line
+      for (let index = 0; index < normalized.length; index++) {
+        const line = normalized[index];
+        if (!line) continue; // Skip undefined entries
+        if (line.debitAmount < 0 || line.creditAmount < 0) {
+          return void badRequest(res, `Line ${index + 1}: amounts cannot be negative`);
+        }
+        if (line.debitAmount > 0 && line.creditAmount > 0) {
+          return void badRequest(res, `Line ${index + 1}: cannot have both debit and credit > 0`);
+        }
+      }
+      const totalDebits = round2(normalized.reduce((s, l) => s + l.debitAmount, 0));
+      const totalCredits = round2(normalized.reduce((s, l) => s + l.creditAmount, 0));
+      if (totalDebits !== totalCredits) {
+        return void badRequest(
+          res,
+          `Unbalanced entry: debits ${totalDebits} != credits ${totalCredits}`,
+        );
+      }
 
       const command = new PostJournalEntryCommand({
         journalEntryId,
         tenantId,
-        userId: postedBy,
-        entries: entries.map((entry: JournalEntryLineData) => ({
-          accountCode: entry.accountCode,
-          debitAmount: entry.debitAmount || 0,
-          creditAmount: entry.creditAmount || 0,
-          currency: DEFAULT_CURRENCY,
-          description: entry.description || '',
-        })),
+        userId: postedBy ?? 'system',
+        entries: normalized,
         reference,
         description,
-        postingDate: new Date(),
+        postingDate: new Date(), // consider passing validated _postingDate later
       });
 
-      await this.accountingService.postJournalEntry(command);
+      // Extract idempotency key from headers
+      const idempotencyKey = req.headers['idempotency-key'] as string;
 
-      res.status(201).json({
+      await this.accountingService.postJournalEntry(command, idempotencyKey);
+
+      respond(res, 201, {
         success: true,
         message: 'Journal entry posted successfully',
         data: {
@@ -172,10 +164,11 @@ export class AccountingController {
         },
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : FAILED_TO_POST_JOURNAL_ENTRY;
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : FAILED_TO_POST_JOURNAL_ENTRY,
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -188,12 +181,7 @@ export class AccountingController {
     try {
       const { tenantId, journalEntryId } = req.params;
       if (!tenantId || !journalEntryId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_JOURNAL_ENTRY_ID_REQUIRED,
-          error: TENANT_ID_AND_JOURNAL_ENTRY_ID_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_JOURNAL_ENTRY_ID_REQUIRED);
       }
 
       const { reason, reversedBy } = req.body;
@@ -205,20 +193,17 @@ export class AccountingController {
         tenantId,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
         message: 'Journal entry reversed successfully',
-        data: {
-          journalEntryId,
-          reason,
-          reversedBy,
-        },
+        data: { journalEntryId, reason, reversedBy },
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to reverse journal entry';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to reverse journal entry',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -229,32 +214,36 @@ export class AccountingController {
    */
   public async getTrialBalance(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
       const { asOfDate } = req.query;
+
+      let parsedDate: Date | undefined;
+      if (asOfDate) {
+        parsedDate = parseISO(String(asOfDate));
+        if (!isValidDate(parsedDate)) return void badRequest(res, INVALID_AS_OF_DATE);
+      }
 
       const trialBalance = await this.accountingService.getTrialBalance(
         tenantId,
         period,
-        asOfDate ? new Date(asOfDate as string) : undefined,
+        parsedDate,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Trial balance retrieved successfully',
         data: trialBalance,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to get trial balance';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get trial balance',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -265,14 +254,10 @@ export class AccountingController {
    */
   public async getProfitAndLoss(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
       const { currencyCode = DEFAULT_CURRENCY } = req.query;
 
@@ -282,15 +267,18 @@ export class AccountingController {
         currencyCode as string,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Profit and loss report retrieved successfully',
         data: pnl,
       });
     } catch (error) {
-      res.status(400).json({
+      const message =
+        error instanceof Error ? error.message : 'Failed to get profit and loss statement';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get profit and loss statement',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -301,40 +289,33 @@ export class AccountingController {
    */
   public async getBalanceSheet(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId } = req.params;
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
-      const { asOfDate, currencyCode = 'MYR' } = req.query;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      if (!tenantId) return void badRequest(res, TENANT_ID_REQUIRED);
+      const { asOfDate, currencyCode = DEFAULT_CURRENCY } = req.query;
 
       if (!asOfDate) {
-        res.status(400).json({
-          success: false,
-          message: AS_OF_DATE_REQUIRED,
-        });
-        return;
+        return void badRequest(res, AS_OF_DATE_REQUIRED);
       }
 
+      const parsed = parseISO(String(asOfDate));
+      if (!isValidDate(parsed)) return void badRequest(res, INVALID_AS_OF_DATE);
       const balanceSheet = await this.accountingService.getBalanceSheet(
         tenantId,
-        new Date(asOfDate as string),
+        parsed,
         currencyCode as string,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Balance sheet retrieved successfully',
         data: balanceSheet,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to get balance sheet';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get balance sheet',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -345,14 +326,10 @@ export class AccountingController {
    */
   public async getCashFlowStatement(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
       const { currencyCode = DEFAULT_CURRENCY } = req.query;
 
@@ -362,15 +339,17 @@ export class AccountingController {
         currencyCode as string,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Cash flow statement retrieved successfully',
         data: cashFlow,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to get cash flow statement';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get cash flow statement',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -381,40 +360,33 @@ export class AccountingController {
    */
   public async getFinancialRatios(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId } = req.params;
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
-      const { asOfDate, currencyCode = 'MYR' } = req.query;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      if (!tenantId) return void badRequest(res, TENANT_ID_REQUIRED);
+      const { asOfDate, currencyCode = DEFAULT_CURRENCY } = req.query;
 
       if (!asOfDate) {
-        res.status(400).json({
-          success: false,
-          message: AS_OF_DATE_REQUIRED,
-        });
-        return;
+        return void badRequest(res, AS_OF_DATE_REQUIRED);
       }
 
+      const parsed = parseISO(String(asOfDate));
+      if (!isValidDate(parsed)) return void badRequest(res, INVALID_AS_OF_DATE);
       const ratios = await this.accountingService.getFinancialRatios(
         tenantId,
-        new Date(asOfDate as string),
+        parsed,
         currencyCode as string,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Financial ratios retrieved successfully',
         data: ratios,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to get financial ratios';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get financial ratios',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -425,41 +397,37 @@ export class AccountingController {
    */
   public async getComprehensiveReport(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
-      const { asOfDate, currencyCode = 'MYR' } = req.query;
+      const { asOfDate, currencyCode = DEFAULT_CURRENCY } = req.query;
 
       if (!asOfDate) {
-        res.status(400).json({
-          success: false,
-          message: AS_OF_DATE_REQUIRED,
-        });
-        return;
+        return void badRequest(res, AS_OF_DATE_REQUIRED);
       }
 
+      const parsed = parseISO(String(asOfDate));
+      if (!isValidDate(parsed)) return void badRequest(res, INVALID_AS_OF_DATE);
       const report = await this.accountingService.getComprehensiveReport(
         tenantId,
         period,
-        new Date(asOfDate as string),
+        parsed,
         currencyCode as string,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Comprehensive report retrieved successfully',
         data: report,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to get comprehensive report';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to get comprehensive report',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -470,27 +438,22 @@ export class AccountingController {
    */
   public async validateGLIntegrity(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId } = req.params;
-      if (!tenantId) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_REQUIRED,
-          error: TENANT_ID_REQUIRED,
-        });
-        return;
-      }
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      if (!tenantId) return void badRequest(res, TENANT_ID_REQUIRED);
 
       const integrityReport = await this.accountingService.validateGLIntegrity(tenantId);
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Data integrity check completed successfully',
         data: integrityReport,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to validate GL integrity';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to validate GL integrity',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -501,14 +464,10 @@ export class AccountingController {
    */
   public async reconcileTrialBalance(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
       const { expectedBalances } = req.body;
 
@@ -518,15 +477,17 @@ export class AccountingController {
         expectedBalances ? new Map(Object.entries(expectedBalances)) : undefined,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Trial balance reconciliation completed successfully',
         data: reconciliationReport,
       });
     } catch (error) {
-      res.status(400).json({
+      const message = error instanceof Error ? error.message : 'Failed to reconcile trial balance';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to reconcile trial balance',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }
@@ -537,14 +498,10 @@ export class AccountingController {
    */
   public async generateExceptionReport(req: Request, res: Response): Promise<void> {
     try {
-      const { tenantId, period } = req.params;
+      const tenantId = (req.headers['x-tenant-id'] as string) ?? req.params.tenantId;
+      const { period } = req.params;
       if (!tenantId || !period) {
-        res.status(400).json({
-          success: false,
-          message: TENANT_ID_AND_PERIOD_REQUIRED,
-          error: TENANT_ID_AND_PERIOD_REQUIRED,
-        });
-        return;
+        return void badRequest(res, TENANT_ID_AND_PERIOD_REQUIRED);
       }
 
       const exceptionReport = await this.accountingService.generateExceptionReport(
@@ -552,15 +509,18 @@ export class AccountingController {
         period,
       );
 
-      res.status(200).json({
+      respond(res, 200, {
         success: true,
+        message: 'Exception report generated successfully',
         data: exceptionReport,
       });
     } catch (error) {
-      res.status(400).json({
+      const message =
+        error instanceof Error ? error.message : 'Failed to generate exception report';
+      respond(res, 400, {
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to generate exception report',
-        error: error instanceof Error ? error.message : UNKNOWN_ERROR,
+        message: message,
+        error: error instanceof Error ? message : UNKNOWN_ERROR,
       });
     }
   }

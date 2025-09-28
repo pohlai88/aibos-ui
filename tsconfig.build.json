@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.build.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": [
+    "packages/*/src/**/*.{ts,tsx}",
+    "apps/*/src/**/*.{ts,tsx}",
+    "packages/*/types/**/*.d.ts",
+    "apps/*/types/**/*.d.ts"
+  ]
+}

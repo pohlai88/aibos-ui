@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2025-09-27T10:36:30.841Z",
+  "snapshot": {
+    "light": {
+      "button.primary": 18.43,
+      "input.field": 21,
+      "badge.neutral": 21,
+      "checkbox.base": 18.43,
+      "tabs.trigger": 18.43
+    },
+    "dark": {
+      "button.primary": 18.43,
+      "input.field": 21,
+      "badge.neutral": 21,
+      "checkbox.base": 18.43,
+      "tabs.trigger": 18.43
+    }
+  }
+}

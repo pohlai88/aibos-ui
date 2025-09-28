@@ -1,4 +1,5 @@
 import { Money } from './Money';
+import { omitUndefined } from '../utils';
 
 export interface JournalEntryLineProperties {
   readonly accountCode: string;
@@ -20,11 +21,21 @@ export class JournalEntryLine {
   private readonly _credit: Money;
 
   constructor(properties: JournalEntryLineProperties) {
-    this.accountCode = properties.accountCode;
-    this.description = properties.description;
-    this.debitAmount = properties.debitAmount;
-    this.creditAmount = properties.creditAmount;
-    this.reference = properties.reference;
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanProperties = omitUndefined({
+      accountCode: properties.accountCode,
+      description: properties.description,
+      debitAmount: properties.debitAmount,
+      creditAmount: properties.creditAmount,
+      reference: properties.reference,
+    });
+
+    // Assign from cleaned properties
+    this.accountCode = cleanProperties.accountCode;
+    this.description = cleanProperties.description;
+    this.debitAmount = cleanProperties.debitAmount;
+    this.creditAmount = cleanProperties.creditAmount;
+    this.reference = cleanProperties.reference;
 
     this.validate();
     // Construct safe Money objects after validation

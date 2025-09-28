@@ -6,6 +6,7 @@
  */
 
 import { execSync } from 'child_process';
+import { safeGet } from '@aibos/utils';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -21,7 +22,7 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  console.log(`${colors[color] || colors.white}${message}${colors.reset}`);
 }
 
 function runCommand(command, description) {
@@ -153,7 +154,7 @@ if (args.includes('--help') || args.includes('-h')) {
   log(`
 ${colors.bright}AI-BOS ERP Debug Tool${colors.reset}
 
-Usage: node scripts/debug.js [options]
+Usage: node scripts/debug./* TODO: allow-list */ safeGet(js, options, [] as const)
 
 Options:
   --help, -h     Show this help message

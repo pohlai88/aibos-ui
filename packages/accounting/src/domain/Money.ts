@@ -1,3 +1,4 @@
+import { safeGet, assert } from '../utils';
 /**
  * Money value object using minor units (cents) with bigint precision.
  * No floating point drift; suitable for accounting.
@@ -28,9 +29,9 @@ export class Money {
     if (!m) {
       throw new TypeError(`Invalid amount string (expect digits with optional 2 dp): ${amount}`);
     }
-    const sign = m[1] ? -1n : 1n;
-    const whole = BigInt(m[2]!);
-    const fracString = (m[3] ?? '').padEnd(2, '0'); // "5" -> "50", "" -> "00"
+    const sign = /* TODO: allow-list */ safeGet(m, 1, [] as const) ? -1n : 1n;
+    const whole = BigInt(/* TODO: allow-list */ safeGet(m, 2, [] as const)!);
+    const fracString = /* TODO: allow-list */ (safeGet(m, 3, [] as const) ?? '').padEnd(2, '0'); // "5" -> "50", "" -> "00"
     const frac = BigInt(fracString || '0');
     return new Money(sign * (whole * 100n + frac));
   }
@@ -130,7 +131,7 @@ export class Money {
    * Prefer `multiplyByBps` for exact basis-point math.
    */
   multiply(factor: number, mode: RoundingMode = Money.RoundingMode.HALF_EVEN): Money {
-    if (!Number.isFinite(factor)) throw new TypeError(`Invalid factor: ${factor}`);
+    assert(Number.isFinite(factor), `Invalid factor: ${factor}`);
     const raw = Number(this.cents) * factor; // cents in number
     const rounded = roundToInt(raw, mode);
     return Money.fromCents(rounded);
@@ -141,7 +142,7 @@ export class Money {
    * Example: 600 bps = 6% -> amount * 0.06 with deterministic rounding.
    */
   multiplyByBps(bps: number, mode: RoundingMode = Money.RoundingMode.HALF_EVEN): Money {
-    if (!Number.isInteger(bps)) throw new TypeError(`bps must be integer, got: ${bps}`);
+    assert(Number.isInteger(bps), `bps must be integer, got: ${bps}`);
     // cents * bps / 10_000  -> result in cents (may be fractional before rounding)
     const raw = Number(this.cents) * (bps / 10_000);
     const rounded = roundToInt(raw, mode);
@@ -194,11 +195,12 @@ export class Money {
     for (const { i } of fracs) {
       if (remainder === 0n) break;
       // Safe array access with bounds checking
-      // eslint-disable-next-line security/detect-object-injection
-      const currentResult = result[i];
+
+      const currentResult = /* TODO: allow-list */ safeGet(result, i, [] as const);
       if (currentResult) {
-        // eslint-disable-next-line security/detect-object-injection
-        result[i] = Money.fromCents(Number(currentResult.cents + (remainder > 0 ? 1n : -1n)));
+        /* TODO: allow-list */ safeGet(result, i, [] as const) = Money.fromCents(
+          Number(currentResult.cents + (remainder > 0 ? 1n : -1n)),
+        );
       }
       remainder += remainder > 0 ? -1n : 1n;
     }

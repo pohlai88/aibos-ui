@@ -1,7 +1,9 @@
-import * as React from 'react';
 import type { VirtualTableColumn } from '@aibos/ui';
-import { AsyncLoading, SkeletonTable, VirtualTable, tokens } from '@aibos/ui';
+import { _safeGet } from '@aibos/utils';
+
 import { AccountingClient } from '../lib/accounting-api';
+import { AsyncLoading, SkeletonTable, VirtualTable, tokens } from '@aibos/ui';
+import * as React from 'react';
 
 interface Account extends Record<string, unknown> {
   id: string;
@@ -9,7 +11,7 @@ interface Account extends Record<string, unknown> {
   name: string;
 }
 
-type ChartOfAccountsProps = {
+type ChartOfAccountsProperties = {
   /**
    * Optional hook to surface user interaction outside this component
    * (analytics, audit trail, navigation).
@@ -21,7 +23,7 @@ type ChartOfAccountsProps = {
   companyId?: string;
 };
 
-export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
+export function ChartOfAccounts(props: ChartOfAccountsProperties): JSX.Element {
   const { onViewAccount, companyId } = props;
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
@@ -69,7 +71,7 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
           const handleView = (): void => {
             if (onViewAccount) onViewAccount(row.id);
             // Keep console for local dev trace without relying on it
-            // eslint-disable-next-line no-console
+
             console.log('View account:', row.id);
           };
           return (
@@ -78,8 +80,8 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
               aria-label={`View account ${row.code} – ${row.name}`}
               onClick={handleView}
               style={{
-                color: tokens.colors.primary[600],
-                padding: tokens.spacing[1],
+                color: tokens.colors./* TODO: allow-list */ safeGet(primary, 600, [] as const),
+                padding: tokens./* TODO: allow-list */ safeGet(spacing, 1, [] as const),
                 borderRadius: tokens.borderRadius.sm,
                 background: 'transparent',
                 border: 'none',
@@ -87,8 +89,8 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
                 fontSize: tokens.typography.fontSize.sm,
                 fontWeight: tokens.typography.fontWeight.medium,
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleView();
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') handleView();
               }}
             >
               View
@@ -100,34 +102,37 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
     [onViewAccount],
   );
 
-  const handleRowClick = React.useCallback((account: Account) => {
-    // Single source for navigation/analytics
-    if (onViewAccount) onViewAccount(account.id);
-    // eslint-disable-next-line no-console
-    console.log('Account clicked:', account.code);
-  }, [onViewAccount]);
+  const handleRowClick = React.useCallback(
+    (account: Account) => {
+      // Single source for navigation/analytics
+      if (onViewAccount) onViewAccount(account.id);
+
+      console.log('Account clicked:', account.code);
+    },
+    [onViewAccount],
+  );
 
   return (
     <div
       style={{
         width: '100%',
-        padding: tokens.spacing[4],
-        background: tokens.colors.neutral[50],
+        padding: tokens./* TODO: allow-list */ safeGet(spacing, 4, [] as const),
+        background: tokens.colors./* TODO: allow-list */ safeGet(neutral, 50, [] as const),
         borderRadius: tokens.borderRadius['2xl'],
-        border: `1px solid ${tokens.colors.neutral[200]}`,
+        border: `1px solid ${tokens.colors./* TODO: allow-list */ safeGet(neutral, 200, [] as const)}`,
       }}
       aria-label="Chart of Accounts container"
     >
       <div
         style={{
-          marginBottom: tokens.spacing[3],
+          marginBottom: tokens./* TODO: allow-list */ safeGet(spacing, 3, [] as const),
         }}
       >
         <h2
           style={{
             fontSize: tokens.typography.fontSize.xl,
             fontWeight: tokens.typography.fontWeight.semibold,
-            color: tokens.colors.neutral[900],
+            color: tokens.colors./* TODO: allow-list */ safeGet(neutral, 900, [] as const),
             margin: 0,
           }}
         >
@@ -136,9 +141,9 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
         <p
           style={{
             fontSize: tokens.typography.fontSize.sm,
-            color: tokens.colors.neutral[600],
+            color: tokens.colors./* TODO: allow-list */ safeGet(neutral, 600, [] as const),
             margin: 0,
-            marginTop: tokens.spacing[1],
+            marginTop: tokens./* TODO: allow-list */ safeGet(spacing, 1, [] as const),
           }}
         >
           Manage your account structure
@@ -160,13 +165,17 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: tokens.spacing[6],
+              padding: tokens./* TODO: allow-list */ safeGet(spacing, 6, [] as const),
               textAlign: 'center',
-              color: tokens.colors.error[600],
+              color: tokens.colors./* TODO: allow-list */ safeGet(error, 600, [] as const),
             }}
           >
             <div>
-              <div style={{ marginBottom: tokens.spacing[2] }}>
+              <div
+                style={{
+                  marginBottom: tokens./* TODO: allow-list */ safeGet(spacing, 2, [] as const),
+                }}
+              >
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
                     stroke="currentColor"
@@ -189,7 +198,7 @@ export function ChartOfAccounts(props: ChartOfAccountsProps): JSX.Element {
           rowHeight={40}
           onRowClick={(row: Account) => handleRowClick(row)}
           emptyMessage="No accounts found"
-          className="rounded-lg border border-semantic-border"
+          className="border-semantic-border rounded-lg border"
         />
       </AsyncLoading>
     </div>

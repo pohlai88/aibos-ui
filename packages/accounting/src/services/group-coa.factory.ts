@@ -1,6 +1,7 @@
 import { CreateAccountCommand } from '../commands/create-account.command';
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
 import { ChartOfAccounts } from '../domain/chart-of-accounts.domain';
+import { omitUndefined } from '../utils';
 
 export interface GroupCoaInput {
   tenantId: string;
@@ -381,16 +382,18 @@ export class GroupCoaFactory {
     },
     input: GroupCoaInput,
   ): void {
-    const command = new CreateAccountCommand({
-      accountCode: account.code,
-      accountName: account.name,
-      accountType: account.type,
-      parentAccountCode: account.parentCode,
-      tenantId: input.tenantId,
-      userId: input.userId,
-      specialAccountType: account.specialType ?? SpecialAccountType.NONE,
-      postingAllowed: account.postingAllowed ?? true,
-    });
+    const command = new CreateAccountCommand(
+      omitUndefined({
+        accountCode: account.code,
+        accountName: account.name,
+        accountType: account.type,
+        parentAccountCode: account.parentCode,
+        tenantId: input.tenantId,
+        userId: input.userId,
+        specialAccountType: account.specialType ?? SpecialAccountType.NONE,
+        postingAllowed: account.postingAllowed ?? true,
+      }),
+    );
 
     coa.createAccount(command);
   }
@@ -417,7 +420,7 @@ export class GroupCoaFactory {
    * Ensures IC receivables equal IC payables by counterparty and currency.
    */
   public static validateIntercompanyMirroring(
-    coa: ChartOfAccounts,
+    _coa: ChartOfAccounts,
     counterpartyId: string,
     currency: string,
   ): { isValid: boolean; message?: string } {

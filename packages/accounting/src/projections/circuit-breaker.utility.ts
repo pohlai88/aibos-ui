@@ -1,6 +1,7 @@
 import { ResilienceManager } from '../infrastructure/resilience-manager.infrastructure';
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { omitUndefined } from '../utils';
 
 export interface CircuitBreakerState {
   state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
@@ -260,8 +261,15 @@ export class ProjectionCircuitBreaker {
     state.state = 'CLOSED';
     state.failureCount = 0;
     state.successCount = 0;
-    state.lastFailureTime = undefined;
-    state.nextAttemptTime = undefined;
+
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanState = omitUndefined({
+      lastFailureTime: undefined,
+      nextAttemptTime: undefined,
+    });
+
+    state.lastFailureTime = cleanState.lastFailureTime;
+    state.nextAttemptTime = cleanState.nextAttemptTime;
 
     this.logger.log(`Circuit breaker closed for projection ${projectionName}`);
 

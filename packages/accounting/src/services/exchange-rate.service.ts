@@ -1,4 +1,6 @@
 import { ExchangeRateEntity } from '../infrastructure/exchange-rate.entity';
+import { safeGet } from '../utils';
+import { omitUndefined } from '../utils';
 import { type HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { type ConfigService } from '@nestjs/config';
@@ -27,7 +29,7 @@ export class ExchangeRateService {
       'EXCHANGE_RATE_API_URL',
       'https://api.exchangerate-api.com/v4',
     );
-    this.defaultBase = this.configService.get('BASE_CURRENCY', 'USD');
+    this.defaultBase = this.configService.get('BASE_CURRENCY', 'MYR');
     this.cacheTtlMs = Number(this.configService.get('EXCHANGE_RATE_CACHE_TTL_MS', '300000')); // 5m default
   }
 
@@ -91,8 +93,8 @@ export class ExchangeRateService {
           params: this.apiKey ? { access_key: this.apiKey } : undefined,
         });
         const rates = res?.data?.rates ?? {};
-        // eslint-disable-next-line security/detect-object-injection
-        if (rates[toCurrency] != null) return Number(rates[toCurrency]);
+
+        if (safeGet(rates, toCurrency, null) != null) return Number(safeGet(rates, toCurrency, 0));
         return null;
       };
       const tryTriangulate = async () => {
@@ -103,10 +105,10 @@ export class ExchangeRateService {
           },
         );
         const rates = res?.data?.rates ?? {};
-        // eslint-disable-next-line security/detect-object-injection
-        const rBaseTo = rates[toCurrency];
-        // eslint-disable-next-line security/detect-object-injection
-        const rBaseFrom = rates[fromCurrency];
+
+        const rBaseTo = safeGet(rates, toCurrency, 0);
+
+        const rBaseFrom = safeGet(rates, fromCurrency, 0);
         if (rBaseTo != null && rBaseFrom != null && Number(rBaseFrom) !== 0) {
           return Number(rBaseTo) / Number(rBaseFrom);
         }
@@ -117,8 +119,8 @@ export class ExchangeRateService {
           params: this.apiKey ? { access_key: this.apiKey } : undefined,
         });
         const rates = res?.data?.rates ?? {};
-        // eslint-disable-next-line security/detect-object-injection
-        const r = rates[fromCurrency];
+
+        const r = safeGet(rates, fromCurrency, 0);
         if (r != null && Number(r) !== 0) return 1 / Number(r);
         return null;
       };
@@ -138,7 +140,7 @@ export class ExchangeRateService {
   @Cron(CronExpression.EVERY_HOUR)
   async updateExchangeRates(): Promise<void> {
     const currencies = this.configService
-      .get<string>('SUPPORTED_CURRENCIES', 'USD,EUR,GBP,SGD,MYR,THB,IDR,VND,PHP')
+      .get<string>('SUPPORTED_CURRENCIES', 'MYR,USD,EUR,GBP,SGD,THB,IDR,VND,PHP')
       .split(',')
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean);
@@ -152,12 +154,14 @@ export class ExchangeRateService {
 
       try {
         const rate = await this.fetchExchangeRate(baseCurrency, currency, dayStart);
-        await this.exchangeRateRepository.save({
-          fromCurrency: baseCurrency,
-          toCurrency: currency,
-          rate: String(rate),
-          date: dayStart,
-        });
+        await this.exchangeRateRepository.save(
+          omitUndefined({
+            fromCurrency: baseCurrency,
+            toCurrency: currency,
+            rate: String(rate),
+            date: dayStart,
+          }),
+        );
         // Warm in-memory cache for this hour
         const key = `${baseCurrency}|${currency}|${this.formatDayKey(dayStart)}`;
         this.cache.set(key, { rate, expiresAt: Date.now() + this.cacheTtlMs });
@@ -185,5 +189,38 @@ export class ExchangeRateService {
     const m = String(dayStartUtc.getUTCMonth() + 1).padStart(2, '0');
     const d = String(dayStartUtc.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+  }
+
+  /**
+   * Get exchange rate history for a currency pair
+   */
+  async getExchangeRateHistory(
+    fromCurrency: string,
+    toCurrency: string,
+    startDate?: Date,
+    endDate?: Date,
+    limit: number = 30,
+  ): Promise<Array<{ date: Date; rate: number; source: string }>> {
+    const queryBuilder = this.exchangeRateRepository
+      .createQueryBuilder('rate')
+      .where('rate.fromCurrency = :fromCurrency', { fromCurrency: fromCurrency.toUpperCase() })
+      .andWhere('rate.toCurrency = :toCurrency', { toCurrency: toCurrency.toUpperCase() })
+      .orderBy('rate.date', 'DESC')
+      .limit(limit);
+
+    if (startDate) {
+      queryBuilder.andWhere('rate.date >= :startDate', { startDate });
+    }
+    if (endDate) {
+      queryBuilder.andWhere('rate.date <= :endDate', { endDate });
+    }
+
+    const rates = await queryBuilder.getMany();
+
+    return rates.map((rate) => ({
+      date: rate.date,
+      rate: Number(rate.rate),
+      source: 'database',
+    }));
   }
 }

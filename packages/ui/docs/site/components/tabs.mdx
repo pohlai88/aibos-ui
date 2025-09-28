@@ -1,0 +1,499 @@
+# Tabs
+
+Tabbed content for organizing related information into separate panels.
+
+## Import
+
+```tsx
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Tabs defaultValue="tab1">
+  <TabsList>
+    <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+    <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+    <TabsTrigger value="tab3">Tab 3</TabsTrigger>
+  </TabsList>
+  <TabsContent value="tab1">
+    <p>Content for Tab 1</p>
+  </TabsContent>
+  <TabsContent value="tab2">
+    <p>Content for Tab 2</p>
+  </TabsContent>
+  <TabsContent value="tab3">
+    <p>Content for Tab 3</p>
+  </TabsContent>
+</Tabs>
+```
+
+## Variants
+
+### Default Tabs
+
+```tsx
+<Tabs defaultValue="overview">
+  <TabsList>
+    <TabsTrigger value="overview">Overview</TabsTrigger>
+    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+    <TabsTrigger value="reports">Reports</TabsTrigger>
+  </TabsList>
+  <TabsContent value="overview">
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Overview</h3>
+      <p>Overview content goes here</p>
+    </div>
+  </TabsContent>
+  <TabsContent value="analytics">
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Analytics</h3>
+      <p>Analytics content goes here</p>
+    </div>
+  </TabsContent>
+  <TabsContent value="reports">
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Reports</h3>
+      <p>Reports content goes here</p>
+    </div>
+  </TabsContent>
+</Tabs>
+```
+
+### Vertical Tabs
+
+```tsx
+<Tabs defaultValue="profile" orientation="vertical" className="flex">
+  <TabsList className="h-auto flex-col">
+    <TabsTrigger value="profile">Profile</TabsTrigger>
+    <TabsTrigger value="account">Account</TabsTrigger>
+    <TabsTrigger value="billing">Billing</TabsTrigger>
+  </TabsList>
+  <div className="ml-4 flex-1">
+    <TabsContent value="profile">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Profile Settings</h3>
+        <p>Manage your profile information</p>
+      </div>
+    </TabsContent>
+    <TabsContent value="account">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Account Settings</h3>
+        <p>Manage your account preferences</p>
+      </div>
+    </TabsContent>
+    <TabsContent value="billing">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Billing Information</h3>
+        <p>Manage your billing details</p>
+      </div>
+    </TabsContent>
+  </div>
+</Tabs>
+```
+
+### Disabled Tabs
+
+```tsx
+<Tabs defaultValue="active">
+  <TabsList>
+    <TabsTrigger value="active">Active</TabsTrigger>
+    <TabsTrigger value="disabled" disabled>
+      Disabled
+    </TabsTrigger>
+    <TabsTrigger value="another">Another</TabsTrigger>
+  </TabsList>
+  <TabsContent value="active">
+    <p>This tab is active</p>
+  </TabsContent>
+  <TabsContent value="another">
+    <p>This is another tab</p>
+  </TabsContent>
+</Tabs>
+```
+
+## Form Integration
+
+### Controlled Tabs
+
+```tsx
+function ControlledTabs() {
+  const [activeTab, setActiveTab] = useState('tab1');
+
+  return (
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <TabsList>
+        <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+        <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+      </TabsList>
+      <TabsContent value="tab1">
+        <p>Content for Tab 1</p>
+      </TabsContent>
+      <TabsContent value="tab2">
+        <p>Content for Tab 2</p>
+      </TabsContent>
+    </Tabs>
+  );
+}
+```
+
+### Dynamic Tabs
+
+```tsx
+function DynamicTabs() {
+  const [tabs, setTabs] = useState([
+    { id: 'tab1', label: 'Tab 1', content: 'Content 1' },
+    { id: 'tab2', label: 'Tab 2', content: 'Content 2' },
+  ]);
+  const [activeTab, setActiveTab] = useState('tab1');
+
+  const addTab = () => {
+    const newId = `tab${tabs.length + 1}`;
+    setTabs([
+      ...tabs,
+      {
+        id: newId,
+        label: `Tab ${tabs.length + 1}`,
+        content: `Content ${tabs.length + 1}`,
+      },
+    ]);
+    setActiveTab(newId);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Dynamic Tabs</h3>
+        <Button onClick={addTab}>Add Tab</Button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {tabs.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id}>
+            <p>{tab.content}</p>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
+```
+
+## Layout Examples
+
+### Dashboard Tabs
+
+```tsx
+<Tabs defaultValue="overview">
+  <TabsList className="grid w-full grid-cols-4">
+    <TabsTrigger value="overview">Overview</TabsTrigger>
+    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+    <TabsTrigger value="reports">Reports</TabsTrigger>
+    <TabsTrigger value="settings">Settings</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="overview" className="space-y-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold">1,234</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Revenue</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold">$45,231</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Orders</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold">+2350</p>
+        </CardContent>
+      </Card>
+    </div>
+  </TabsContent>
+
+  <TabsContent value="analytics" className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Analytics Dashboard</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Analytics content goes here</p>
+      </CardContent>
+    </Card>
+  </TabsContent>
+
+  <TabsContent value="reports" className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Reports</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Reports content goes here</p>
+      </CardContent>
+    </Card>
+  </TabsContent>
+
+  <TabsContent value="settings" className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Settings content goes here</p>
+      </CardContent>
+    </Card>
+  </TabsContent>
+</Tabs>
+```
+
+### User Profile Tabs
+
+```tsx
+<Tabs defaultValue="personal" orientation="vertical" className="flex">
+  <TabsList className="h-auto w-48 flex-col">
+    <TabsTrigger value="personal">Personal Info</TabsTrigger>
+    <TabsTrigger value="account">Account</TabsTrigger>
+    <TabsTrigger value="security">Security</TabsTrigger>
+    <TabsTrigger value="notifications">Notifications</TabsTrigger>
+  </TabsList>
+
+  <div className="ml-6 flex-1">
+    <TabsContent value="personal" className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Personal Information</h3>
+        <p className="text-semantic-muted-foreground text-sm">Update your personal details</p>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">First Name</label>
+          <Input placeholder="Enter your first name" />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Last Name</label>
+          <Input placeholder="Enter your last name" />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Email</label>
+          <Input type="email" placeholder="Enter your email" />
+        </div>
+      </div>
+    </TabsContent>
+
+    <TabsContent value="account" className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Account Settings</h3>
+        <p className="text-semantic-muted-foreground text-sm">Manage your account preferences</p>
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium">Dark Mode</label>
+            <p className="text-semantic-muted-foreground text-sm">Switch to dark theme</p>
+          </div>
+          <Switch />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium">Auto Save</label>
+            <p className="text-semantic-muted-foreground text-sm">Automatically save changes</p>
+          </div>
+          <Switch defaultChecked />
+        </div>
+      </div>
+    </TabsContent>
+
+    <TabsContent value="security" className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Security Settings</h3>
+        <p className="text-semantic-muted-foreground text-sm">Manage your security preferences</p>
+      </div>
+      <div className="space-y-4">
+        <Button variant="outline">Change Password</Button>
+        <Button variant="outline">Enable Two-Factor Authentication</Button>
+      </div>
+    </TabsContent>
+
+    <TabsContent value="notifications" className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold">Notification Preferences</h3>
+        <p className="text-semantic-muted-foreground text-sm">Choose how you want to be notified</p>
+      </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium">Email Notifications</label>
+            <p className="text-semantic-muted-foreground text-sm">Receive email updates</p>
+          </div>
+          <Switch defaultChecked />
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium">Push Notifications</label>
+            <p className="text-semantic-muted-foreground text-sm">Receive push notifications</p>
+          </div>
+          <Switch />
+        </div>
+      </div>
+    </TabsContent>
+  </div>
+</Tabs>
+```
+
+### Product Details Tabs
+
+```tsx
+<Tabs defaultValue="description">
+  <TabsList>
+    <TabsTrigger value="description">Description</TabsTrigger>
+    <TabsTrigger value="specifications">Specifications</TabsTrigger>
+    <TabsTrigger value="reviews">Reviews</TabsTrigger>
+    <TabsTrigger value="shipping">Shipping</TabsTrigger>
+  </TabsList>
+
+  <TabsContent value="description" className="space-y-4">
+    <div>
+      <h3 className="text-lg font-semibold">Product Description</h3>
+      <p className="text-semantic-muted-foreground text-sm">
+        Detailed information about the product
+      </p>
+    </div>
+    <div className="prose">
+      <p>This is a detailed description of the product...</p>
+    </div>
+  </TabsContent>
+
+  <TabsContent value="specifications" className="space-y-4">
+    <div>
+      <h3 className="text-lg font-semibold">Technical Specifications</h3>
+    </div>
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Weight:</span>
+        <span className="text-sm">2.5 kg</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Dimensions:</span>
+        <span className="text-sm">30 x 20 x 15 cm</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Material:</span>
+        <span className="text-sm">Aluminum</span>
+      </div>
+    </div>
+  </TabsContent>
+
+  <TabsContent value="reviews" className="space-y-4">
+    <div>
+      <h3 className="text-lg font-semibold">Customer Reviews</h3>
+    </div>
+    <div className="space-y-4">
+      <div className="border-semantic-border rounded-md border p-4">
+        <div className="mb-2 flex items-center space-x-2">
+          <Badge variant="default">5 stars</Badge>
+          <span className="text-sm font-medium">John Doe</span>
+        </div>
+        <p className="text-sm">Great product, highly recommended!</p>
+      </div>
+    </div>
+  </TabsContent>
+
+  <TabsContent value="shipping" className="space-y-4">
+    <div>
+      <h3 className="text-lg font-semibold">Shipping Information</h3>
+    </div>
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Standard Shipping:</span>
+        <span className="text-sm">5-7 business days</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Express Shipping:</span>
+        <span className="text-sm">2-3 business days</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-sm font-medium">Free Shipping:</span>
+        <span className="text-sm">Orders over $50</span>
+      </div>
+    </div>
+  </TabsContent>
+</Tabs>
+```
+
+## API Reference
+
+### Tabs Props
+
+| Prop            | Type                         | Default        | Description                      |
+| --------------- | ---------------------------- | -------------- | -------------------------------- |
+| `value`         | `string`                     | -              | Controlled active tab value      |
+| `defaultValue`  | `string`                     | -              | Uncontrolled active tab value    |
+| `onValueChange` | `(value: string) => void`    | -              | Callback when active tab changes |
+| `orientation`   | `'horizontal' \| 'vertical'` | `'horizontal'` | Tab orientation                  |
+| `className`     | `string`                     | -              | Additional CSS classes           |
+| `children`      | `ReactNode`                  | -              | Tab content                      |
+
+### TabsList Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Tab triggers           |
+
+### TabsTrigger Props
+
+| Prop        | Type        | Default | Description                 |
+| ----------- | ----------- | ------- | --------------------------- |
+| `value`     | `string`    | -       | Value of the tab            |
+| `disabled`  | `boolean`   | `false` | Whether the tab is disabled |
+| `className` | `string`    | -       | Additional CSS classes      |
+| `children`  | `ReactNode` | -       | Tab trigger content         |
+
+### TabsContent Props
+
+| Prop        | Type        | Default | Description              |
+| ----------- | ----------- | ------- | ------------------------ |
+| `value`     | `string`    | -       | Value of the tab content |
+| `className` | `string`    | -       | Additional CSS classes   |
+| `children`  | `ReactNode` | -       | Tab content              |
+
+## Accessibility
+
+- **Keyboard Navigation**: Full keyboard support with arrow keys
+- **Screen Reader Support**: Proper ARIA attributes and announcements
+- **Focus Management**: Clear focus indicators and proper tab order
+- **Disabled State**: Properly announced to screen readers
+- **Tab Association**: Clear association between triggers and content
+
+## Best Practices
+
+1. **Use clear labels** - Provide descriptive tab labels
+2. **Group related content** - Organize content logically
+3. **Consider tab order** - Arrange tabs in logical order
+4. **Handle dynamic content** - Support adding/removing tabs
+5. **Test with screen readers** - Ensure accessibility compliance
+6. **Use appropriate orientation** - Choose horizontal or vertical based on content
+
+## Related Components
+
+- [Accordion](./accordion.mdx) - Collapsible sections
+- [Card](./card.mdx) - Content containers
+- [Button](./button.mdx) - Interactive elements
+- [Navigation](./navigation.mdx) - Site navigation

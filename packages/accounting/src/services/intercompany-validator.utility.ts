@@ -208,7 +208,7 @@ export class IntercompanyValidator {
   ): void {
     // In a real implementation, this would check currency fields on journal lines
     // For now, we'll assume all entries are in the same currency
-    if (expectedCurrency && expectedCurrency !== 'USD') {
+    if (expectedCurrency && expectedCurrency !== 'MYR') {
       errors.push(`Currency validation not fully implemented - assuming ${expectedCurrency}`);
     }
   }
@@ -247,7 +247,7 @@ export class IntercompanyValidator {
    * Ensures all counterparty balances net to zero.
    */
   public static validatePeriodEndReconciliation(
-    coa: ChartOfAccounts,
+    _coa: ChartOfAccounts,
     counterpartyBalances: Array<{
       counterpartyId: string;
       receivableBalance: number;

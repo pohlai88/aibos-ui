@@ -1,0 +1,304 @@
+# Switch
+
+Toggle switches for binary on/off states with smooth animations.
+
+## Import
+
+```tsx
+import { Switch } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Switch>Enable notifications</Switch>
+```
+
+## Variants
+
+### Default Switch
+
+```tsx
+<Switch>Default switch</Switch>
+```
+
+### Checked State
+
+```tsx
+<Switch defaultChecked>Pre-enabled option</Switch>
+```
+
+### Disabled State
+
+```tsx
+<Switch disabled>Disabled switch</Switch>
+```
+
+### With Labels
+
+```tsx
+<div className="flex items-center space-x-2">
+  <Switch id="notifications" />
+  <label htmlFor="notifications">Enable notifications</label>
+</div>
+```
+
+## Form Integration
+
+### Controlled Switch
+
+```tsx
+function ControlledSwitch() {
+  const [enabled, setEnabled] = useState(false);
+
+  return (
+    <Switch checked={enabled} onCheckedChange={setEnabled}>
+      Controlled switch
+    </Switch>
+  );
+}
+```
+
+### Switch Group
+
+```tsx
+function SwitchGroup() {
+  const [settings, setSettings] = useState({
+    notifications: true,
+    darkMode: false,
+    autoSave: true,
+  });
+
+  const updateSetting = (key, value) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Push Notifications</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Receive push notifications on your device
+          </p>
+        </div>
+        <Switch
+          checked={settings.notifications}
+          onCheckedChange={(checked) => updateSetting('notifications', checked)}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Dark Mode</label>
+          <p className="text-semantic-muted-foreground text-sm">Switch to dark theme</p>
+        </div>
+        <Switch
+          checked={settings.darkMode}
+          onCheckedChange={(checked) => updateSetting('darkMode', checked)}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Auto Save</label>
+          <p className="text-semantic-muted-foreground text-sm">Automatically save changes</p>
+        </div>
+        <Switch
+          checked={settings.autoSave}
+          onCheckedChange={(checked) => updateSetting('autoSave', checked)}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+## Layout Examples
+
+### Settings Panel
+
+```tsx
+<div className="space-y-6">
+  <div>
+    <h3 className="mb-4 text-lg font-semibold">Account Settings</h3>
+    <div className="space-y-4">
+      <div className="border-semantic-border flex items-center justify-between rounded-md border p-4">
+        <div>
+          <div className="font-medium">Email Notifications</div>
+          <div className="text-semantic-muted-foreground text-sm">
+            Receive email updates about your account
+          </div>
+        </div>
+        <Switch defaultChecked />
+      </div>
+
+      <div className="border-semantic-border flex items-center justify-between rounded-md border p-4">
+        <div>
+          <div className="font-medium">SMS Notifications</div>
+          <div className="text-semantic-muted-foreground text-sm">
+            Receive SMS alerts for important updates
+          </div>
+        </div>
+        <Switch />
+      </div>
+
+      <div className="border-semantic-border flex items-center justify-between rounded-md border p-4">
+        <div>
+          <div className="font-medium">Two-Factor Authentication</div>
+          <div className="text-semantic-muted-foreground text-sm">
+            Add an extra layer of security to your account
+          </div>
+        </div>
+        <Switch />
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Feature Toggles
+
+```tsx
+<div className="space-y-4">
+  <h3 className="text-lg font-semibold">Feature Toggles</h3>
+
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="border-semantic-border rounded-md border p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="font-medium">Beta Features</h4>
+        <Switch />
+      </div>
+      <p className="text-semantic-muted-foreground text-sm">Enable experimental features</p>
+    </div>
+
+    <div className="border-semantic-border rounded-md border p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="font-medium">Analytics</h4>
+        <Switch defaultChecked />
+      </div>
+      <p className="text-semantic-muted-foreground text-sm">
+        Help us improve by sharing usage data
+      </p>
+    </div>
+
+    <div className="border-semantic-border rounded-md border p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="font-medium">Auto Updates</h4>
+        <Switch defaultChecked />
+      </div>
+      <p className="text-semantic-muted-foreground text-sm">Automatically install updates</p>
+    </div>
+
+    <div className="border-semantic-border rounded-md border p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="font-medium">Offline Mode</h4>
+        <Switch />
+      </div>
+      <p className="text-semantic-muted-foreground text-sm">Work without internet connection</p>
+    </div>
+  </div>
+</div>
+```
+
+### Privacy Controls
+
+```tsx
+<div className="space-y-6">
+  <div>
+    <h3 className="mb-4 text-lg font-semibold">Privacy & Security</h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Profile Visibility</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Make your profile visible to other users
+          </p>
+        </div>
+        <Switch defaultChecked />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Data Collection</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Allow collection of usage analytics
+          </p>
+        </div>
+        <Switch />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Location Services</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Use your location for personalized content
+          </p>
+        </div>
+        <Switch />
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Loading States
+
+```tsx
+function LoadingSwitch() {
+  const [loading, setLoading] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+
+  const handleToggle = async (checked) => {
+    setLoading(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setEnabled(checked);
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex items-center space-x-2">
+      <Switch checked={enabled} onCheckedChange={handleToggle} disabled={loading} />
+      <span className="text-sm">{loading ? 'Updating...' : enabled ? 'Enabled' : 'Disabled'}</span>
+    </div>
+  );
+}
+```
+
+## API Reference
+
+### Switch Props
+
+| Prop              | Type                         | Default | Description                         |
+| ----------------- | ---------------------------- | ------- | ----------------------------------- |
+| `checked`         | `boolean`                    | `false` | Controlled checked state            |
+| `defaultChecked`  | `boolean`                    | `false` | Uncontrolled checked state          |
+| `disabled`        | `boolean`                    | `false` | Whether the switch is disabled      |
+| `onCheckedChange` | `(checked: boolean) => void` | -       | Callback when checked state changes |
+| `className`       | `string`                     | -       | Additional CSS classes              |
+| `children`        | `ReactNode`                  | -       | Switch label content                |
+
+## Accessibility
+
+- **Keyboard Navigation**: Focusable with Tab key, activated with Space
+- **Screen Reader Support**: Proper ARIA attributes and labels
+- **Focus Management**: Visible focus indicators
+- **Disabled State**: Properly announced to screen readers
+- **State Announcements**: Current state is communicated to assistive technology
+
+## Best Practices
+
+1. **Use clear labels** - Provide descriptive text for each switch
+2. **Group related toggles** - Use consistent spacing and grouping
+3. **Provide immediate feedback** - Show loading states for async operations
+4. **Consider default states** - Set appropriate defaults based on user expectations
+5. **Test with screen readers** - Ensure accessibility compliance
+6. **Use for binary states** - Switches are ideal for on/off, enable/disable scenarios
+
+## Related Components
+
+- [Checkbox](./checkbox.mdx) - Binary choice controls
+- [Radio](./radio.mdx) - Single choice from multiple options
+- [Button](./button.mdx) - Interactive elements
+- [Form](./form.mdx) - Form handling with validation

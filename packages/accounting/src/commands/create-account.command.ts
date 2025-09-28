@@ -1,4 +1,5 @@
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
+import { omitUndefined } from '../utils';
 
 export interface CreateAccountCommandProperties {
   readonly accountCode: string;
@@ -32,16 +33,30 @@ export class CreateAccountCommand {
   };
 
   constructor(properties: CreateAccountCommandProperties) {
-    // Normalize once; validate against trimmed values
-    this.accountCode = properties.accountCode?.trim();
-    this.accountName = properties.accountName?.trim();
-    this.accountType = properties.accountType;
-    this.parentAccountCode = properties.parentAccountCode?.trim();
-    this.tenantId = properties.tenantId?.trim();
-    this.userId = properties.userId?.trim();
-    this.specialAccountType = properties.specialAccountType ?? SpecialAccountType.NONE;
-    this.postingAllowed = properties.postingAllowed ?? true;
-    this.companionLinks = properties.companionLinks;
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanProperties = omitUndefined({
+      accountCode: properties.accountCode?.trim(),
+      accountName: properties.accountName?.trim(),
+      accountType: properties.accountType,
+      parentAccountCode: properties.parentAccountCode?.trim(),
+      tenantId: properties.tenantId?.trim(),
+      userId: properties.userId?.trim(),
+      specialAccountType: properties.specialAccountType ?? SpecialAccountType.NONE,
+      postingAllowed: properties.postingAllowed ?? true,
+      companionLinks: properties.companionLinks,
+    });
+
+    // Assign from cleaned properties
+    this.accountCode = cleanProperties.accountCode;
+    this.accountName = cleanProperties.accountName;
+    this.accountType = cleanProperties.accountType;
+    this.parentAccountCode = cleanProperties.parentAccountCode;
+    this.tenantId = cleanProperties.tenantId;
+    this.userId = cleanProperties.userId;
+    this.specialAccountType = cleanProperties.specialAccountType;
+    this.postingAllowed = cleanProperties.postingAllowed;
+    this.companionLinks = cleanProperties.companionLinks;
+
     // Enforce invariants on construction
     this.validate();
     // Prevent post-construct mutation

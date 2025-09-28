@@ -1,12 +1,42 @@
-// Accounting Domain
+// Core Module
+export * from './accounting.module';
+
+// Domain Models
 export * from './domain/account.domain';
 export * from './domain/chart-of-accounts.domain';
 export * from './domain/journal-entry';
 export * from './domain/journal-entry-line';
 export * from './domain/journal-entry-status.domain';
 export * from './domain/Money';
-export * from './domain/safe-objects';
+export * from './utils';
 export * from './domain/repositories.interface';
+export * from './domain/invoice.domain';
+
+// Commands
+export * from './commands/create-account.command';
+export * from './commands/post-journal-entry.command';
+export * from './commands/issue-invoice.command';
+
+// Services
+export * from './services/accounting.service';
+export * from './services/invoice.service';
+export * from './services/invoice-event-handler.service';
+export * from './services/ui-integration.service';
+
+// AI Services - Phase 2 Scaffold (not yet implemented)
+export * from './services/ai-assistant.service';
+export * from './services/predictive-analytics.service';
+export * from './services/natural-language.service';
+export * from './services/intelligent-validation.service';
+
+// Projections
+export * from './projections/invoice.projection';
+export * from './projections/general-ledger.projection';
+
+// API
+export * from './api/accounting-api-module';
+export * from './api/accounting-controller';
+export * from './api/invoice-controller';
 
 // API Schemas
 export {
@@ -38,6 +68,7 @@ export type {
 } from './validation/api.schema';
 export { JournalEntryLine as JournalEntryLineClass } from './domain/journal-entry-line';
 export * from './validation/import.schema';
+export * from './validation/ui.schema';
 
 // Accounting Events
 export * from './events/account-created.event';
@@ -69,6 +100,7 @@ export * from './services/financial-analytics.service';
 export * from './services/fx-policy.service';
 export * from './services/period-close.service';
 export * from './services/migration-orchestrator.service';
+export * from './services/ui-integration.service';
 
 // Accounting Projections
 export * from './projections/general-ledger.projection';
@@ -77,10 +109,11 @@ export * from './projections/general-ledger.projection';
 export * from './infrastructure/resilience-manager.infrastructure';
 
 // Accounting API
-export * from './api/accounting-api-module';
-export * from './api/accounting-controller';
-export * from './api/accounting-routes';
-export * from './api/validation.middleware';
+export * from './api/accounting-api-module.js';
+export * from './api/accounting-controller.js';
+export * from './api/accounting-routes.js';
+export * from './api/validation.middleware.js';
+export * from './api/ui-controller-express.js';
 
 // Standards Compliance
 export * from './types/standards';

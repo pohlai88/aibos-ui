@@ -5,6 +5,7 @@ import { JournalEntryEntity } from './journal-entry.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type Repository } from 'typeorm';
+import { omitUndefined } from '../utils';
 
 @Injectable()
 export class TypeormJournalEntryRepository implements JournalEntryRepository {
@@ -22,13 +23,15 @@ export class TypeormJournalEntryRepository implements JournalEntryRepository {
   }
 
   async findByTenant(tenantId: string, limit?: number, offset?: number): Promise<JournalEntry[]> {
-    const entities = await this.repo.find({
-      where: { tenantId },
-      order: { postingDate: 'DESC', createdAt: 'DESC' },
-      take: limit,
-      skip: offset,
-      relations: ['generalLedgerEntries'],
-    });
+    const entities = await this.repo.find(
+      omitUndefined({
+        where: { tenantId },
+        order: { postingDate: 'DESC', createdAt: 'DESC' },
+        take: limit,
+        skip: offset,
+        relations: ['generalLedgerEntries'],
+      }),
+    );
     return entities.map(this.toDomain);
   }
 

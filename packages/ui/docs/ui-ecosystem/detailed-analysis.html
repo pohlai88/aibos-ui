@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detailed Analysis - AIBOS UI Ecosystem</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 2.5em;
+        font-weight: 300;
+      }
+      .header p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+      }
+      .content {
+        padding: 30px;
+      }
+      .description {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+        border-left: 4px solid #667eea;
+      }
+      .graph-container {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        overflow-x: auto;
+      }
+      .mermaid {
+        text-align: center;
+      }
+      .navigation {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 30px;
+        text-align: center;
+      }
+      .nav-link {
+        display: inline-block;
+        margin: 0 10px;
+        padding: 10px 20px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background 0.3s;
+      }
+      .nav-link:hover {
+        background: #5a6fd8;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 500;
+        margin: 5px;
+      }
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-warning {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .footer {
+        background: #f8f9fa;
+        padding: 20px;
+        text-align: center;
+        color: #6c757d;
+        border-top: 1px solid #dee2e6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Detailed Analysis</h1>
+        <p>AIBOS UI Ecosystem Documentation</p>
+      </div>
+
+      <div class="content">
+        <div class="description">
+          <h3>📋 Overview</h3>
+          <p>
+            This analysis shows the current state of the UI ecosystem. While the overall
+            architecture is clean with proper layer boundaries, there are specific issues that need
+            attention, particularly around polymorphic components and TypeScript configuration.
+          </p>
+        </div>
+
+        <div class="graph-container">
+          <div class="mermaid">
+            graph LR %% Detailed UI Ecosystem with Violations subgraph "Current State Analysis"
+            subgraph "✅ Clean Areas" CleanUI["UI Primitives<br />✅ Pure components<br />✅ No
+            business logic"] CleanBusiness["UI-Business<br />✅ Domain-specific<br />✅ Uses UI
+            primitives"] end subgraph "⚠️ Issues Found" PolyIssues["Polymorphic Issues<br />⚠️ 8
+            components need fixes<br />• Missing ref forwarding<br />• Missing as prop"]
+            TypeIssues["TypeScript Issues<br />⚠️ Missing typecheck script"] DepIssues["Dependency
+            Issues<br />⚠️ 6 violations found<br />• 5 orphaned files<br />• 1 unresolvable import"]
+            end end subgraph "Layer Boundaries" Apps["Apps Layer<br />apps/web, apps/bff"]
+            Business["UI-Business Layer<br />packages/ui-business"] UI["UI Primitives Layer<br />packages/ui"]
+            Contracts["Domain Contracts<br />packages/accounting-contracts"] end %% Flow Apps -->
+            Business Business --> UI Business --> Contracts %% Issues PolyIssues -.-> UI TypeIssues
+            -.-> Apps DepIssues -.-> Apps %% Styling classDef clean
+            fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px classDef issue
+            fill:#ffcdd2,stroke:#c62828,stroke-width:2px classDef layer
+            fill:#e3f2fd,stroke:#1565c0,stroke-width:2px class CleanUI,CleanBusiness clean class
+            PolyIssues,TypeIssues,DepIssues issue class Apps,Business,UI,Contracts layer
+          </div>
+        </div>
+
+        <div class="navigation">
+          <a href="index.html" class="nav-link">🏠 Home</a>
+          <a href="dependency-graph.html" class="nav-link">📊 Dependency Graph</a>
+          <a href="detailed-analysis.html" class="nav-link">🔍 Detailed Analysis</a>
+          <a href="violation-analysis.html" class="nav-link">🚨 Violation Analysis</a>
+          <a href="status-report.html" class="nav-link">📈 Status Report</a>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>Generated on 9/26/2025 | AIBOS UI Ecosystem Documentation</p>
+      </div>
+    </div>
+
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'default',
+        flowchart: {
+          useMaxWidth: true,
+          htmlLabels: true,
+        },
+      });
+    </script>
+  </body>
+</html>

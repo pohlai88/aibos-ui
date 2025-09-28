@@ -1,98 +1,21 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { z } from 'zod';
+import {
+  CreateAccountRequestSchema,
+  PostJournalEntryRequestSchema,
+  ValidateBalanceRequestSchema,
+  GetAccountsQuerySchema,
+  GetJournalEntriesQuerySchema,
+  RealTimeBalancesRequestSchema,
+} from '../validation/ui.schema.js';
 
-// Validation schemas for API requests
-const CreateAccountSchema = z.object({
-  accountCode: z.string().min(1).max(50),
-  accountName: z.string().min(1).max(255),
-  accountType: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
-  parentAccountCode: z.string().optional(),
-  isActive: z.boolean().default(true),
-  description: z.string().optional(),
-  naturalBalance: z.enum(['DEBIT', 'CREDIT']).optional(),
-});
+// Validation schemas for API requests (using comprehensive UI schemas)
+const CreateAccountSchema = CreateAccountRequestSchema;
+const PostJournalEntrySchema = PostJournalEntryRequestSchema;
+const ValidateBalanceSchema = ValidateBalanceRequestSchema;
 
-const JournalEntryLineSchema = z.object({
-  accountCode: z.string().min(1),
-  debitAmount: z.number().min(0).optional(),
-  creditAmount: z.number().min(0).optional(),
-  description: z.string().optional(),
-});
-
-const PostJournalEntrySchema = z.object({
-  journalEntryId: z.string().min(1),
-  entries: z.array(JournalEntryLineSchema).min(1),
-  reference: z.string().min(1).max(100),
-  description: z.string().min(1).max(500),
-  postedBy: z.string().min(1),
-  postingDate: z.string().datetime().optional(),
-  book: z.string().optional(),
-  accountingPeriod: z.string().min(1),
-  periodStatus: z.enum(['OPEN', 'CLOSED', 'LOCKED', 'FINALIZED']),
-  isAdjustingEntry: z.boolean().default(false),
-  isClosingEntry: z.boolean().default(false),
-  isReversingEntry: z.boolean().default(false),
-  currencyCode: z.string().length(3).default('MYR'),
-  baseCurrencyCode: z.string().length(3).default('MYR'),
-  exchangeRate: z.number().positive().optional(),
-  exchangeRateDate: z.string().datetime().optional(),
-  isFXRevaluation: z.boolean().default(false),
-  taxLines: z
-    .array(
-      z.object({
-        taxCode: z.string(),
-        taxAmount: z.number(),
-        jurisdiction: z.string(),
-        isRecoverable: z.boolean(),
-        taxType: z.enum(['INPUT', 'OUTPUT', 'REVERSE_CHARGE']),
-      }),
-    )
-    .default([]),
-  totalTaxAmount: z.number().min(0).default(0),
-  reportingStandard: z.enum(['MFRS', 'IFRS', 'GAAP', 'LOCAL']).default('MFRS'),
-  countryCode: z.enum(['MY', 'SG', 'VN', 'ID', 'TH', 'PH']).default('MY'),
-  industryType: z
-    .enum(['GENERAL', 'MANUFACTURING', 'RETAIL', 'SERVICES', 'NON_PROFIT', 'REAL_ESTATE'])
-    .default('GENERAL'),
-  fiscalYear: z.number().int().min(2000).max(2100),
-  approval: z
-    .object({
-      required: z.boolean(),
-      approvedBy: z.string().optional(),
-      approvalDate: z.string().datetime().optional(),
-      approvalLevel: z.enum(['AUTO', 'MANAGER', 'CONTROLLER', 'CFO', 'AUDIT_COMMITTEE']),
-      approvalLimit: z.number().min(0),
-      requiresExplanation: z.boolean(),
-      explanation: z.string().optional(),
-    })
-    .default({
-      required: false,
-      approvalLevel: 'AUTO',
-      approvalLimit: 0,
-      requiresExplanation: false,
-    }),
-  supportingDocuments: z
-    .array(
-      z.object({
-        documentId: z.string(),
-        documentType: z.enum([
-          'INVOICE',
-          'RECEIPT',
-          'CONTRACT',
-          'BANK_STATEMENT',
-          'PAYMENT_VOUCHER',
-        ]),
-        documentNumber: z.string(),
-        amount: z.number(),
-        currency: z.string(),
-        issueDate: z.string().datetime(),
-        isVerified: z.boolean(),
-      }),
-    )
-    .default([]),
-});
-
+// Additional schemas for core accounting operations
 const ReverseJournalEntrySchema = z.object({
   reason: z.string().min(1).max(500),
   reversedBy: z.string().min(1),
@@ -100,6 +23,115 @@ const ReverseJournalEntrySchema = z.object({
 
 const ReconciliationSchema = z.object({
   expectedBalances: z.record(z.string(), z.number()).optional(),
+});
+
+// Exchange Rate schemas
+const ExchangeRateQuerySchema = z.object({
+  fromCurrency: z
+    .string()
+    .length(3)
+    .transform((s) => s.toUpperCase()),
+  toCurrency: z
+    .string()
+    .length(3)
+    .transform((s) => s.toUpperCase()),
+  date: z.string().datetime().optional(),
+});
+
+const ExchangeRateUpdateSchema = z.object({
+  fromCurrency: z
+    .string()
+    .length(3)
+    .transform((s) => s.toUpperCase()),
+  toCurrency: z
+    .string()
+    .length(3)
+    .transform((s) => s.toUpperCase()),
+  rate: z.number().positive(),
+  date: z.string().datetime(),
+  source: z.string().optional(),
+});
+
+const ExchangeRateBatchSchema = z.object({
+  pairs: z
+    .array(
+      z.object({
+        fromCurrency: z
+          .string()
+          .length(3)
+          .transform((s) => s.toUpperCase()),
+        toCurrency: z
+          .string()
+          .length(3)
+          .transform((s) => s.toUpperCase()),
+      }),
+    )
+    .min(1)
+    .max(50), // Limit batch size
+  date: z.string().datetime().optional(),
+});
+
+// Compliance schemas
+const ComplianceReportSchema = z.object({
+  reportType: z.enum(['TAX', 'REGULATORY', 'AUDIT', 'FINANCIAL']),
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Period must be YYYY-MM'),
+  jurisdiction: z.string().min(2).max(10),
+  format: z.enum(['PDF', 'EXCEL', 'XML', 'JSON']).default('PDF'),
+});
+
+// Invoice validation schemas
+const IssueInvoiceSchema = z.object({
+  invoiceNumber: z.string().min(1).max(50),
+  customerId: z.string().min(1),
+  customerName: z.string().min(1).max(255),
+  issueDate: z.string().datetime(),
+  dueDate: z.string().datetime(),
+  currencyCode: z
+    .string()
+    .length(3)
+    .transform((s) => s.toUpperCase())
+    .default('MYR'),
+  lineItems: z
+    .array(
+      z.object({
+        description: z.string().min(1).max(500),
+        quantity: z.number().positive(),
+        unitPrice: z.number().min(0),
+        totalAmount: z.number().min(0),
+      }),
+    )
+    .min(1, 'At least one line item is required'),
+  subtotal: z.number().min(0),
+  taxAmount: z.number().min(0).default(0),
+  totalAmount: z.number().min(0),
+  notes: z.string().max(1000).optional(),
+});
+
+const MarkAsSentSchema = z.object({
+  sentDate: z.string().datetime().optional(),
+  sentBy: z.string().min(1),
+  method: z.enum(['EMAIL', 'POST', 'FAX', 'HAND_DELIVERY']).optional(),
+});
+
+const MarkAsPaidSchema = z.object({
+  paidDate: z.string().datetime(),
+  paidAmount: z.number().positive(),
+  paymentMethod: z.enum(['CASH', 'CHECK', 'BANK_TRANSFER', 'CREDIT_CARD', 'OTHER']),
+  reference: z.string().min(1).max(100),
+  notes: z.string().max(500).optional(),
+});
+
+const CancelInvoiceSchema = z.object({
+  reason: z.string().min(1).max(500),
+  cancelledBy: z.string().min(1),
+  cancelledDate: z.string().datetime().optional(),
+});
+
+const TaxFormSchema = z.object({
+  formType: z.string().min(1).max(50),
+  taxYear: z.number().int().min(2000).max(2100),
+  jurisdiction: z.string().min(2).max(10),
+  data: z.record(z.string(), z.unknown()),
 });
 
 // Validation middleware factory
@@ -127,37 +159,91 @@ export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
   };
 }
 
+// Query validation via Zod (enhanced with UI schemas)
+const CommonQuerySchema = z
+  .object({
+    asOfDate: z.string().datetime().optional(),
+    currencyCode: z
+      .string()
+      .length(3)
+      .transform((s) => s.toUpperCase())
+      .optional(),
+    startDate: z.string().datetime().optional(),
+    endDate: z.string().datetime().optional(),
+    limit: z.coerce.number().int().min(0).max(1000).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+  })
+  .refine(
+    (q) => {
+      if (q.startDate && q.endDate) return new Date(q.startDate) <= new Date(q.endDate);
+      return true;
+    },
+    { message: 'startDate must be <= endDate', path: ['startDate'] },
+  );
+
+// Enhanced query schemas using UI validation
+// Note: Using comprehensive schemas directly from validation directory
+
+export function createQueryValidationMiddleware<T>(schema: z.ZodSchema<T>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      const parsed = schema.parse(req.query);
+      req.query = parsed as unknown as Request['query'];
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Query validation failed',
+          errors: error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+            code: e.code,
+          })),
+        });
+        return;
+      }
+      next(error as Error);
+    }
+  };
+}
+
 // Specific validation middlewares
 export const validateCreateAccount = createValidationMiddleware(CreateAccountSchema);
 export const validatePostJournalEntry = createValidationMiddleware(PostJournalEntrySchema);
 export const validateReverseJournalEntry = createValidationMiddleware(ReverseJournalEntrySchema);
 export const validateReconciliation = createValidationMiddleware(ReconciliationSchema);
+export const validateBalance = createValidationMiddleware(ValidateBalanceSchema);
 
-// Query parameter validation
-export function validateQueryParameters(req: Request, res: Response, next: NextFunction): void {
-  const { asOfDate, currencyCode } = req.query;
+// Invoice validation middlewares
+export const validateIssueInvoice = createValidationMiddleware(IssueInvoiceSchema);
+export const validateMarkAsSent = createValidationMiddleware(MarkAsSentSchema);
+export const validateMarkAsPaid = createValidationMiddleware(MarkAsPaidSchema);
+export const validateCancelInvoice = createValidationMiddleware(CancelInvoiceSchema);
 
-  if (asOfDate && isNaN(Date.parse(asOfDate as string))) {
-    res.status(400).json({
-      success: false,
-      message: 'Invalid asOfDate format. Use ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)',
-    });
-    return;
-  }
+// Exchange Rate validation middlewares
+export const validateExchangeRateQuery = createQueryValidationMiddleware(ExchangeRateQuerySchema);
+export const validateExchangeRateUpdate = createValidationMiddleware(ExchangeRateUpdateSchema);
+export const validateExchangeRateBatch = createValidationMiddleware(ExchangeRateBatchSchema);
 
-  if (currencyCode && typeof currencyCode === 'string' && currencyCode.length !== 3) {
-    res.status(400).json({
-      success: false,
-      message: 'Invalid currencyCode format. Use 3-letter ISO currency code (e.g., MYR, USD)',
-    });
-    return;
-  }
+// Compliance validation middlewares
+export const validateComplianceReport = createValidationMiddleware(ComplianceReportSchema);
+export const validateTaxForm = createValidationMiddleware(TaxFormSchema);
 
-  next();
-}
+// UI-specific validation middlewares (using comprehensive schemas)
+export const validateUIAccountsQuery = createQueryValidationMiddleware(
+  GetAccountsQuerySchema as unknown,
+);
+export const validateUIJournalEntriesQuery = createQueryValidationMiddleware(
+  GetJournalEntriesQuerySchema as unknown,
+);
+export const validateUIRealTimeBalances = createValidationMiddleware(RealTimeBalancesRequestSchema);
+
+// Query parameter validation (Zod-based, reusable)
+export const validateQueryParameters = createQueryValidationMiddleware(CommonQuerySchema);
 
 // Error handling middleware
-export function errorHandler(error: Error, req: Request, res: Response, next: NextFunction): void {
+export function errorHandler(error: Error, _req: Request, res: Response, next: NextFunction): void {
   console.error('Accounting API Error:', error);
 
   if (res.headersSent) {

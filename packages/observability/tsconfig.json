@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
+  "references": [{ "path": "../utils" }],
   "compilerOptions": {
-    "noEmit": true,
     "composite": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

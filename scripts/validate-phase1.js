@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { safeJoin } from '@aibos/utils';
+import { safeGet } from '@aibos/utils';
+const BASE_DIR = process.cwd();
+ 
 
 /**
  * Phase 1 Final Validation Script
@@ -24,7 +28,7 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  console.log(`${colors[color] || colors.reset}${message}${colors.reset}`);
 }
 
 function execCommand(command, description) {
@@ -46,7 +50,7 @@ function execCommand(command, description) {
 
 function checkFileExists(filePath, description) {
   const fullPath = path.resolve(filePath);
-  if (fs.existsSync(fullPath)) {
+  if (fs.existsSync(safeJoin(BASE_DIR, fullPath))) {
     log(`${colors.green}✅ ${description} - EXISTS${colors.reset}`);
     return true;
   } else {

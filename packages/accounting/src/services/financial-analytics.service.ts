@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+// safeGet import removed as it's not used
 
 export interface FinancialDataPoint {
   date: Date;
@@ -297,8 +298,8 @@ export class FinancialAnalyticsService {
     const match = period.match(/(\d+)([dwmy])/);
     if (!match) return 30 * 24 * 60 * 60 * 1000; // Default to 30 days
 
-    const value = parseInt(match[1] as string);
-    const unit = match[2] as string;
+    const value = parseInt(match[1]!);
+    const unit = match[2]!;
 
     switch (unit) {
       case 'd':
@@ -409,7 +410,7 @@ export class FinancialAnalyticsService {
    * Calculate forecast accuracy
    */
   private calculateForecastAccuracy(
-    data: FinancialDataPoint[],
+    _data: FinancialDataPoint[],
     trend: { slope: number; rSquared: number; confidence: number },
   ): number {
     // Simplified accuracy calculation based on R-squared
@@ -458,7 +459,7 @@ export class FinancialAnalyticsService {
   /**
    * Generate suggested action for anomaly
    */
-  private generateSuggestedAction(dataPoint: FinancialDataPoint, zScore: number): string {
+  private generateSuggestedAction(_dataPoint: FinancialDataPoint, zScore: number): string {
     if (zScore > 3) {
       return 'Immediate investigation required. Review transaction details and verify data accuracy.';
     }

@@ -1,0 +1,265 @@
+# Badge
+
+Status indicators and labels for displaying short pieces of information.
+
+## Import
+
+```tsx
+import { Badge } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Badge>New</Badge>
+```
+
+## Variants
+
+### Default Badge
+
+```tsx
+<Badge>Default</Badge>
+```
+
+### Status Variants
+
+```tsx
+<div className="flex gap-2">
+  <Badge variant="default">Default</Badge>
+  <Badge variant="secondary">Secondary</Badge>
+  <Badge variant="destructive">Error</Badge>
+  <Badge variant="outline">Outline</Badge>
+</div>
+```
+
+### Size Variants
+
+```tsx
+<div className="flex items-center gap-2">
+  <Badge size="sm">Small</Badge>
+  <Badge size="default">Default</Badge>
+  <Badge size="lg">Large</Badge>
+</div>
+```
+
+### With Icons
+
+```tsx
+<div className="flex gap-2">
+  <Badge>
+    <CheckIcon className="mr-1 h-3 w-3" />
+    Success
+  </Badge>
+  <Badge variant="destructive">
+    <XIcon className="mr-1 h-3 w-3" />
+    Error
+  </Badge>
+</div>
+```
+
+## Layout Examples
+
+### Status Indicators
+
+```tsx
+<div className="space-y-4">
+  <div className="flex items-center justify-between">
+    <span>Project Status</span>
+    <Badge variant="default">Active</Badge>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span>Payment Status</span>
+    <Badge variant="destructive">Overdue</Badge>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span>User Role</span>
+    <Badge variant="secondary">Admin</Badge>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span>Version</span>
+    <Badge variant="outline">v2.1.0</Badge>
+  </div>
+</div>
+```
+
+### Notification Counters
+
+```tsx
+<div className="flex items-center gap-4">
+  <div className="relative">
+    <Button variant="outline">Messages</Button>
+    <Badge className="absolute -right-2 -top-2">5</Badge>
+  </div>
+
+  <div className="relative">
+    <Button variant="outline">Notifications</Button>
+    <Badge variant="destructive" className="absolute -right-2 -top-2">
+      12
+    </Badge>
+  </div>
+
+  <div className="relative">
+    <Button variant="outline">Tasks</Button>
+    <Badge variant="secondary" className="absolute -right-2 -top-2">
+      3
+    </Badge>
+  </div>
+</div>
+```
+
+### Data Table Status
+
+```tsx
+<div className="space-y-2">
+  <div className="border-semantic-border flex items-center justify-between rounded-md border p-3">
+    <div>
+      <div className="font-medium">Order #12345</div>
+      <div className="text-semantic-muted-foreground text-sm">Customer: John Doe</div>
+    </div>
+    <Badge variant="default">Processing</Badge>
+  </div>
+
+  <div className="border-semantic-border flex items-center justify-between rounded-md border p-3">
+    <div>
+      <div className="font-medium">Order #12346</div>
+      <div className="text-semantic-muted-foreground text-sm">Customer: Jane Smith</div>
+    </div>
+    <Badge variant="destructive">Cancelled</Badge>
+  </div>
+
+  <div className="border-semantic-border flex items-center justify-between rounded-md border p-3">
+    <div>
+      <div className="font-medium">Order #12347</div>
+      <div className="text-semantic-muted-foreground text-sm">Customer: Bob Johnson</div>
+    </div>
+    <Badge variant="secondary">Delivered</Badge>
+  </div>
+</div>
+```
+
+### Feature Tags
+
+```tsx
+<div className="space-y-4">
+  <div>
+    <h3 className="mb-2 text-lg font-semibold">Available Features</h3>
+    <div className="flex flex-wrap gap-2">
+      <Badge variant="default">Analytics</Badge>
+      <Badge variant="default">Reports</Badge>
+      <Badge variant="default">Dashboard</Badge>
+      <Badge variant="secondary">Beta</Badge>
+      <Badge variant="outline">Coming Soon</Badge>
+    </div>
+  </div>
+
+  <div>
+    <h3 className="mb-2 text-lg font-semibold">User Permissions</h3>
+    <div className="flex flex-wrap gap-2">
+      <Badge variant="default">Read</Badge>
+      <Badge variant="default">Write</Badge>
+      <Badge variant="destructive">Admin</Badge>
+      <Badge variant="secondary">Guest</Badge>
+    </div>
+  </div>
+</div>
+```
+
+### Progress Indicators
+
+```tsx
+<div className="space-y-3">
+  <div className="flex items-center justify-between">
+    <span className="text-sm font-medium">Task Completion</span>
+    <Badge variant="default">75%</Badge>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span className="text-sm font-medium">Project Status</span>
+    <Badge variant="secondary">In Progress</Badge>
+  </div>
+
+  <div className="flex items-center justify-between">
+    <span className="text-sm font-medium">Team Size</span>
+    <Badge variant="outline">12 members</Badge>
+  </div>
+</div>
+```
+
+### Interactive Badges
+
+```tsx
+function InteractiveBadges() {
+  const [selected, setSelected] = useState([]);
+
+  const tags = ['React', 'TypeScript', 'Node.js', 'Python', 'Go', 'Rust'];
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Select Technologies</h3>
+      <div className="flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <Badge
+            key={tag}
+            variant={selected.includes(tag) ? 'default' : 'outline'}
+            className="cursor-pointer hover:opacity-80"
+            onClick={() => {
+              if (selected.includes(tag)) {
+                setSelected(selected.filter((t) => t !== tag));
+              } else {
+                setSelected([...selected, tag]);
+              }
+            }}
+          >
+            {tag}
+          </Badge>
+        ))}
+      </div>
+
+      {selected.length > 0 && (
+        <div className="text-semantic-muted-foreground text-sm">
+          Selected: {selected.join(', ')}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## API Reference
+
+### Badge Props
+
+| Prop        | Type                                                     | Default     | Description            |
+| ----------- | -------------------------------------------------------- | ----------- | ---------------------- |
+| `variant`   | `'default' \| 'secondary' \| 'destructive' \| 'outline'` | `'default'` | Visual style variant   |
+| `size`      | `'sm' \| 'default' \| 'lg'`                              | `'default'` | Size of the badge      |
+| `className` | `string`                                                 | -           | Additional CSS classes |
+| `children`  | `ReactNode`                                              | -           | Badge content          |
+
+## Accessibility
+
+- **Semantic Structure**: Uses appropriate HTML elements for content
+- **Color Contrast**: Meets WCAG contrast requirements
+- **Screen Reader Support**: Properly announced content
+- **Focus Management**: Can be made focusable when interactive
+- **Status Communication**: Clear visual and textual status indicators
+
+## Best Practices
+
+1. **Use appropriate variants** - Choose colors that match the content meaning
+2. **Keep text concise** - Badges work best with short, clear text
+3. **Consider context** - Use badges that fit the surrounding design
+4. **Provide clear meaning** - Ensure badges communicate their purpose clearly
+5. **Test color contrast** - Ensure accessibility compliance
+6. **Use sparingly** - Don't overuse badges as they can create visual noise
+
+## Related Components
+
+- [Button](./button.mdx) - Interactive elements
+- [Card](./card.mdx) - Content containers
+- [Table](./table.mdx) - Data display with status indicators
+- [Form](./form.mdx) - Form elements with validation states

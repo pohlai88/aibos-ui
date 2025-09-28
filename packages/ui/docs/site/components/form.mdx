@@ -1,0 +1,427 @@
+# Form
+
+A comprehensive form component with validation, error handling, and accessibility features built on React Hook Form and Zod.
+
+## Import
+
+```tsx
+import {
+  Form,
+  FormField,
+  FormInput,
+  FormCheckbox,
+  FormRadioGroup,
+  FormSwitch,
+  FormSubmit,
+} from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  age: z.number().min(18, 'Must be at least 18 years old'),
+});
+
+function BasicForm() {
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: '',
+      email: '',
+      age: 18,
+    },
+  });
+
+  const onSubmit = (data) => {
+    console.log('Form submitted:', data);
+  };
+
+  return (
+    <Form form={form} onSubmit={onSubmit}>
+      <div className="space-y-4">
+        <FormField name="name" label="Name" required>
+          <FormInput placeholder="Enter your name" />
+        </FormField>
+
+        <FormField name="email" label="Email" required>
+          <FormInput type="email" placeholder="Enter your email" />
+        </FormField>
+
+        <FormField name="age" label="Age" required>
+          <FormInput type="number" placeholder="Enter your age" />
+        </FormField>
+
+        <FormSubmit>Submit</FormSubmit>
+      </div>
+    </Form>
+  );
+}
+```
+
+## Form Field Types
+
+### Text Input
+
+```tsx
+<FormField name="username" label="Username" required>
+  <FormInput placeholder="Enter username" />
+</FormField>
+```
+
+### Email Input
+
+```tsx
+<FormField name="email" label="Email Address" required>
+  <FormInput type="email" placeholder="Enter email address" />
+</FormField>
+```
+
+### Password Input
+
+```tsx
+<FormField name="password" label="Password" required>
+  <FormInput type="password" placeholder="Enter password" />
+</FormField>
+```
+
+### Number Input
+
+```tsx
+<FormField name="quantity" label="Quantity" required>
+  <FormInput type="number" placeholder="Enter quantity" />
+</FormField>
+```
+
+### Textarea
+
+```tsx
+<FormField name="description" label="Description">
+  <textarea
+    className="border-semantic-border w-full rounded-md border p-2"
+    placeholder="Enter description"
+    rows={4}
+    {...form.register('description')}
+  />
+</FormField>
+```
+
+### Checkbox
+
+```tsx
+<FormField name="terms" label="Terms and Conditions">
+  <FormCheckbox>I agree to the terms and conditions</FormCheckbox>
+</FormField>
+```
+
+### Radio Group
+
+```tsx
+<FormField name="plan" label="Select Plan" required>
+  <FormRadioGroup>
+    <FormRadioGroup.Item value="basic">Basic Plan</FormRadioGroup.Item>
+    <FormRadioGroup.Item value="premium">Premium Plan</FormRadioGroup.Item>
+    <FormRadioGroup.Item value="enterprise">Enterprise Plan</FormRadioGroup.Item>
+  </FormRadioGroup>
+</FormField>
+```
+
+### Switch
+
+```tsx
+<FormField name="notifications" label="Email Notifications">
+  <FormSwitch>Receive email notifications</FormSwitch>
+</FormField>
+```
+
+## Advanced Examples
+
+### Registration Form
+
+```tsx
+const registrationSchema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+    terms: z.boolean().refine((val) => val === true, 'You must accept the terms'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
+
+function RegistrationForm() {
+  const form = useForm({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      terms: false,
+    },
+  });
+
+  const onSubmit = async (data) => {
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log('Registration successful:', data);
+    } catch (error) {
+      console.error('Registration failed:', error);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Create Account</CardTitle>
+        <CardDescription>Fill out the form below to create your account</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form form={form} onSubmit={onSubmit}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField name="firstName" label="First Name" required>
+                <FormInput placeholder="Enter first name" />
+              </FormField>
+              <FormField name="lastName" label="Last Name" required>
+                <FormInput placeholder="Enter last name" />
+              </FormField>
+            </div>
+
+            <FormField name="email" label="Email" required>
+              <FormInput type="email" placeholder="Enter email address" />
+            </FormField>
+
+            <FormField name="password" label="Password" required>
+              <FormInput type="password" placeholder="Enter password" />
+            </FormField>
+
+            <FormField name="confirmPassword" label="Confirm Password" required>
+              <FormInput type="password" placeholder="Confirm password" />
+            </FormField>
+
+            <FormField name="terms" label="Terms and Conditions">
+              <FormCheckbox>
+                I agree to the{' '}
+                <a href="#" className="text-semantic-primary underline">
+                  terms and conditions
+                </a>
+              </FormCheckbox>
+            </FormField>
+
+            <FormSubmit className="w-full">Create Account</FormSubmit>
+          </div>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+### Settings Form
+
+```tsx
+const settingsSchema = z.object({
+  notifications: z.object({
+    email: z.boolean(),
+    push: z.boolean(),
+    sms: z.boolean(),
+  }),
+  privacy: z.object({
+    profile: z.enum(['public', 'private', 'friends']),
+    dataSharing: z.boolean(),
+  }),
+  preferences: z.object({
+    theme: z.enum(['light', 'dark', 'system']),
+    language: z.string(),
+  }),
+});
+
+function SettingsForm() {
+  const form = useForm({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      notifications: {
+        email: true,
+        push: false,
+        sms: false,
+      },
+      privacy: {
+        profile: 'friends',
+        dataSharing: false,
+      },
+      preferences: {
+        theme: 'system',
+        language: 'en',
+      },
+    },
+  });
+
+  const onSubmit = (data) => {
+    console.log('Settings saved:', data);
+  };
+
+  return (
+    <Form form={form} onSubmit={onSubmit}>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Choose how you want to be notified</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField name="notifications.email" label="Email Notifications">
+              <FormSwitch>Receive email notifications</FormSwitch>
+            </FormField>
+            <FormField name="notifications.push" label="Push Notifications">
+              <FormSwitch>Receive push notifications</FormSwitch>
+            </FormField>
+            <FormField name="notifications.sms" label="SMS Notifications">
+              <FormSwitch>Receive SMS notifications</FormSwitch>
+            </FormField>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Privacy</CardTitle>
+            <CardDescription>Control your privacy settings</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField name="privacy.profile" label="Profile Visibility" required>
+              <FormRadioGroup>
+                <FormRadioGroup.Item value="public">Public</FormRadioGroup.Item>
+                <FormRadioGroup.Item value="friends">Friends Only</FormRadioGroup.Item>
+                <FormRadioGroup.Item value="private">Private</FormRadioGroup.Item>
+              </FormRadioGroup>
+            </FormField>
+            <FormField name="privacy.dataSharing" label="Data Sharing">
+              <FormSwitch>Allow data sharing with partners</FormSwitch>
+            </FormField>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Preferences</CardTitle>
+            <CardDescription>Customize your experience</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField name="preferences.theme" label="Theme" required>
+              <FormRadioGroup>
+                <FormRadioGroup.Item value="light">Light</FormRadioGroup.Item>
+                <FormRadioGroup.Item value="dark">Dark</FormRadioGroup.Item>
+                <FormRadioGroup.Item value="system">System</FormRadioGroup.Item>
+              </FormRadioGroup>
+            </FormField>
+            <FormField name="preferences.language" label="Language" required>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Spanish</SelectItem>
+                  <SelectItem value="fr">French</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline">
+            Cancel
+          </Button>
+          <FormSubmit>Save Settings</FormSubmit>
+        </div>
+      </div>
+    </Form>
+  );
+}
+```
+
+## API Reference
+
+### Form Props
+
+| Prop        | Type                  | Default | Description              |
+| ----------- | --------------------- | ------- | ------------------------ |
+| `form`      | `UseFormReturn`       | -       | React Hook Form instance |
+| `onSubmit`  | `(data: any) => void` | -       | Form submission handler  |
+| `children`  | `ReactNode`           | -       | Form content             |
+| `className` | `string`              | -       | Additional CSS classes   |
+
+### FormField Props
+
+| Prop        | Type        | Default | Description                         |
+| ----------- | ----------- | ------- | ----------------------------------- |
+| `name`      | `string`    | -       | Field name (must match form schema) |
+| `label`     | `string`    | -       | Field label                         |
+| `required`  | `boolean`   | `false` | Whether field is required           |
+| `children`  | `ReactNode` | -       | Field input component               |
+| `className` | `string`    | -       | Additional CSS classes              |
+
+### FormInput Props
+
+| Prop          | Type      | Default  | Description               |
+| ------------- | --------- | -------- | ------------------------- |
+| `type`        | `string`  | `"text"` | Input type                |
+| `placeholder` | `string`  | -        | Placeholder text          |
+| `disabled`    | `boolean` | `false`  | Whether input is disabled |
+| `className`   | `string`  | -        | Additional CSS classes    |
+
+### FormSubmit Props
+
+| Prop        | Type        | Default | Description                |
+| ----------- | ----------- | ------- | -------------------------- |
+| `children`  | `ReactNode` | -       | Submit button content      |
+| `loading`   | `boolean`   | `false` | Whether form is submitting |
+| `disabled`  | `boolean`   | `false` | Whether button is disabled |
+| `className` | `string`    | -       | Additional CSS classes     |
+
+## Validation
+
+The Form component uses Zod for schema validation. Define your schema and pass it to the form resolver:
+
+```tsx
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Password too short'),
+});
+
+const form = useForm({
+  resolver: zodResolver(schema),
+});
+```
+
+## Accessibility
+
+- **Form Labels**: Proper labeling for all form fields
+- **Error Messages**: Clear error messages with ARIA attributes
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Readers**: Proper form structure and announcements
+- **Focus Management**: Logical tab order and focus indicators
+
+## Best Practices
+
+1. **Use proper validation schemas** with Zod
+2. **Provide clear error messages** for better UX
+3. **Group related fields** logically
+4. **Use appropriate input types** for better mobile experience
+5. **Test form submission** with various data scenarios
+6. **Implement proper loading states** during submission
+7. **Use semantic tokens** for consistent styling
+8. **Test with keyboard navigation** for accessibility

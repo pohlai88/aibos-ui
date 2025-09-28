@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "description": "Accounting domain for AI-BOS ERP",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/types/src/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/types/src/index.d.ts",
@@ -15,21 +13,28 @@
     },
     "./package.json": "./package.json"
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/types/src/index.d.ts",
   "scripts": {
-    "build:types": "tsc -p tsconfig.types.json",
-    "build:js": "tsup",
     "build": "pnpm run build:types && pnpm run build:js",
+    "build:js": "tsup",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist",
     "dev": "tsup --watch",
     "format": "prettier -w .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "clean": "rm -rf dist"
+    "test:utils": "vitest run src/utils/__tests__/utils.spec.ts",
+    "test:finder": "pnpm vitest run scripts/find-utility-opportunities.test.mjs --config vitest.config.ts",
+    "test:finder:dir": "pnpm vitest run scripts/find-utility-opportunities.dir.test.mjs --config vitest.config.ts",
+    "test:finder:cli": "pnpm vitest run scripts/find-utility-opportunities.cli.test.mjs --config vitest.config.ts",
+    "test:finder:all": "pnpm vitest run scripts/find-utility-opportunities.*.test.mjs --config vitest.config.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aibos/accounting-contracts": "workspace:*",
     "@aibos/eventsourcing": "workspace:*",
     "@nestjs/axios": "4.0.1",
     "@nestjs/common": "10.4.19",
@@ -41,25 +46,24 @@
     "@types/express": "5.0.3",
     "@types/lodash": "4.17.20",
     "@types/pg": "8.10.0",
-    "compodoc": "0.0.41",
     "d3": "7.8.0",
     "date-fns": "2.30.0",
     "express": "5.1.0",
     "lodash": "4.17.21",
     "pg": "8.16.3",
-    "reflect-metadata": "0.1.13",
+    "reflect-metadata": "0.2.2",
     "typeorm": "0.3.27",
     "typeorm-naming-strategies": "4.1.0",
     "uuid": "9.0.0",
     "yaml": "2.8.1",
-    "zod": "3.22.0"
+    "zod": "3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "9.0.0",
     "@nestjs/swagger": "7.1.0",
-    "@nestjs/testing": "11.1.6",
-    "@testcontainers/postgresql": "10.12.0",
     "@types/uuid": "9.0.0",
-    "@vitest/ui": "2.0.0",
+    "@typescript-eslint/eslint-plugin": "8.44.1",
+    "@typescript-eslint/parser": "8.44.1",
     "eslint": "9.36.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.4",
@@ -68,7 +72,6 @@
     "swagger-ui-express": "5.0.0",
     "tsup": "8.5.0",
     "typedoc": "0.25.0",
-    "typescript": "5.9.2",
-    "vitest": "2.0.0"
+    "typescript": "5.9.2"
   }
 }

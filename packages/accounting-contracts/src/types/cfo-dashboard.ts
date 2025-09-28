@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Core types for the outstanding CFO dashboard
+// Core types for the financial intelligence dashboard
 export const MetricIdSchema = z.string().min(1);
 export const CompanyIdSchema = z.string().min(1);
 export const PeriodSchema = z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']);
@@ -102,7 +102,7 @@ export const VarianceStorylineSchema = z.object({
 });
 
 // Dashboard Properties Schema
-export const OutstandingCFODashboardPropertiesSchema = z.object({
+export const FinancialIntelligenceDashboardPropertiesSchema = z.object({
   tenantId: z.string().min(1),
   period: PeriodSchema.optional(),
   companies: z.array(CompanySchema).optional(),
@@ -114,21 +114,21 @@ export const OutstandingCFODashboardPropertiesSchema = z.object({
 });
 
 // API Request/Response Schemas
-export const DrillDownRequestSchema = z.object({
+export const CFODrillDownRequestSchema = z.object({
   metricId: MetricIdSchema,
   companyId: CompanyIdSchema,
   tenantId: z.string().min(1),
   period: PeriodSchema,
 });
 
-export const BoardPackExportRequestSchema = z.object({
+export const CFOBoardPackExportRequestSchema = z.object({
   companyIds: z.array(CompanyIdSchema),
   period: z.string().min(1),
   format: z.enum(['pdf', 'excel', 'json']).optional(),
   includeDisclosures: z.boolean().optional(),
 });
 
-export const VarianceAnalysisRequestSchema = z.object({
+export const CFOVarianceAnalysisRequestSchema = z.object({
   metricId: MetricIdSchema,
   tenantId: z.string().min(1),
   period: PeriodSchema,
@@ -144,9 +144,9 @@ export type Company = z.infer<typeof CompanySchema>;
 export type CloseReadiness = z.infer<typeof CloseReadinessSchema>;
 export type CashForecast = z.infer<typeof CashForecastSchema>;
 export type VarianceStoryline = z.infer<typeof VarianceStorylineSchema>;
-export type OutstandingCFODashboardProperties = z.infer<
-  typeof OutstandingCFODashboardPropertiesSchema
+export type FinancialIntelligenceDashboardProperties = z.infer<
+  typeof FinancialIntelligenceDashboardPropertiesSchema
 >;
-export type DrillDownRequest = z.infer<typeof DrillDownRequestSchema>;
-export type BoardPackExportRequest = z.infer<typeof BoardPackExportRequestSchema>;
-export type VarianceAnalysisRequest = z.infer<typeof VarianceAnalysisRequestSchema>;
+export type CFODrillDownRequest = z.infer<typeof CFODrillDownRequestSchema>;
+export type CFOBoardPackExportRequest = z.infer<typeof CFOBoardPackExportRequestSchema>;
+export type CFOVarianceAnalysisRequest = z.infer<typeof CFOVarianceAnalysisRequestSchema>;

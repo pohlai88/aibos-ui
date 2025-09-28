@@ -2,18 +2,18 @@
   "name": "@aibos/bff",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "sideEffects": true,
+  "type": "module",
   "scripts": {
+    "build": "nest build",
+    "clean": "rimraf dist",
+    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
+    "dev": "nest start --watch",
     "format": "prettier -w .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo 'No tests yet'",
-    "build": "nest build",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
-    "dev": "nest start --watch",
-    "clean": "rimraf dist"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@aibos/accounting-contracts": "workspace:*",
@@ -33,13 +33,13 @@
     "passport": "0.7.0",
     "passport-jwt": "4.0.1",
     "pg": "8.16.3",
-    "reflect-metadata": "0.1.13",
+    "reflect-metadata": "0.2.2",
     "rxjs": "7.8.0",
     "typeorm": "0.3.27"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.10",
-    "@types/node": "20.0.0",
+    "@types/node": "22.18.6",
     "@types/passport-jwt": "4.0.1",
     "eslint": "9.36.0",
     "prettier": "3.6.2",

@@ -8,6 +8,7 @@
 import { CreateAccountCommand } from '../commands/create-account.command';
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
 import { ChartOfAccounts } from '../domain/chart-of-accounts.domain';
+import { omitUndefined } from '../utils';
 import {
   type TemplateBundle,
   type CoaTemplateAccount,
@@ -102,17 +103,19 @@ export class TemplateImporter {
     }
 
     // Create account command
-    const command = new CreateAccountCommand({
-      accountCode: account.code,
-      accountName: account.name,
-      accountType: this.mapAccountType(account.type),
-      parentAccountCode: account.parent,
-      tenantId: coa._tenantId,
-      userId: 'system',
-      specialAccountType: this.mapSpecialAccountType(account.specialAccountType),
-      postingAllowed: account.postingAllowed ?? true,
-      companionLinks: account.companions,
-    });
+    const command = new CreateAccountCommand(
+      omitUndefined({
+        accountCode: account.code,
+        accountName: account.name,
+        accountType: this.mapAccountType(account.type),
+        parentAccountCode: account.parent,
+        tenantId: coa._tenantId,
+        userId: 'system',
+        specialAccountType: this.mapSpecialAccountType(account.specialAccountType),
+        postingAllowed: account.postingAllowed ?? true,
+        companionLinks: account.companions,
+      }),
+    );
 
     try {
       if (existingAccount) {
@@ -142,7 +145,7 @@ export class TemplateImporter {
    * Apply standard links to accounts
    */
   private async applyStandardLinks(
-    coa: ChartOfAccounts,
+    _coa: ChartOfAccounts,
     templateBundle: TemplateBundle,
     result: TemplateApplicationResult,
   ): Promise<void> {

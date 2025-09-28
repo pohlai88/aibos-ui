@@ -1,30 +1,8 @@
-export interface Account {
-  accountCode: string;
-  accountName: string;
-  accountType: string;
-  parentAccountCode?: string;
-  tenantId: string;
-  balance: number;
-  isActive: boolean;
-}
-
-export interface JournalEntryLine {
-  accountCode: string;
-  debitAmount: number;
-  creditAmount: number;
-  currency: string;
-  description?: string;
-}
-
-export interface JournalEntry {
-  id: string;
-  tenantId: string;
-  entries: JournalEntryLine[];
-  reference?: string;
-  description?: string;
-  postingDate: Date;
-  status: 'DRAFT' | 'POSTED' | 'REVERSED';
-}
+// This file contains legacy interfaces that are being phased out
+// Use domain objects from their respective files instead:
+// - Account: Use from './account.domain'
+// - JournalEntry: Use from './journal-entry'
+// - JournalEntryLine: Use from './journal-entry-line'
 
 export interface GeneralLedgerEntry {
   id: string;

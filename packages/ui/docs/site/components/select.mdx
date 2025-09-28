@@ -1,0 +1,410 @@
+# Select
+
+Dropdown selections for choosing from a list of options.
+
+## Import
+
+```tsx
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Select>
+  <SelectTrigger>
+    <SelectValue placeholder="Select an option" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="option1">Option 1</SelectItem>
+    <SelectItem value="option2">Option 2</SelectItem>
+    <SelectItem value="option3">Option 3</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+## Variants
+
+### Default Select
+
+```tsx
+<Select defaultValue="option1">
+  <SelectTrigger>
+    <SelectValue placeholder="Select an option" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="option1">Option 1</SelectItem>
+    <SelectItem value="option2">Option 2</SelectItem>
+    <SelectItem value="option3">Option 3</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+### Disabled Select
+
+```tsx
+<Select disabled>
+  <SelectTrigger>
+    <SelectValue placeholder="Disabled select" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="option1">Option 1</SelectItem>
+    <SelectItem value="option2">Option 2</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+### With Icons
+
+```tsx
+<Select>
+  <SelectTrigger>
+    <SelectValue placeholder="Choose a country" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="us">
+      <div className="flex items-center space-x-2">
+        <span className="text-2xl">🇺🇸</span>
+        <span>United States</span>
+      </div>
+    </SelectItem>
+    <SelectItem value="uk">
+      <div className="flex items-center space-x-2">
+        <span className="text-2xl">🇬🇧</span>
+        <span>United Kingdom</span>
+      </div>
+    </SelectItem>
+    <SelectItem value="ca">
+      <div className="flex items-center space-x-2">
+        <span className="text-2xl">🇨🇦</span>
+        <span>Canada</span>
+      </div>
+    </SelectItem>
+  </SelectContent>
+</Select>
+```
+
+## Form Integration
+
+### Controlled Select
+
+```tsx
+function ControlledSelect() {
+  const [value, setValue] = useState('');
+
+  return (
+    <Select value={value} onValueChange={setValue}>
+      <SelectTrigger>
+        <SelectValue placeholder="Select a value" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="apple">Apple</SelectItem>
+        <SelectItem value="banana">Banana</SelectItem>
+        <SelectItem value="orange">Orange</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+### With Form Validation
+
+```tsx
+function SelectForm() {
+  const [selected, setSelected] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selected) {
+      setError('Please select an option');
+      return;
+    }
+    setError('');
+    // Handle form submission
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Choose your plan</label>
+        <Select value={selected} onValueChange={setSelected}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a plan" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="basic">Basic Plan - $9/month</SelectItem>
+            <SelectItem value="pro">Pro Plan - $29/month</SelectItem>
+            <SelectItem value="enterprise">Enterprise Plan - $99/month</SelectItem>
+          </SelectContent>
+        </Select>
+        {error && <p className="text-semantic-destructive mt-1 text-sm">{error}</p>}
+      </div>
+
+      <Button type="submit">Continue</Button>
+    </form>
+  );
+}
+```
+
+## Layout Examples
+
+### User Profile Form
+
+```tsx
+<div className="space-y-4">
+  <div>
+    <label className="text-sm font-medium">Country</label>
+    <Select defaultValue="us">
+      <SelectTrigger>
+        <SelectValue placeholder="Select your country" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="us">United States</SelectItem>
+        <SelectItem value="ca">Canada</SelectItem>
+        <SelectItem value="uk">United Kingdom</SelectItem>
+        <SelectItem value="au">Australia</SelectItem>
+        <SelectItem value="de">Germany</SelectItem>
+        <SelectItem value="fr">France</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  <div>
+    <label className="text-sm font-medium">Language</label>
+    <Select defaultValue="en">
+      <SelectTrigger>
+        <SelectValue placeholder="Select your language" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="en">English</SelectItem>
+        <SelectItem value="es">Español</SelectItem>
+        <SelectItem value="fr">Français</SelectItem>
+        <SelectItem value="de">Deutsch</SelectItem>
+        <SelectItem value="it">Italiano</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  <div>
+    <label className="text-sm font-medium">Timezone</label>
+    <Select defaultValue="utc">
+      <SelectTrigger>
+        <SelectValue placeholder="Select your timezone" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="utc">UTC (GMT+0)</SelectItem>
+        <SelectItem value="est">Eastern Time (GMT-5)</SelectItem>
+        <SelectItem value="pst">Pacific Time (GMT-8)</SelectItem>
+        <SelectItem value="cet">Central European Time (GMT+1)</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
+```
+
+### Filter Controls
+
+```tsx
+<div className="flex gap-4">
+  <div className="flex-1">
+    <label className="text-sm font-medium">Category</label>
+    <Select>
+      <SelectTrigger>
+        <SelectValue placeholder="All Categories" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Categories</SelectItem>
+        <SelectItem value="technology">Technology</SelectItem>
+        <SelectItem value="business">Business</SelectItem>
+        <SelectItem value="design">Design</SelectItem>
+        <SelectItem value="marketing">Marketing</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  <div className="flex-1">
+    <label className="text-sm font-medium">Sort By</label>
+    <Select defaultValue="newest">
+      <SelectTrigger>
+        <SelectValue placeholder="Sort by" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="newest">Newest First</SelectItem>
+        <SelectItem value="oldest">Oldest First</SelectItem>
+        <SelectItem value="name">Name A-Z</SelectItem>
+        <SelectItem value="popular">Most Popular</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
+```
+
+### Status Selection
+
+```tsx
+<div className="space-y-4">
+  <div>
+    <label className="text-sm font-medium">Order Status</label>
+    <Select defaultValue="pending">
+      <SelectTrigger>
+        <SelectValue placeholder="Select status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="pending">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-yellow-500" />
+            <span>Pending</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="processing">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <span>Processing</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="shipped">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span>Shipped</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="delivered">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-green-600" />
+            <span>Delivered</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="cancelled">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-red-500" />
+            <span>Cancelled</span>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
+```
+
+### Multi-Level Selection
+
+```tsx
+function MultiLevelSelect() {
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+
+  const cities = {
+    us: ['New York', 'Los Angeles', 'Chicago', 'Houston'],
+    ca: ['Toronto', 'Vancouver', 'Montreal', 'Calgary'],
+    uk: ['London', 'Manchester', 'Birmingham', 'Liverpool'],
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Country</label>
+        <Select
+          value={country}
+          onValueChange={(value) => {
+            setCountry(value);
+            setCity(''); // Reset city when country changes
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select country" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="us">United States</SelectItem>
+            <SelectItem value="ca">Canada</SelectItem>
+            <SelectItem value="uk">United Kingdom</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">City</label>
+        <Select value={city} onValueChange={setCity} disabled={!country}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select city" />
+          </SelectTrigger>
+          <SelectContent>
+            {cities[country]?.map((cityName) => (
+              <SelectItem key={cityName} value={cityName}>
+                {cityName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+```
+
+## API Reference
+
+### Select Props
+
+| Prop            | Type                      | Default | Description                    |
+| --------------- | ------------------------- | ------- | ------------------------------ |
+| `value`         | `string`                  | -       | Controlled selected value      |
+| `defaultValue`  | `string`                  | -       | Uncontrolled selected value    |
+| `onValueChange` | `(value: string) => void` | -       | Callback when value changes    |
+| `disabled`      | `boolean`                 | `false` | Whether the select is disabled |
+| `className`     | `string`                  | -       | Additional CSS classes         |
+| `children`      | `ReactNode`               | -       | Select content                 |
+
+### SelectTrigger Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Trigger content        |
+
+### SelectValue Props
+
+| Prop          | Type     | Default | Description            |
+| ------------- | -------- | ------- | ---------------------- |
+| `placeholder` | `string` | -       | Placeholder text       |
+| `className`   | `string` | -       | Additional CSS classes |
+
+### SelectContent Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Content items          |
+
+### SelectItem Props
+
+| Prop        | Type        | Default | Description                  |
+| ----------- | ----------- | ------- | ---------------------------- |
+| `value`     | `string`    | -       | Value of the item            |
+| `disabled`  | `boolean`   | `false` | Whether the item is disabled |
+| `className` | `string`    | -       | Additional CSS classes       |
+| `children`  | `ReactNode` | -       | Item content                 |
+
+## Accessibility
+
+- **Keyboard Navigation**: Full keyboard support with arrow keys
+- **Screen Reader Support**: Proper ARIA attributes and announcements
+- **Focus Management**: Clear focus indicators and proper tab order
+- **Disabled State**: Properly announced to screen readers
+- **Option Selection**: Clear indication of selected options
+
+## Best Practices
+
+1. **Use clear labels** - Provide descriptive labels for each select
+2. **Group related options** - Organize options logically
+3. **Provide default values** - Consider pre-selecting common options
+4. **Handle form validation** - Integrate with form validation libraries
+5. **Test with screen readers** - Ensure accessibility compliance
+6. **Consider loading states** - Show loading indicators for async data
+
+## Related Components
+
+- [Radio](./radio.mdx) - Single choice from multiple options
+- [Checkbox](./checkbox.mdx) - Binary choice controls
+- [Form](./form.mdx) - Form handling with validation
+- [Button](./button.mdx) - Interactive elements

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { omitUndefined } from '../utils';
 
 // ============================================================================
 // RESILIENCE INTERFACES
@@ -120,13 +121,13 @@ export class CircuitBreaker {
   }
 
   getMetrics(): ResilienceMetrics {
-    return {
+    return omitUndefined({
       circuitBreakerState: this.state,
       failureCount: this.failureCount,
       successCount: this.successCount,
       lastFailureTime: this.lastFailureTime ? new Date(this.lastFailureTime) : undefined,
       nextAttemptTime: this.nextAttemptTime ? new Date(this.nextAttemptTime) : undefined,
-    };
+    });
   }
 
   reset(): void {

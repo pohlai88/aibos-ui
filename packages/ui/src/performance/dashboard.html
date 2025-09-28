@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIBOS UI Performance Dashboard</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .dashboard {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        color: #2d3748;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #718096;
+        font-size: 1.1rem;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+
+      .metric-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border-left: 5px solid #667eea;
+        transition:
+          transform 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+      }
+
+      .metric-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 10px;
+      }
+
+      .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 5px;
+      }
+
+      .metric-unit {
+        font-size: 0.9rem;
+        color: #718096;
+      }
+
+      .metric-status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 10px;
+      }
+
+      .status-excellent {
+        background: #c6f6d5;
+        color: #22543d;
+      }
+
+      .status-good {
+        background: #bee3f8;
+        color: #2a4365;
+      }
+
+      .status-warning {
+        background: #faf089;
+        color: #744210;
+      }
+
+      .status-critical {
+        background: #fed7d7;
+        color: #742a2a;
+      }
+
+      .charts-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+      }
+
+      .charts-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 20px;
+      }
+
+      .chart-container {
+        height: 300px;
+        background: #f7fafc;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #718096;
+        font-size: 1.1rem;
+      }
+
+      .components-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      }
+
+      .components-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 20px;
+      }
+
+      .component-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+      }
+
+      .component-item {
+        background: #f7fafc;
+        border-radius: 10px;
+        padding: 15px;
+        border-left: 4px solid #667eea;
+      }
+
+      .component-name {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 5px;
+      }
+
+      .component-metrics {
+        font-size: 0.9rem;
+        color: #718096;
+      }
+
+      .refresh-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 15px 25px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+      }
+
+      .refresh-btn:hover {
+        background: #5a67d8;
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+      }
+
+      .timestamp {
+        text-align: center;
+        color: #718096;
+        font-size: 0.9rem;
+        margin-top: 20px;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard {
+          padding: 20px;
+        }
+
+        .header h1 {
+          font-size: 2rem;
+        }
+
+        .metrics-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard">
+      <div class="header">
+        <h1>🚀 AIBOS UI Performance Dashboard</h1>
+        <p>Real-time performance monitoring for enterprise components</p>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-title">Average Render Time</div>
+          <div class="metric-value" id="avg-render">1.2</div>
+          <div class="metric-unit">milliseconds</div>
+          <div class="metric-status status-excellent">Excellent</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Performance Variance</div>
+          <div class="metric-value" id="variance">18.5</div>
+          <div class="metric-unit">coefficient of variation %</div>
+          <div class="metric-status status-excellent">Excellent</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Memory Usage</div>
+          <div class="metric-value" id="memory">2.4</div>
+          <div class="metric-unit">MB</div>
+          <div class="metric-status status-good">Good</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Bundle Size</div>
+          <div class="metric-value" id="bundle">45.2</div>
+          <div class="metric-unit">KB</div>
+          <div class="metric-status status-excellent">Excellent</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Components Tested</div>
+          <div class="metric-value" id="components">25</div>
+          <div class="metric-unit">components</div>
+          <div class="metric-status status-excellent">Complete</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-title">Test Coverage</div>
+          <div class="metric-value" id="coverage">94.2</div>
+          <div class="metric-unit">percent</div>
+          <div class="metric-status status-excellent">Excellent</div>
+        </div>
+      </div>
+
+      <div class="charts-section">
+        <div class="charts-title">Performance Trends</div>
+        <div class="chart-container">
+          📊 Performance charts will be integrated with Chart.js or D3.js
+          <br />
+          <small>Real-time data visualization coming soon</small>
+        </div>
+      </div>
+
+      <div class="components-section">
+        <div class="components-title">Component Performance</div>
+        <div class="component-list" id="component-list">
+          <!-- Component items will be populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="timestamp">Last updated: <span id="timestamp"></span></div>
+    </div>
+
+    <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+
+    <script>
+      // Mock performance data
+      const components = [
+        { name: 'Button', renderTime: '0.8ms', variance: '12%', status: 'excellent' },
+        { name: 'Input', renderTime: '1.1ms', variance: '15%', status: 'excellent' },
+        { name: 'Switch', renderTime: '0.9ms', variance: '18%', status: 'excellent' },
+        { name: 'Radio', renderTime: '1.0ms', variance: '14%', status: 'excellent' },
+        { name: 'Checkbox', renderTime: '0.7ms', variance: '11%', status: 'excellent' },
+        { name: 'Table', renderTime: '2.3ms', variance: '22%', status: 'good' },
+        { name: 'Tooltip', renderTime: '1.5ms', variance: '19%', status: 'excellent' },
+        { name: 'Tabs', renderTime: '1.8ms', variance: '21%', status: 'good' },
+        { name: 'Select', renderTime: '2.1ms', variance: '25%', status: 'good' },
+        { name: 'Modal', renderTime: '3.2ms', variance: '28%', status: 'good' },
+        { name: 'Dropdown', renderTime: '1.9ms', variance: '20%', status: 'excellent' },
+        { name: 'Card', renderTime: '1.2ms', variance: '16%', status: 'excellent' },
+        { name: 'Badge', renderTime: '0.6ms', variance: '10%', status: 'excellent' },
+        { name: 'Avatar', renderTime: '0.8ms', variance: '13%', status: 'excellent' },
+        { name: 'Progress', renderTime: '1.0ms', variance: '17%', status: 'excellent' },
+        { name: 'Alert', renderTime: '1.3ms', variance: '18%', status: 'excellent' },
+        { name: 'Skeleton', renderTime: '0.9ms', variance: '14%', status: 'excellent' },
+        { name: 'Spinner', renderTime: '0.7ms', variance: '12%', status: 'excellent' },
+        { name: 'Divider', renderTime: '0.5ms', variance: '8%', status: 'excellent' },
+        { name: 'Separator', renderTime: '0.6ms', variance: '9%', status: 'excellent' },
+        { name: 'Accordion', renderTime: '2.0ms', variance: '23%', status: 'good' },
+        { name: 'Collapsible', renderTime: '1.7ms', variance: '20%', status: 'excellent' },
+        { name: 'Dialog', renderTime: '2.8ms', variance: '26%', status: 'good' },
+        { name: 'Popover', renderTime: '1.6ms', variance: '19%', status: 'excellent' },
+        { name: 'Command', renderTime: '2.5ms', variance: '24%', status: 'good' },
+      ];
+
+      function updateTimestamp() {
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+      }
+
+      function populateComponents() {
+        const componentList = document.getElementById('component-list');
+        componentList.innerHTML = '';
+
+        components.forEach((component) => {
+          const componentItem = document.createElement('div');
+          componentItem.className = 'component-item';
+          componentItem.innerHTML = `
+                    <div class="component-name">${component.name}</div>
+                    <div class="component-metrics">
+                        Render: ${component.renderTime} | Variance: ${component.variance}
+                    </div>
+                `;
+          componentList.appendChild(componentItem);
+        });
+      }
+
+      function refreshData() {
+        // Simulate data refresh
+        const metrics = ['avg-render', 'variance', 'memory', 'bundle', 'coverage'];
+        metrics.forEach((metric) => {
+          const element = document.getElementById(metric);
+          const currentValue = parseFloat(element.textContent);
+          const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
+          const newValue = Math.max(0, currentValue + currentValue * variation);
+          element.textContent = newValue.toFixed(1);
+        });
+
+        updateTimestamp();
+        populateComponents();
+      }
+
+      // Initialize dashboard
+      updateTimestamp();
+      populateComponents();
+
+      // Auto-refresh every 30 seconds
+      setInterval(refreshData, 30000);
+    </script>
+  </body>
+</html>

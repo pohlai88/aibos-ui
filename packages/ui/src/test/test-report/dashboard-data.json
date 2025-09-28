@@ -1,0 +1,16 @@
+{
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "total": 0,
+  "duration": 0,
+  "failures": [],
+  "timestamp": "2025-09-27T09:19:00.235Z",
+  "successRate": 0,
+  "testFiles": {
+    "passed": 0,
+    "failed": 0,
+    "total": 0
+  },
+  "categories": {}
+}

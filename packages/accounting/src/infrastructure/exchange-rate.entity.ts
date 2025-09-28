@@ -15,7 +15,7 @@ export class ExchangeRateEntity {
   id!: string;
 
   @Column({ name: 'from_currency', type: 'text' })
-  fromCurrency!: string; // e.g., 'USD'
+  fromCurrency!: string; // e.g., 'MYR'
 
   @Column({ name: 'to_currency', type: 'text' })
   toCurrency!: string; // e.g., 'MYR'

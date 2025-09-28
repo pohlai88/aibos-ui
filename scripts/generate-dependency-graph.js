@@ -2,12 +2,13 @@
 
 /**
  * Dependency Graph Generator
- * 
+ *
  * Generates visual dependency graphs using Mermaid
  * Shows UI ecosystem layer relationships and dependencies
  */
 
 import { execSync } from 'child_process';
+import { safeGet } from '@aibos/utils';
 import fs from 'fs';
 import path from 'path';
 
@@ -20,16 +21,16 @@ const colors = {
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
   cyan: '\x1b[36m',
-  white: '\x1b[37m'
+  white: '\x1b[37m',
 };
 
 function log(message, color = 'white') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  console.log(`${colors[color] || colors.white}${message}${colors.reset}`);
 }
 
 function generateMermaidGraph() {
   log('🎨 Generating UI Ecosystem Dependency Graph...', 'blue');
-  
+
   const mermaidContent = `
 graph TD
     %% UI Ecosystem Layers
@@ -82,22 +83,21 @@ graph TD
     class UIPrimitives,Tokens,Components,Primitives,Utils uiLayer
     class Contracts,AccountingWeb contractLayer
   `;
-  
+
   // Write Mermaid file
   fs.writeFileSync('dependency-graph.mmd', mermaidContent);
-  
+
   try {
     // Generate SVG using Mermaid CLI
     execSync('mmdc -i dependency-graph.mmd -o dependency-graph.svg', { stdio: 'pipe' });
     log('✅ Dependency graph generated: dependency-graph.svg', 'green');
-    
+
     // Generate PNG as well
     execSync('mmdc -i dependency-graph.mmd -o dependency-graph.png', { stdio: 'pipe' });
     log('✅ Dependency graph generated: dependency-graph.png', 'green');
-    
+
     // Clean up Mermaid file
     fs.unlinkSync('dependency-graph.mmd');
-    
   } catch (error) {
     log('⚠️  Could not generate SVG/PNG, but Mermaid file created: dependency-graph.mmd', 'yellow');
     log('You can view it at: https://mermaid.live/', 'cyan');
@@ -106,7 +106,7 @@ graph TD
 
 function generateDetailedGraph() {
   log('🔍 Generating Detailed Dependency Analysis...', 'cyan');
-  
+
   const detailedContent = `
 graph LR
     %% Detailed UI Ecosystem with Violations
@@ -149,9 +149,9 @@ graph LR
     class PolyIssues,TypeIssues,DepIssues issue
     class Apps,Business,UI,Contracts layer
   `;
-  
+
   fs.writeFileSync('detailed-analysis.mmd', detailedContent);
-  
+
   try {
     execSync('mmdc -i detailed-analysis.mmd -o detailed-analysis.svg', { stdio: 'pipe' });
     execSync('mmdc -i detailed-analysis.mmd -o detailed-analysis.png', { stdio: 'pipe' });
@@ -164,7 +164,7 @@ graph LR
 
 function generateViolationGraph() {
   log('🚨 Generating Violation Analysis Graph...', 'red');
-  
+
   const violationContent = `
 graph TD
     %% Violation Analysis
@@ -203,9 +203,9 @@ graph TD
     class P1,P2,P3 priority
     class S1,S2 solution
   `;
-  
+
   fs.writeFileSync('violation-analysis.mmd', violationContent);
-  
+
   try {
     execSync('mmdc -i violation-analysis.mmd -o violation-analysis.svg', { stdio: 'pipe' });
     execSync('mmdc -i violation-analysis.mmd -o violation-analysis.png', { stdio: 'pipe' });
@@ -219,22 +219,22 @@ graph TD
 function main() {
   log('🎨 AIBOS UI Ecosystem Dependency Graph Generator', 'blue');
   log('Using Mermaid (better than Graphviz for this use case)', 'cyan');
-  
+
   // Generate different types of graphs
   generateMermaidGraph();
   generateDetailedGraph();
   generateViolationGraph();
-  
+
   log('\n📊 Generated Files:', 'magenta');
   log('• dependency-graph.svg - Overall ecosystem structure', 'white');
   log('• detailed-analysis.svg - Current state with issues', 'white');
   log('• violation-analysis.svg - Violation breakdown and fixes', 'white');
-  
+
   log('\n💡 View Options:', 'cyan');
   log('1. Open SVG files in browser or VS Code', 'white');
   log('2. Use Mermaid Live Editor: https://mermaid.live/', 'white');
   log('3. GitHub will render .mmd files automatically', 'white');
-  
+
   log('\n🎉 Dependency graphs generated successfully!', 'green');
 }
 

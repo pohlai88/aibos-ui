@@ -1,13 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
 
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,17 +20,35 @@
     "outDir": "./dist",
     "resolveJsonModule": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@aibos/contracts/*": ["packages/contracts/src/*"],
-      "@aibos/ui/*": ["packages/ui/src/*"],
+      "@/*": ["apps/web/src/*"],
+      "@ui/*": ["packages/ui/src/*"],
+      "@utils/*": ["packages/utils/src/*"],
       "@aibos/utils/*": ["packages/utils/src/*"],
-      "@aibos/eventsourcing/*": ["packages/eventsourcing/src/*"],
-      "@aibos/accounting/*": ["packages/accounting/src/*"],
+      "@aibos/ui/*": ["packages/ui/src/*"],
+      "@aibos/ui-business/*": ["packages/ui-business/src/*"],
       "@aibos/accounting-web/*": ["packages/accounting-web/src/*"],
+      "@aibos/accounting/*": ["packages/accounting/src/*"],
       "@aibos/accounting-contracts/*": ["packages/accounting-contracts/src/*"],
-      "@aibos/bff/*": ["apps/bff/src/*"]
+      "@aibos/eventsourcing/*": ["packages/eventsourcing/src/*"],
+      "@aibos/observability/*": ["packages/observability/src/*"],
+      "@aibos/policy/*": ["packages/policy/src/*"],
+      "@aibos/bff/*": ["apps/bff/src/*"],
+      "@icons/*": ["packages/ui/src/icons/*"],
+      "@components/*": ["packages/ui/src/components/*"],
+      "@primitives/*": ["packages/ui/src/primitives/*"],
+      "@radix/*": ["packages/ui/src/radix/*"],
+      "@hooks/*": ["packages/ui/src/hooks/*"],
+      "@tokens/*": ["packages/ui/src/tokens/*"]
     }
-  }
+  },
+  "include": [
+    "packages/*/src/**/*.{ts,tsx}",
+    "apps/*/src/**/*.{ts,tsx}",
+    "packages/*/types/**/*.d.ts",
+    "apps/*/types/**/*.d.ts"
+  ]
 }

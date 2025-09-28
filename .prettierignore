@@ -1,7 +1,49 @@
-node_modules
-dist
-build
-.next
-coverage
+# Build artifacts
+dist/
+build/
+.next/
+coverage/
+.turbo/
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Generated files
 *.gen.ts
 *.generated.ts
+*.d.ts
+
+# Test files
+**/*.test.*
+**/*.spec.*
+**/__tests__/**
+**/__mocks__/**
+**/tests/**
+**/test/**
+**/e2e/**
+**/integration/**
+**/fixtures/**
+**/*.stories.*
+**/*.story.*
+**/*.snap
+
+# Config files that should not be formatted
+*.config.js
+*.config.ts
+vitest.config.*
+playwright.config.*
+tsconfig.*.json
+
+# Scripts with syntax issues
+scripts/guard-dynamic-keys.js
+scripts/validate-phase1.js
+scripts/validate-ui-ecosystem-only.js
+
+# Documentation
+*.md
+*.mdx
+
+# Lock files
+package-lock.json
+yarn.lock

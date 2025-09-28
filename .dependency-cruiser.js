@@ -1,7 +1,7 @@
 export default {
   forbidden: [
     // ===== EXISTING RULES =====
-    
+
     // Forbid dependencies from packages to apps
     {
       name: 'no-packages-to-apps',
@@ -39,7 +39,7 @@ export default {
     },
 
     // ===== UI ECOSYSTEM RULES =====
-    
+
     // UI Primitives should not import business packages
     {
       name: 'ui-primitives-no-business-imports',
@@ -50,7 +50,8 @@ export default {
       to: {
         path: '^packages/(ui-business|accounting-contracts|accounting-web)',
       },
-      comment: 'UI primitives must not import business packages - they should be pure UI components only',
+      comment:
+        'UI primitives must not import business packages - they should be pure UI components only',
     },
 
     // Apps should not import UI primitives directly
@@ -74,10 +75,36 @@ export default {
         path: '^packages/ui-business/src',
       },
       to: {
-        path: '^packages/(accounting-web|accounting-contracts)',
+        path: '^packages/(accounting-web|accounting-contracts|accounting|eventsourcing|observability|policy)',
         pathNot: '^packages/accounting-contracts/src/types',
       },
       comment: 'UI-Business should only import domain contracts, not other business packages',
+    },
+
+    // Accounting-Web should not import from domain packages
+    {
+      name: 'accounting-web-no-domain-imports',
+      severity: 'error',
+      from: {
+        path: '^packages/accounting-web/src',
+      },
+      to: {
+        path: '^packages/(accounting|eventsourcing|observability|policy)',
+      },
+      comment: 'Accounting-Web should only import UI primitives and contracts, not domain packages',
+    },
+
+    // Domain packages should not import UI packages
+    {
+      name: 'domain-no-ui-imports',
+      severity: 'error',
+      from: {
+        path: '^packages/(accounting|eventsourcing|policy)/src',
+      },
+      to: {
+        path: '^packages/(ui|ui-business|accounting-web)/src',
+      },
+      comment: 'Domain packages should not import UI packages',
     },
 
     // Forbid deep imports into package internals from outside packages
@@ -165,14 +192,14 @@ export default {
         '(^|/)(node_modules|dist|build|coverage|.next|storybook-static)($|/)|' +
         '\\.(test|spec|stories)\\.(ts|tsx|js|jsx)$|(__mocks__|__fixtures__)',
     },
-    
+
     // Enhanced options for UI ecosystem validation
     enhancedResolveOptions: {
       // Enable better module resolution for UI packages
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
       mainFields: ['module', 'main'],
     },
-    
+
     // Custom reporters for UI ecosystem violations
     reporterOptions: {
       dot: {

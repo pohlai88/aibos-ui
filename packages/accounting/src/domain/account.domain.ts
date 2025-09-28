@@ -1,12 +1,8 @@
 // DomainEvent import removed as it's not used in this file
+import { omitUndefined, ACCOUNT_TYPES, AccountType, assert } from '../utils';
 
-export enum AccountType {
-  ASSET = 'Asset',
-  LIABILITY = 'Liability',
-  EQUITY = 'Equity',
-  REVENUE = 'Revenue',
-  EXPENSE = 'Expense',
-}
+// Re-export the centralized AccountType from utilities
+export { ACCOUNT_TYPES, AccountType };
 
 export enum SpecialAccountType {
   NONE = 'None',
@@ -78,20 +74,35 @@ export class Account {
   };
 
   constructor(properties: AccountProperties) {
-    // Normalize strings (trim) and assign
-    this.accountCode = properties.accountCode?.trim();
-    this.accountName = properties.accountName?.trim();
-    this.accountType = properties.accountType;
-    this.parentAccountCode = properties.parentAccountCode?.trim();
-    this.tenantId = properties.tenantId?.trim();
-    this.isActive = properties.isActive;
-    // Balance normalized to 2 decimals (defensive for FP noise)
-    this.balance = round2(properties.balance);
-    this.createdAt = properties.createdAt;
-    this.updatedAt = properties.updatedAt;
-    this.specialAccountType = properties.specialAccountType ?? SpecialAccountType.NONE;
-    this.postingAllowed = properties.postingAllowed ?? true;
-    this.companionLinks = properties.companionLinks;
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanProperties = omitUndefined({
+      accountCode: properties.accountCode?.trim(),
+      accountName: properties.accountName?.trim(),
+      accountType: properties.accountType,
+      parentAccountCode: properties.parentAccountCode?.trim(),
+      tenantId: properties.tenantId?.trim(),
+      isActive: properties.isActive,
+      balance: round2(properties.balance),
+      createdAt: properties.createdAt,
+      updatedAt: properties.updatedAt,
+      specialAccountType: properties.specialAccountType ?? SpecialAccountType.NONE,
+      postingAllowed: properties.postingAllowed ?? true,
+      companionLinks: properties.companionLinks,
+    });
+
+    // Assign from cleaned properties
+    this.accountCode = cleanProperties.accountCode;
+    this.accountName = cleanProperties.accountName;
+    this.accountType = cleanProperties.accountType;
+    this.parentAccountCode = cleanProperties.parentAccountCode;
+    this.tenantId = cleanProperties.tenantId;
+    this.isActive = cleanProperties.isActive;
+    this.balance = cleanProperties.balance;
+    this.createdAt = cleanProperties.createdAt;
+    this.updatedAt = cleanProperties.updatedAt;
+    this.specialAccountType = cleanProperties.specialAccountType;
+    this.postingAllowed = cleanProperties.postingAllowed;
+    this.companionLinks = cleanProperties.companionLinks;
 
     this.validate();
     Object.freeze(this);
@@ -178,14 +189,12 @@ export class Account {
   // ---- Validation & helpers -------------------------------------------------
   private validate(): void {
     // Basic presence
-    if (!isNonEmpty(this.accountCode)) throw new Error('Account code is required');
-    if (!isNonEmpty(this.accountName)) throw new Error('Account name is required');
-    if (!isNonEmpty(this.tenantId)) throw new Error('Tenant ID is required');
+    assert(isNonEmpty(this.accountCode), 'Account code is required');
+    assert(isNonEmpty(this.accountName), 'Account name is required');
+    assert(isNonEmpty(this.tenantId), 'Tenant ID is required');
     // Code format: alphanumeric (3-20 characters)
     const accountCodePattern = /^[A-Z0-9]{3,20}$/;
-    if (!accountCodePattern.test(this.accountCode)) {
-      throw new Error('Account code must be 3-20 alphanumeric characters');
-    }
+    assert(accountCodePattern.test(this.accountCode), 'Account code must be 3-20 alphanumeric characters');
     // Parent cannot equal self
     if (this.parentAccountCode && this.parentAccountCode === this.accountCode) {
       throw new Error('Parent account code cannot equal account code');
@@ -214,7 +223,7 @@ export class Account {
   }
 
   private toProps(): AccountProperties {
-    return {
+    return omitUndefined({
       accountCode: this.accountCode,
       accountName: this.accountName,
       accountType: this.accountType,
@@ -227,7 +236,7 @@ export class Account {
       specialAccountType: this.specialAccountType,
       postingAllowed: this.postingAllowed,
       companionLinks: this.companionLinks,
-    };
+    });
   }
 }
 

@@ -1,2 +1,4 @@
-// Utilities
-export * from './number-formatting';
+// Utils index file
+// Re-exports all utility functions
+
+export * from './safeGet';

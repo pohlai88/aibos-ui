@@ -1,4 +1,5 @@
 // import type { JournalEntryLine } from '../domain/journal-entry-line'; // No longer needed
+import { omitUndefined } from '../utils';
 
 export interface PostJournalEntryCommandProperties {
   readonly journalEntryId: string;
@@ -34,15 +35,27 @@ export class PostJournalEntryCommand {
   public readonly baseCurrency?: string;
 
   constructor(properties: PostJournalEntryCommandProperties) {
-    // Normalize & defensively copy
-    this.journalEntryId = properties.journalEntryId?.trim();
-    this.entries = [...properties.entries];
-    this.reference = properties.reference?.trim();
-    this.description = properties.description?.trim();
-    this.postingDate = properties.postingDate;
-    this.tenantId = properties.tenantId?.trim();
-    this.userId = properties.userId?.trim();
-    this.baseCurrency = properties.baseCurrency?.trim();
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanProperties = omitUndefined({
+      journalEntryId: properties.journalEntryId?.trim(),
+      entries: [...properties.entries],
+      reference: properties.reference?.trim(),
+      description: properties.description?.trim(),
+      postingDate: properties.postingDate,
+      tenantId: properties.tenantId?.trim(),
+      userId: properties.userId?.trim(),
+      baseCurrency: properties.baseCurrency?.trim(),
+    });
+
+    // Assign from cleaned properties
+    this.journalEntryId = cleanProperties.journalEntryId;
+    this.entries = cleanProperties.entries;
+    this.reference = cleanProperties.reference;
+    this.description = cleanProperties.description;
+    this.postingDate = cleanProperties.postingDate;
+    this.tenantId = cleanProperties.tenantId;
+    this.userId = cleanProperties.userId;
+    this.baseCurrency = cleanProperties.baseCurrency;
 
     this.validate();
     // Freeze array to avoid mutation after construction (lines themselves should be treated immutable at source)

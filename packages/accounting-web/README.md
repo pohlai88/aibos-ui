@@ -25,12 +25,12 @@ pnpm test
 ### Basic Import
 
 ```tsx
-import { 
+import {
   FinancialDashboard,
   JournalEntryForm,
   TrialBalance,
   ChartOfAccounts,
-  useAccounting
+  useAccounting,
 } from '@aibos/accounting-web';
 ```
 
@@ -69,13 +69,7 @@ function JournalEntryView() {
     }
   };
 
-  return (
-    <JournalEntryForm
-      onSubmit={handleSubmit}
-      loading={loading}
-      error={error}
-    />
-  );
+  return <JournalEntryForm onSubmit={handleSubmit} loading={loading} error={error} />;
 }
 ```
 
@@ -90,7 +84,7 @@ function TrialBalanceView() {
   useEffect(() => {
     loadTrialBalance({
       asOf: '2024-12-31',
-      tenantId: 'tenant-123'
+      tenantId: 'tenant-123',
     });
   }, []);
 
@@ -99,10 +93,12 @@ function TrialBalanceView() {
       data={trialBalance}
       loading={loading}
       error={error}
-      onRefresh={() => loadTrialBalance({
-        asOf: '2024-12-31',
-        tenantId: 'tenant-123'
-      })}
+      onRefresh={() =>
+        loadTrialBalance({
+          asOf: '2024-12-31',
+          tenantId: 'tenant-123',
+        })
+      }
     />
   );
 }
@@ -119,9 +115,7 @@ function ChartOfAccountsView() {
   const [accounts, setAccounts] = useState([]);
 
   useEffect(() => {
-    listAccounts({ companyId: 'company-456' })
-      .then(setAccounts)
-      .catch(console.error);
+    listAccounts({ companyId: 'company-456' }).then(setAccounts).catch(console.error);
   }, []);
 
   return (
@@ -154,18 +148,21 @@ src/
 ## 🎨 Design Principles
 
 ### **Accounting-Specific Components**
+
 - **Financial Data Integration**: Components work with real accounting data
 - **Professional Reporting**: Enterprise-grade financial reports and dashboards
 - **Audit Trail Support**: Complete transaction history and compliance tracking
 - **Multi-Company Support**: Handle consolidated and entity-level accounting
 
 ### **Enterprise Features**
+
 - **Real-time Data**: Live updates from accounting backend
 - **Interactive Dashboards**: Drill-down capabilities and detailed analysis
 - **Export Functionality**: PDF reports, Excel exports, and board packs
 - **Role-based Access**: User permission enforcement and data security
 
 ### **Performance Optimized**
+
 - **Efficient Data Loading**: Optimized API calls and caching
 - **Lazy Loading**: On-demand component and data loading
 - **Virtual Scrolling**: Handle large datasets efficiently
@@ -174,6 +171,7 @@ src/
 ## 📊 Available Components
 
 ### **Financial Dashboard**
+
 - **OutstandingCFODashboard**: Comprehensive financial command center
 - **Financial Charts**: P&L, Balance Sheet, Cash Flow visualizations
 - **Trend Analysis**: Multi-metric performance tracking
@@ -181,12 +179,14 @@ src/
 - **Interactive Features**: Drill-down, export, and real-time updates
 
 ### **Accounting Forms**
+
 - **JournalEntryForm**: Complete journal entry creation and editing
 - **Account Selection**: Integrated chart of accounts picker
 - **Validation**: Real-time validation and error handling
 - **Audit Trail**: Complete transaction history tracking
 
 ### **Financial Reports**
+
 - **TrialBalance**: Comprehensive trial balance with drill-down
 - **ChartOfAccounts**: Hierarchical account structure navigation
 - **Financial Statements**: P&L, Balance Sheet, Cash Flow reports
@@ -195,17 +195,19 @@ src/
 ## 🔧 Component Props
 
 ### **FinancialDashboard**
+
 ```tsx
 interface FinancialDashboardProperties {
-  tenantId: string;                    // Required tenant identifier
-  companyId?: string;                  // Optional company filter
-  period?: string;                     // Reporting period (default: '2024-Q4')
-  showCharts?: boolean;               // Show financial charts (default: true)
-  showVarianceAnalysis?: boolean;     // Show variance analysis (default: true)
+  tenantId: string; // Required tenant identifier
+  companyId?: string; // Optional company filter
+  period?: string; // Reporting period (default: '2024-Q4')
+  showCharts?: boolean; // Show financial charts (default: true)
+  showVarianceAnalysis?: boolean; // Show variance analysis (default: true)
 }
 ```
 
 ### **JournalEntryForm**
+
 ```tsx
 interface JournalEntryFormProps {
   onSubmit: (entry: TJournalEntry) => Promise<void>;
@@ -217,6 +219,7 @@ interface JournalEntryFormProps {
 ```
 
 ### **TrialBalance**
+
 ```tsx
 interface TrialBalanceProps {
   data: TTrialBalance | null;
@@ -230,18 +233,21 @@ interface TrialBalanceProps {
 ## 🎯 Business Use Cases
 
 ### **Financial Reporting**
+
 - **Monthly Close**: Complete month-end closing process
 - **Board Reporting**: Generate board packs and presentations
 - **Audit Support**: Provide audit-ready financial statements
 - **Compliance**: Meet regulatory reporting requirements
 
 ### **Transaction Management**
+
 - **Journal Entries**: Create and manage accounting transactions
 - **Account Management**: Maintain chart of accounts
 - **Reconciliation**: Bank and account reconciliation processes
 - **Approval Workflows**: Multi-level approval processes
 
 ### **Analytics & Insights**
+
 - **Financial Analysis**: Comprehensive financial performance analysis
 - **Trend Analysis**: Historical performance tracking
 - **Variance Analysis**: Budget vs actual performance
@@ -250,12 +256,14 @@ interface TrialBalanceProps {
 ## 🛡️ Data Security
 
 ### **Access Control**
+
 - **Tenant Isolation**: Multi-tenant data separation
 - **Role-Based Access**: User permission enforcement
 - **Audit Trails**: Complete activity logging
 - **Data Encryption**: Secure data transmission
 
 ### **Compliance**
+
 - **MFRS Compliance**: Malaysian Financial Reporting Standards
 - **SOX Compliance**: Sarbanes-Oxley requirements
 - **Data Retention**: Automated data lifecycle management
@@ -264,12 +272,14 @@ interface TrialBalanceProps {
 ## 🚀 Performance
 
 ### **Optimization Features**
+
 - **Efficient API Calls**: Optimized data fetching strategies
 - **Caching**: Intelligent data caching and invalidation
 - **Lazy Loading**: On-demand component and data loading
 - **Virtual Scrolling**: Efficient large dataset handling
 
 ### **Bundle Size**
+
 - **Tree Shaking**: Individual component imports
 - **Code Splitting**: Route-based splitting
 - **Compression**: Gzip and Brotli compression
@@ -289,6 +299,7 @@ pnpm test:coverage
 ```
 
 ### **Test Coverage**
+
 - **Unit Tests**: Component logic and API integration
 - **Integration Tests**: Data flow and user interactions
 - **Visual Tests**: Screenshot comparisons
@@ -306,6 +317,7 @@ pnpm test:coverage
 ## 🔌 API Integration
 
 ### **AccountingClient**
+
 The `AccountingClient` provides methods for all accounting operations:
 
 ```tsx
@@ -321,45 +333,46 @@ const trialBalance = await client.getTrialBalance({ asOf: '2024-12-31', tenantId
 const accounts = await client.listAccounts({ companyId: 'company-456' });
 
 // Financial Chart Data
-const profitLossData = await client.getProfitLossData({ 
-  period: '2024-Q4', 
+const profitLossData = await client.getProfitLossData({
+  period: '2024-Q4',
   tenantId: 'tenant-123',
   companyId: 'company-456',
-  periods: 4
+  periods: 4,
 });
 
-const balanceSheetData = await client.getBalanceSheetData({ 
-  period: '2024-Q4', 
+const balanceSheetData = await client.getBalanceSheetData({
+  period: '2024-Q4',
   tenantId: 'tenant-123',
   companyId: 'company-456',
-  periods: 4
+  periods: 4,
 });
 
-const cashFlowData = await client.getCashFlowData({ 
-  period: '2024-Q4', 
+const cashFlowData = await client.getCashFlowData({
+  period: '2024-Q4',
   tenantId: 'tenant-123',
   companyId: 'company-456',
-  periods: 4
+  periods: 4,
 });
 
-const trendData = await client.getTrendData({ 
-  period: '2024-Q4', 
+const trendData = await client.getTrendData({
+  period: '2024-Q4',
   tenantId: 'tenant-123',
   companyId: 'company-456',
   metrics: ['revenue', 'grossProfit', 'operatingIncome', 'netIncome'],
-  periods: 4
+  periods: 4,
 });
 
-const varianceData = await client.getVarianceData({ 
-  period: '2024-Q4', 
+const varianceData = await client.getVarianceData({
+  period: '2024-Q4',
   tenantId: 'tenant-123',
   companyId: 'company-456',
   metric: 'revenue',
-  periods: 4
+  periods: 4,
 });
 ```
 
 ### **useAccounting Hook**
+
 The `useAccounting` hook provides React integration:
 
 ```tsx

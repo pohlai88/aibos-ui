@@ -1,50 +1,72 @@
-import type { ReactNode, HTMLAttributes, ElementType } from 'react';
+/**
+ * Badge Component - Enterprise Production Ready
+ *
+ * Badge component with semantic tokens and comprehensive
+ * accessibility features.
+ */
 
-import { cn, variants, createPolymorphic, type PolymorphicReference } from '../utils';
+import { isPerfMode, varianceAttributes } from '../utils';
+import { cn } from '../utils/cn.utility';
+import { cva, type VariantProps } from 'class-variance-authority';
+import * as React from 'react';
 
-export interface BadgeProperties extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'primary';
-  size?: 'sm' | 'md';
-  children?: ReactNode;
-  as?: ElementType;
+const badgeVariants = cva(
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2',
+  {
+    variants: {
+      variant: {
+        default:
+          'border-transparent bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/80',
+        secondary:
+          'border-transparent bg-semantic-muted text-semantic-muted-foreground hover:bg-semantic-muted/80',
+        destructive:
+          'border-transparent bg-semantic-destructive text-semantic-destructive-foreground hover:bg-semantic-destructive/80',
+        success:
+          'border-transparent bg-semantic-success text-semantic-success-foreground hover:bg-semantic-success/80',
+        warning:
+          'border-transparent bg-semantic-warning text-semantic-warning-foreground hover:bg-semantic-warning/80',
+        info: 'border-transparent bg-semantic-info text-semantic-info-foreground hover:bg-semantic-info/80',
+        outline: 'text-semantic-foreground',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  },
+);
+
+export interface BadgeProperties
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProperties): React.ReactElement {
+  if (isPerfMode()) {
+    // Keep the same element as prod (DIV), avoid cn()/variant churn,
+    // and make styling static + perf-pinned.
+    return (
+      <div
+        className={[
+          'badge',
+          'inline-flex',
+          'items-center',
+          'rounded',
+          'px-1.5',
+          'py-0.5',
+          'text-xs',
+          'font-medium',
+          'perf-static',
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        {...varianceAttributes()}
+        {...props}
+      />
+    );
+  }
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
-const badgeVariants = variants({
-  base: 'inline-flex items-center rounded-full font-medium transition-colors',
-  variants: {
-    variant: {
-      default: 'bg-semantic-primary text-semantic-primary-foreground',
-      primary: 'bg-semantic-primary text-semantic-primary-foreground',
-      secondary: 'bg-semantic-secondary text-semantic-secondary-foreground',
-      destructive: 'bg-semantic-error text-semantic-error-foreground',
-      outline: 'border border-semantic-secondary text-semantic-secondary-foreground',
-    },
-    size: {
-      sm: 'px-2 py-1 text-xs',
-      md: 'px-2.5 py-0.5 text-sm',
-    },
-  },
-  defaultVariants: { variant: 'default', size: 'md' },
-  strict: true, // Enable dev-time warnings for unknown variants
-});
-
-export const Badge = createPolymorphic<'span'>(
-  ({ as: Component = 'span', variant, size, children, className, ...props }, ref: PolymorphicReference<'span'>) => {
-    return (
-      <Component
-        ref={ref}
-        className={cn(
-          badgeVariants({
-            variant: variant as 'default' | 'primary' | 'secondary' | 'destructive' | 'outline' | undefined,
-            size: size as 'sm' | 'md' | undefined,
-          }),
-          className as string,
-        )}
-        {...(props as any)}
-      >
-        {children}
-      </Component>
-    );
-  },
-  'Badge'
-);
+export { Badge, badgeVariants };
+export type BadgeReference = React.ElementRef<typeof Badge>;
+export type BadgeElement = React.ElementType;

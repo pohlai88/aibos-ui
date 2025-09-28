@@ -1,0 +1,323 @@
+{
+  "$schemaVersion": "1.1",
+  "componentDefaults": {
+    "requiredTags": ["a11y", "kbd", "dark", "rtl", "reducedMotion"],
+    "requiredStories": ["Default", "Focus", "Disabled"],
+    "standardSuites": {
+      "core": ["Default", "Focus", "Disabled", "KeyboardNav", "Dark", "RTL", "ReducedMotion"],
+      "states": ["Loading", "Error", "Success", "ReadOnly"],
+      "layout": ["WithIcon", "WithPrefixSuffix", "Truncation", "Wrap"],
+      "content": ["WithHeader", "WithFooter", "WithActions", "CustomContent"],
+      "perf": ["Skeleton", "Virtualized"],
+      "a11y": ["AriaLabelling", "ContrastCheck"],
+      "meta": ["Gallery"]
+    }
+  },
+  "components": {
+    "Button": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["focus-visible", "contrast"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "radius", "shadow"],
+        "variants": ["intent", "size", "tone"]
+      },
+      "pages": ["/dashboard", "/settings", "/profile", "/login", "/register"],
+      "stories": [
+        "Default",
+        "Focus",
+        "KeyboardNav",
+        "Disabled",
+        "Loading",
+        "IconOnly",
+        "Ghost",
+        "Link",
+        "Gallery",
+        "Dark",
+        "RTL",
+        "ReducedMotion"
+      ],
+      "description": "Primary interactive element for user actions",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Input": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["focus-visible", "contrast", "validation"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "radius", "border"],
+        "variants": ["size", "state", "type"]
+      },
+      "pages": ["/login", "/register", "/profile", "/settings", "/dashboard"],
+      "stories": [
+        "Default",
+        "Focus",
+        "PasswordWithToggle",
+        "WithPrefixSuffix",
+        "ReadOnly",
+        "Disabled",
+        "Error",
+        "Success",
+        "Dark",
+        "RTL"
+      ],
+      "description": "Text input field for user data entry",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Checkbox": {
+      "pages": ["/settings", "/profile", "/dashboard", "/forms"],
+      "stories": ["Default", "Checked", "Indeterminate", "Disabled", "WithLabel"],
+      "description": "Binary choice input control"
+    },
+    "Radio": {
+      "pages": ["/settings", "/profile", "/forms"],
+      "stories": ["Default", "Selected", "Disabled", "WithLabel", "Group"],
+      "description": "Single choice from multiple options"
+    },
+    "Switch": {
+      "pages": ["/settings", "/profile", "/dashboard"],
+      "stories": ["Default", "Checked", "Disabled", "WithLabel"],
+      "description": "Toggle switch for binary states"
+    },
+    "Badge": {
+      "pages": ["/dashboard", "/notifications", "/profile"],
+      "stories": ["Default", "Secondary", "Destructive", "Outline", "Small", "Large"],
+      "description": "Small status indicator or label"
+    },
+    "Card": {
+      "pages": ["/dashboard", "/profile", "/settings", "/reports"],
+      "stories": ["Default", "WithHeader", "WithFooter", "WithActions", "Elevated", "Interactive"],
+      "description": "Container for related content and actions"
+    },
+    "Modal": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["focus-trap", "aria-labelling", "scroll-lock"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "radius", "shadow", "z-index"],
+        "variants": ["size", "type"]
+      },
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": [
+        "Default",
+        "FocusTrap",
+        "InitialFocus",
+        "AriaLabelling",
+        "ScrollLock",
+        "CloseOnEscape",
+        "Small",
+        "Large",
+        "Dark",
+        "RTL"
+      ],
+      "description": "Overlay dialog for focused interactions",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Table": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["virtualization", "keyboard-nav", "aria-roles"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "border", "shadow"],
+        "variants": ["size", "density", "striped"]
+      },
+      "pages": ["/dashboard", "/reports", "/analytics", "/data"],
+      "stories": [
+        "Default",
+        "EmptyState",
+        "ErrorRetry",
+        "LoadingSkeleton",
+        "StickyHeader",
+        "ResizableColumns",
+        "RowSelectionKbd",
+        "Virtualized",
+        "Dark",
+        "RTL"
+      ],
+      "description": "Data display with sorting, filtering, and pagination",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Form": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["aria-errors", "async-validation", "keyboard-nav"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "radius", "border"],
+        "variants": ["layout", "validation"]
+      },
+      "pages": ["/login", "/register", "/profile", "/settings", "/forms"],
+      "stories": [
+        "Default",
+        "AriaErrors",
+        "SubmitLoading",
+        "AsyncSubmit",
+        "MultiStepKbd",
+        "WithValidation",
+        "WithFileUpload",
+        "Dark",
+        "RTL"
+      ],
+      "description": "Form handling with validation and error management",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Navigation": {
+      "owner": "ui-team",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["keyboard-nav", "aria-roles", "responsive"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "border"],
+        "variants": ["orientation", "size"]
+      },
+      "pages": ["/dashboard", "/settings", "/profile", "/reports"],
+      "stories": [
+        "Default",
+        "KeyboardNav",
+        "Overflow",
+        "Truncation",
+        "Responsive",
+        "WithIcons",
+        "Dark",
+        "RTL"
+      ],
+      "description": "Site navigation and routing",
+      "tags": ["a11y", "kbd", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "Toast": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["Success", "Error", "Warning", "Info", "WithAction", "Persistent"],
+      "description": "Temporary notification messages"
+    },
+    "Tooltip": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["Default", "WithDelay", "WithArrow", "CustomContent", "Interactive"],
+      "description": "Contextual information overlay"
+    },
+    "Popover": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["Default", "WithTrigger", "WithForm", "WithActions", "CustomContent"],
+      "description": "Floating content container"
+    },
+    "Select": {
+      "pages": ["/settings", "/profile", "/forms", "/dashboard"],
+      "stories": ["Default", "MultiSelect", "WithSearch", "WithGroups", "CustomOptions"],
+      "description": "Dropdown selection control"
+    },
+    "Tabs": {
+      "pages": ["/dashboard", "/settings", "/profile", "/reports"],
+      "stories": ["Default", "Vertical", "WithIcons", "WithBadges", "LazyLoading"],
+      "description": "Tabbed content organization"
+    },
+    "Accordion": {
+      "pages": ["/settings", "/profile", "/help", "/faq"],
+      "stories": ["Default", "Single", "Multiple", "WithIcons", "CustomContent"],
+      "description": "Collapsible content sections"
+    },
+    "Breadcrumb": {
+      "pages": ["/dashboard", "/settings", "/profile", "/reports"],
+      "stories": ["Default", "WithIcons", "WithSeparator", "Truncated", "CustomSeparator"],
+      "description": "Navigation path indicator"
+    },
+    "Pagination": {
+      "pages": ["/dashboard", "/reports", "/analytics", "/data"],
+      "stories": ["Default", "WithPageSize", "WithJumpTo", "Compact", "WithInfo"],
+      "description": "Page navigation for large datasets"
+    }
+  },
+  "hooks": {
+    "useTheme": {
+      "pages": ["/dashboard", "/settings"],
+      "stories": ["ThemeToggle", "SystemTheme", "CustomTheme"],
+      "description": "Theme management and switching"
+    },
+    "useMediaQuery": {
+      "pages": ["/dashboard", "/settings", "/profile"],
+      "stories": ["ResponsiveLayout", "ConditionalRendering", "CustomBreakpoints"],
+      "description": "Responsive design utilities"
+    },
+    "useCorrelation": {
+      "pages": ["/dashboard", "/analytics", "/reports"],
+      "stories": ["DataCorrelation", "PerformanceTracking", "UserBehavior"],
+      "description": "Data correlation and analytics"
+    },
+    "useToast": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["ToastNotifications", "SuccessMessages", "ErrorHandling"],
+      "description": "Toast notification management"
+    }
+  },
+  "icons": {
+    "internal": {
+      "pages": ["/dashboard", "/settings", "/profile", "/navigation"],
+      "stories": [
+        "ChevronDown",
+        "ChevronUp",
+        "ChevronLeft",
+        "ChevronRight",
+        "Close",
+        "Check",
+        "Info",
+        "Warning",
+        "User",
+        "Settings"
+      ],
+      "description": "Always-on SVG icons for core functionality"
+    },
+    "lucide": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["AllowlistIcons", "LazyLoading", "CustomSizing", "Accessibility"],
+      "description": "Extended icon set via Lucide allowlist"
+    }
+  },
+  "utils": {
+    "cn": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["ClassMerging", "ConditionalClasses", "TailwindMerge"],
+      "description": "Class name utility for conditional styling"
+    },
+    "variants": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["CVAUsage", "VariantCombinations", "DefaultVariants"],
+      "description": "Component variant management with CVA"
+    },
+    "polymorphic": {
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": ["PolymorphicButton", "ElementSwitching", "TypeSafety"],
+      "description": "Polymorphic component utilities"
+    }
+  },
+  "tokens": {
+    "semantic": {
+      "owner": "design-system",
+      "priority": "p0",
+      "status": "ready",
+      "risk": ["contrast", "theming"],
+      "contracts": {
+        "tokens": ["semantic.color", "spacing", "typography", "shadow"],
+        "variants": ["light", "dark"]
+      },
+      "pages": ["/dashboard", "/settings", "/profile", "/forms"],
+      "stories": [
+        "ColorTokens",
+        "SpacingTokens",
+        "TypographyTokens",
+        "ShadowTokens",
+        "ThemingLightDarkParity",
+        "ContrastMatrix",
+        "CSSVariables"
+      ],
+      "description": "Design system tokens and CSS variables",
+      "tags": ["a11y", "dark", "rtl", "reducedMotion", "perf"]
+    },
+    "critical": {
+      "pages": ["/dashboard", "/login", "/register"],
+      "stories": ["AboveFoldOptimization", "CriticalPathCSS", "PerformanceTokens"],
+      "description": "Critical path optimization tokens"
+    }
+  }
+}

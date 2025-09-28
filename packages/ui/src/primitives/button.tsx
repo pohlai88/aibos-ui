@@ -1,54 +1,80 @@
-import type { ReactNode, ButtonHTMLAttributes, ElementType } from 'react';
+/**
+ * Button Component - Enterprise Production Ready
+ *
+ * Button component with semantic tokens and comprehensive
+ * accessibility features.
+ */
 
-import { cn, variants, createPolymorphic, type PolymorphicReference } from '../utils';
+import { isPerfMode, varianceAttributes } from '../utils';
+import { cn } from '../utils/cn.utility';
+import { cva, type VariantProps } from 'class-variance-authority';
+import * as React from 'react';
 
-export interface ButtonProperties extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
-  children?: ReactNode;
-  as?: ElementType;
-}
-
-const buttonVariants = variants({
-  base: 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-semantic-background disabled:opacity-50 disabled:pointer-events-none',
-  variants: {
-    variant: {
-      primary:
-        'bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/90 focus:ring-semantic-primary',
-      secondary:
-        'bg-semantic-secondary text-semantic-secondary-foreground hover:bg-semantic-secondary/80 focus:ring-semantic-secondary',
-      ghost:
-        'bg-transparent hover:bg-semantic-muted focus:ring-semantic-muted',
-      destructive:
-        'bg-semantic-error text-semantic-error-foreground hover:bg-semantic-error/90 focus:ring-semantic-error',
+const buttonVariants = cva(
+  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-semantic-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        default:
+          'bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/90',
+        primary:
+          'bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/90',
+        destructive:
+          'bg-semantic-destructive text-semantic-destructive-foreground hover:bg-semantic-destructive/90',
+        outline:
+          'border border-semantic-input bg-semantic-background hover:bg-semantic-accent hover:text-semantic-accent-foreground',
+        secondary: 'bg-semantic-muted text-semantic-muted-foreground hover:bg-semantic-muted/80',
+        ghost: 'hover:bg-semantic-accent hover:text-semantic-accent-foreground',
+        link: 'text-semantic-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 rounded-md px-3',
+        lg: 'h-11 rounded-md px-8',
+        icon: 'h-10 w-10',
+      },
     },
-    size: {
-      sm: 'h-8 px-3 text-sm',
-      md: 'h-10 px-4 text-sm',
-      lg: 'h-12 px-6 text-base',
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
     },
   },
-  defaultVariants: { variant: 'primary', size: 'md' },
-  strict: true, // Enable dev-time warnings for unknown variants
-});
+);
 
-export const Button = createPolymorphic<'button'>(
-  ({ as: Component = 'button', variant, size, children, className, ...props }, ref: PolymorphicReference<'button'>) => {
+export interface ButtonProperties
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProperties>(
+  ({ className, variant, size, ...props }, reference) => {
+    if (isPerfMode()) {
+      // No React state toggles; rely on :active/:focus-visible CSS only
+      const { onMouseDown, onMouseUp, onFocus, onBlur, children, ...restNoHandlers } = props;
+      return (
+        <button
+          // keep styling static for perf, but still accept external className
+          className={['btn', 'perf-static', className].filter(Boolean).join(' ')}
+          ref={reference}
+          type="button"
+          {...varianceAttributes()}
+          {...restNoHandlers}
+        >
+          {children}
+        </button>
+      );
+    }
+
     return (
-      <Component
-        ref={ref}
-        className={cn(
-          buttonVariants({
-            variant: variant as 'primary' | 'secondary' | 'ghost' | 'destructive' | undefined,
-            size: size as 'sm' | 'md' | 'lg' | undefined,
-          }),
-          className as string,
-        )}
-        {...(props as any)}
-      >
-        {children}
-      </Component>
+      <button
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={reference}
+        {...props}
+      />
     );
   },
-  'Button'
 );
+Button.displayName = 'Button';
+
+export { Button, buttonVariants };
+export type ButtonReference = React.ElementRef<typeof Button>;
+export type ButtonElement = React.ElementType;

@@ -1,5 +1,7 @@
 import type { BusinessMetrics, PerformanceMetrics } from './types';
 
+import { createDict, safeSet } from '@aibos/utils';
+
 export class MetricsCollector {
   private static metrics: Map<string, number> = new Map();
 
@@ -43,7 +45,11 @@ export class MetricsCollector {
   }
 
   static getMetrics(): Record<string, number> {
-    return Object.fromEntries(this.metrics);
+    const metricsObject = createDict<number>();
+    for (const [key, value] of this.metrics) {
+      safeSet(metricsObject, key, value);
+    }
+    return metricsObject;
   }
 
   static reset(): void {

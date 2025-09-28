@@ -21,3 +21,27 @@ export const TrialBalance = z.object({
 export type TTrialBalanceQuery = z.infer<typeof TrialBalanceQuery>;
 export type TTrialBalance = z.infer<typeof TrialBalance>;
 export type TTrialBalanceRow = z.infer<typeof TrialBalanceRow>;
+
+// CFO Dashboard schemas
+export const DrillDownRequestSchema = z.object({
+  accountCode: z.string().min(1),
+  period: z.string().optional(),
+  tenantId: z.string().min(1),
+});
+
+export const BoardPackExportRequestSchema = z.object({
+  format: z.enum(['pdf', 'excel', 'csv']).default('pdf'),
+  period: z.string().optional(),
+  tenantId: z.string().min(1),
+});
+
+export const VarianceAnalysisRequestSchema = z.object({
+  accountCode: z.string().min(1),
+  baselinePeriod: z.string(),
+  comparisonPeriod: z.string(),
+  tenantId: z.string().min(1),
+});
+
+export type TDrillDownRequest = z.infer<typeof DrillDownRequestSchema>;
+export type TBoardPackExportRequest = z.infer<typeof BoardPackExportRequestSchema>;
+export type TVarianceAnalysisRequest = z.infer<typeof VarianceAnalysisRequestSchema>;

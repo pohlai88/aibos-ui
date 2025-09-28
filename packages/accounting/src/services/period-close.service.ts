@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+// safeGet import removed as it's not used
 import { randomUUID, createHash, type BinaryLike } from 'node:crypto';
 
 export interface PeriodSnapshot {

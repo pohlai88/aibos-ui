@@ -4,6 +4,8 @@ import { AccountingClient } from '../lib/accounting-api';
 import { TrialBalance, type TTrialBalance } from '@aibos/accounting-contracts';
 import * as React from 'react';
 
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error';
+
 /**
  * Lightweight hook without extra deps (no SWR/React Query).
  * It exposes imperative methods + simple state.
@@ -15,11 +17,38 @@ export function useAccounting(client = new AccountingClient()): {
   postJournalEntry: (_entry: TJournalEntry) => Promise<{ id: string }>;
   loadTrialBalance: (_q: { asOf: string; tenantId: string }) => Promise<TTrialBalance>;
   // Financial Chart Data Methods
-  getProfitLossData: (options: { period: string; companyId?: string; tenantId: string; periods?: number }) => Promise<any>;
-  getBalanceSheetData: (options: { period: string; companyId?: string; tenantId: string; periods?: number }) => Promise<any>;
-  getCashFlowData: (options: { period: string; companyId?: string; tenantId: string; periods?: number }) => Promise<any>;
-  getTrendData: (options: { period: string; companyId?: string; tenantId: string; metrics: string[]; periods?: number }) => Promise<any>;
-  getVarianceData: (options: { period: string; companyId?: string; tenantId: string; metric: string; periods?: number }) => Promise<any>;
+  getProfitLossData: (options: {
+    period: string;
+    companyId?: string;
+    tenantId: string;
+    periods?: number;
+  }) => Promise<unknown>;
+  getBalanceSheetData: (options: {
+    period: string;
+    companyId?: string;
+    tenantId: string;
+    periods?: number;
+  }) => Promise<unknown>;
+  getCashFlowData: (options: {
+    period: string;
+    companyId?: string;
+    tenantId: string;
+    periods?: number;
+  }) => Promise<unknown>;
+  getTrendData: (options: {
+    period: string;
+    companyId?: string;
+    tenantId: string;
+    metrics: string[];
+    periods?: number;
+  }) => Promise<unknown>;
+  getVarianceData: (options: {
+    period: string;
+    companyId?: string;
+    tenantId: string;
+    metric: string;
+    periods?: number;
+  }) => Promise<unknown>;
 } {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -32,7 +61,7 @@ export function useAccounting(client = new AccountingClient()): {
       try {
         return await client.postJournalEntry(entry);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -50,7 +79,7 @@ export function useAccounting(client = new AccountingClient()): {
         setTrialBalance(TrialBalance.parse(data));
         return data;
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -67,7 +96,7 @@ export function useAccounting(client = new AccountingClient()): {
       try {
         return await client.getProfitLossData(options);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -83,7 +112,7 @@ export function useAccounting(client = new AccountingClient()): {
       try {
         return await client.getBalanceSheetData(options);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -99,7 +128,7 @@ export function useAccounting(client = new AccountingClient()): {
       try {
         return await client.getCashFlowData(options);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -109,13 +138,19 @@ export function useAccounting(client = new AccountingClient()): {
   );
 
   const getTrendData = React.useCallback(
-    async (options: { period: string; companyId?: string; tenantId: string; metrics: string[]; periods?: number }) => {
+    async (options: {
+      period: string;
+      companyId?: string;
+      tenantId: string;
+      metrics: string[];
+      periods?: number;
+    }) => {
       setLoading(true);
       setError(null);
       try {
         return await client.getTrendData(options);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -125,13 +160,19 @@ export function useAccounting(client = new AccountingClient()): {
   );
 
   const getVarianceData = React.useCallback(
-    async (options: { period: string; companyId?: string; tenantId: string; metric: string; periods?: number }) => {
+    async (options: {
+      period: string;
+      companyId?: string;
+      tenantId: string;
+      metric: string;
+      periods?: number;
+    }) => {
       setLoading(true);
       setError(null);
       try {
         return await client.getVarianceData(options);
       } catch (error_: unknown) {
-        setError((error_ as Error)?.message ?? 'Unknown error');
+        setError((error_ as Error)?.message ?? UNKNOWN_ERROR_MESSAGE);
         throw error_;
       } finally {
         setLoading(false);
@@ -140,11 +181,11 @@ export function useAccounting(client = new AccountingClient()): {
     [client],
   );
 
-  return { 
-    loading, 
-    error, 
-    trialBalance, 
-    postJournalEntry, 
+  return {
+    loading,
+    error,
+    trialBalance,
+    postJournalEntry,
     loadTrialBalance,
     getProfitLossData,
     getBalanceSheetData,

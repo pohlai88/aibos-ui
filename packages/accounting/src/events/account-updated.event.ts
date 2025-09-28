@@ -3,6 +3,7 @@ import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { Money } from '../domain/Money';
 import { assertAggregateMatchesTenant, moneyFromCentsShim } from './common.utility';
+import { omitUndefined } from '../utils';
 import { randomUUID } from 'node:crypto';
 
 const CODE = /^[A-Z0-9._-]{1,64}$/i;
@@ -51,13 +52,21 @@ export class AccountBalanceUpdatedEvent implements DomainEvent {
     correlationId?: string,
     causationId?: string,
   ) {
-    this.id = id ?? randomUUID();
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanOptions = omitUndefined({
+      id: id ?? randomUUID(),
+      occurredAt: occurredAt ?? new Date(),
+      correlationId,
+      causationId,
+    });
+
+    this.id = cleanOptions.id;
     this.aggregateId = aggregateId;
     this.version = version;
-    this.occurredAt = occurredAt ?? new Date();
+    this.occurredAt = cleanOptions.occurredAt;
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
+    this.correlationId = cleanOptions.correlationId;
+    this.causationId = cleanOptions.causationId;
 
     this.accountCode = accountCode;
 
@@ -256,13 +265,21 @@ export class AccountStateUpdatedEvent implements DomainEvent {
     correlationId?: string,
     causationId?: string,
   ) {
-    this.id = id ?? randomUUID();
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanOptions = omitUndefined({
+      id: id ?? randomUUID(),
+      occurredAt: occurredAt ?? new Date(),
+      correlationId,
+      causationId,
+    });
+
+    this.id = cleanOptions.id;
     this.aggregateId = aggregateId;
     this.version = version;
-    this.occurredAt = occurredAt ?? new Date();
+    this.occurredAt = cleanOptions.occurredAt;
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
+    this.correlationId = cleanOptions.correlationId;
+    this.causationId = cleanOptions.causationId;
 
     this.accountCode = accountCode;
     this.accountName = accountName;

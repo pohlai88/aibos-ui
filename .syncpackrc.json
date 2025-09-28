@@ -44,6 +44,48 @@
       "packages": ["*"],
       "dependencies": ["prettier"],
       "pinVersion": "3.6.2"
+    },
+    {
+      "label": "Enforce consistent TSUP version",
+      "packages": ["*"],
+      "dependencies": ["tsup"],
+      "pinVersion": "8.5.0"
+    },
+    {
+      "label": "Enforce consistent Turbo version",
+      "packages": ["*"],
+      "dependencies": ["turbo"],
+      "pinVersion": "^2.5.8"
+    },
+    {
+      "label": "Enforce consistent Vitest version",
+      "packages": ["*"],
+      "dependencies": ["vitest"],
+      "pinVersion": "^2.1.9"
+    },
+    {
+      "label": "Enforce consistent React versions",
+      "packages": ["*"],
+      "dependencies": ["react", "react-dom"],
+      "pinVersion": "^18.3.1"
+    },
+    {
+      "label": "Enforce consistent Next.js version",
+      "packages": ["*"],
+      "dependencies": ["next"],
+      "pinVersion": "^15.5.4"
+    },
+    {
+      "label": "Enforce consistent Tailwind CSS version",
+      "packages": ["*"],
+      "dependencies": ["tailwindcss"],
+      "pinVersion": "^3.4.17"
+    },
+    {
+      "label": "Enforce consistent Node.js version",
+      "packages": ["*"],
+      "dependencies": ["node"],
+      "pinVersion": ">=20.18.0"
     }
   ],
   "lintRules": {
@@ -52,7 +94,34 @@
         "name": "no-dev-deps-in-prod",
         "message": "Dev dependencies should not be in production dependencies",
         "severity": "error"
+      },
+      {
+        "name": "no-workspace-deps-in-external",
+        "message": "External packages should not depend on workspace packages",
+        "severity": "error"
+      },
+      {
+        "name": "no-circular-deps",
+        "message": "Circular dependencies between workspace packages are forbidden",
+        "severity": "error"
+      }
+    ],
+    "required": [
+      {
+        "name": "workspace-packages-must-use-workspace",
+        "message": "Workspace packages must use workspace:* for internal dependencies",
+        "severity": "error"
       }
     ]
-  }
+  },
+  "sortAz": [
+    "contributors",
+    "dependencies",
+    "devDependencies",
+    "keywords",
+    "peerDependencies",
+    "resolutions",
+    "scripts"
+  ],
+  "sortFirst": ["name", "description", "version", "private", "type", "workspaces"]
 }

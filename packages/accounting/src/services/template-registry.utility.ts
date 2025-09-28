@@ -8,6 +8,7 @@ import type {
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
+import { omitUndefined } from '../utils';
 
 /**
  * Validates that a file path is safe and within the allowed base directory.
@@ -153,12 +154,14 @@ export class TemplateRegistry {
           // eslint-disable-next-line security/detect-non-literal-fs-filename
           const indexContent = await fs.readFile(validatedIndexPath, 'utf8');
           const template = parseYaml(indexContent) as CoaTemplate;
-          bundles.push({
-            jurisdiction: template.jurisdiction,
-            version: template.version,
-            name: template.name,
-            description: template.description,
-          });
+          bundles.push(
+            omitUndefined({
+              jurisdiction: template.jurisdiction,
+              version: template.version,
+              name: template.name,
+              description: template.description,
+            }),
+          );
         } catch (error) {
           console.warn(
             `Could not load index.yaml for ${jurisdiction}/${version}: ${error instanceof Error ? error.message : String(error)}`,
@@ -215,7 +218,7 @@ export class TemplateRegistry {
    * Normalize account data from template files
    */
   private normalizeAccount(account: Record<string, unknown>): CoaTemplateAccount {
-    return {
+    return omitUndefined({
       code: account.code as string,
       name: account.name as string,
       type: account.type as 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense',
@@ -247,7 +250,7 @@ export class TemplateRegistry {
       notes: account.notes as string | undefined,
       tags: (account.tags as string[]) || [],
       sortOrder: (account.sortOrder as number) || 0,
-    };
+    });
   }
 
   /**

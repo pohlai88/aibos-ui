@@ -22,7 +22,7 @@ export class GeneralLedgerEntryEntity {
   @Column({ type: 'decimal', precision: 18, scale: 6, default: 0 })
   creditAmount!: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'USD' })
+  @Column({ type: 'varchar', length: 3, default: 'MYR' })
   currency!: string;
 
   @Column({ name: 'posting_ts', type: 'timestamptz' })

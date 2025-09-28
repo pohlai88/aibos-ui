@@ -1,0 +1,127 @@
+## **AI BOS ERP Monorepo Directory Structure**
+
+### **Root Level**
+```
+d:\aibos-erp\
+├── 📁 apps/                    # Applications (deployable services)
+├── 📁 packages/               # Shared packages/libraries
+├── 📁 docs/                   # Documentation
+├── 📁 scripts/               # Build and utility scripts
+├── 📁 tests/                  # Cross-package tests
+├── 📁 templates/              # Code templates
+├── 📁 dist/                   # Build output (root level)
+├── 📁 node_modules/           # Root dependencies
+├── 📄 package.json            # Root package configuration
+├── 📄 pnpm-workspace.yaml     # PNPM workspace config
+├── 📄 pnpm-lock.yaml          # Lock file
+├── 📄 turbo.json              # Turborepo configuration
+├── 📄 tsconfig.json           # Root TypeScript config
+├── 📄 tsconfig.base.json      # Base TypeScript config
+├── 📄 eslint.config.js        # ESLint configuration
+├── 📄 docker-compose.yml      # Docker services
+├── 📄 docker-compose.dev.yml  # Development Docker services
+├── 📄 playwright.config.ts    # E2E testing config
+├── 📄 vitest.config.ts        # Unit testing config
+└── 📄 README.md               # Project documentation
+```
+
+### **Apps Directory** (`apps/`)
+```
+apps/
+├── 📁 bff/                    # Backend for Frontend service
+│   ├── 📁 src/                # Source code
+│   ├── 📁 dist/               # Build output
+│   ├── 📁 node_modules/       # Dependencies
+│   ├── 📄 package.json        # App configuration
+│   └── 📄 tsconfig.json       # TypeScript config
+├── 📁 web/                    # Next.js web application
+│   ├── 📁 src/                # Source code
+│   ├── 📁 scripts/            # App-specific scripts
+│   ├── 📁 node_modules/       # Dependencies
+│   ├── 📄 package.json        # App configuration
+│   ├── 📄 next.config.js      # Next.js config
+│   ├── 📄 postcss.config.js   # PostCSS config
+│   ├── 📄 eslint.config.js    # ESLint config
+│   └── 📄 tsconfig.json       # TypeScript config
+└── 📁 workers/                # Background workers (empty)
+```
+
+### **Packages Directory** (`packages/`)
+```
+packages/
+├── 📁 accounting/             # Core accounting business logic
+│   ├── 📁 src/                # Source code
+│   ├── 📁 docs/               # Package documentation
+│   ├── 📁 dist/               # Build output
+│   ├── 📁 node_modules/       # Dependencies
+│   ├── 📄 package.json        # Package configuration
+│   ├── 📄 tsconfig.json       # TypeScript config
+│   ├── 📄 tsup.config.ts      # Build configuration
+│   └── 📄 vitest.config.ts    # Test configuration
+├── 📁 accounting-contracts/   # API contracts and types
+├── 📁 accounting-web/         # Accounting UI components
+├── 📁 eventsourcing/          # Event sourcing infrastructure
+├── 📁 observability/          # Logging and metrics
+├── 📁 policy/                 # Business rules and policies
+├── 📁 ui/                     # Core UI component library
+├── 📁 ui-business/            # Business-specific UI components
+├── 📁 utils/                  # Shared utilities
+└── 📁 docs/                   # Package-level documentation
+```
+
+### **Documentation Directory** (`docs/`)
+```
+docs/
+├── 📁 adr/                    # Architecture Decision Records
+├── 📁 api/                    # API documentation
+├── 📁 debugging/              # Debug guides
+├── 📁 development/            # Development guides
+├── 📁 phase2/                 # Phase 2 planning
+├── 📁 reports/                # Analysis reports
+├── 📁 training/               # Training materials
+└── 📄 PHASE_1_STATUS.md       # Phase status
+```
+
+### **Scripts Directory** (`scripts/`)
+```
+scripts/
+├── 📁 __tests__/              # Script tests
+├── 📁 codemods/               # Code transformation scripts
+├── 📁 eslint-rules/           # Custom ESLint rules
+├── 📁 grafana-datasources/    # Monitoring configs
+├── 📁 types/                  # Type definitions
+├── 📄 *.js                    # Various utility scripts
+├── 📄 *.bat                   # Windows batch files
+├── 📄 *.sh                    # Shell scripts
+└── 📄 *.sql                   # Database scripts
+```
+
+### **Tests Directory** (`tests/`)
+```
+tests/
+├── 📁 contract/               # Contract tests
+├── 📁 e2e/                    # End-to-end tests
+├── 📁 perf/                   # Performance tests
+├── 📁 performance/            # Performance benchmarks
+└── 📁 types/                  # Type tests
+```
+
+### **Templates Directory** (`templates/`)
+```
+templates/
+└── 📁 coa/                    # Chart of Accounts templates
+    └── 📄 *.yaml              # YAML template files
+```
+
+## **Key Clean Monorepo Principles Applied:**
+
+✅ **Separation of Concerns**: Apps vs Packages clearly separated  
+✅ **Shared Dependencies**: Root-level package management with PNPM  
+✅ **Build System**: Turborepo for efficient builds  
+✅ **Type Safety**: Comprehensive TypeScript configuration  
+✅ **Testing**: Vitest for unit tests, Playwright for E2E  
+✅ **Documentation**: Structured docs with ADRs  
+✅ **Scripts**: Centralized build and utility scripts  
+✅ **Docker**: Containerization support  
+
+This structure follows enterprise-grade monorepo best practices with clear boundaries between applications and shared packages.

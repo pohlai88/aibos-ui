@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { safeGet } from '@aibos/utils';
 import { join } from 'node:path';
 // scripts/codemods/fix-accounting-imports.ts
 import { Project, SyntaxKind } from 'ts-morph';
@@ -30,12 +31,14 @@ const rewrites: Array<{ from: RegExp; to: (m: RegExpMatchArray) => string }> = [
   // B) Old service names -> new .service.ts
   {
     from: /^(.+)\/services\/([a-z0-9-]+)-service$/,
-    to: (m) => `${m[1]}/services/${m[2]}.service`,
+    to: (m) =>
+      `${/* TODO: allow-list */ safeGet(m, 1, [] as const)}/services/${/* TODO: allow-list */ safeGet(m, 2, [] as const)}.service`,
   },
   // C) kafka producer moved from infra -> services
   {
     from: /^(.+)\/infrastructure\/messaging\/kafka-producer\.service$/,
-    to: (m) => `${m[1]}/services/kafka-producer.service`,
+    to: (m) =>
+      `${/* TODO: allow-list */ safeGet(m, 1, [] as const)}/services/kafka-producer.service`,
   },
 ];
 
@@ -70,7 +73,7 @@ for (const sf of project.getSourceFiles()) {
   // Bonus: flag ambiguous 'events' barrel imports and suggest direct imports
   // (non-blocking; we leave code intact but add a comment once per file)
   if (imports.some((index) => /\/events$/.test(normalize(index.getModuleSpecifierValue())))) {
-    const firstImport = imports[0];
+    const firstImport = /* TODO: allow-list */ safeGet(imports, 0, [] as const);
     sf.insertText(
       firstImport.getEnd(),
       `\n// TODO: Prefer direct event files: e.g. "src/events/journal-entry-posted-event"\n`,

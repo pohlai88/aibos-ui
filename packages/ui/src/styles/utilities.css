@@ -1,0 +1,40 @@
+@tailwind utilities;
+
+@layer utilities {
+  /* Icon sizing helper to avoid arbitrary [&>svg]:size-* */
+  .icon-sm > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  } /* 14px = 3.5 * 4px */
+  .icon-md > svg {
+    width: 1rem;
+    height: 1rem;
+  }
+  .icon-lg > svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  /* Text clamping helper (prefer plugin: line-clamp-1) */
+  .truncate-1 {
+    @apply line-clamp-1;
+  }
+
+  /* Table zebra helper to avoid selector-heavy arbitrary values */
+  .table-zebra tbody tr:nth-child(even) {
+    background-color: hsl(var(--aibos-semantic-muted) / 0.5);
+  }
+
+  /* Table hover helper */
+  .table-hover tbody tr:hover {
+    background-color: hsl(var(--aibos-semantic-accent) / 0.5);
+  }
+
+  /* Accordion caret rotation helper */
+  .accordion-caret {
+    @apply transition-transform;
+  }
+  .accordion-caret[data-state='open'] {
+    @apply rotate-180;
+  }
+}

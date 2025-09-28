@@ -1,4 +1,6 @@
 import type { JournalEntryRepository } from '../domain/repositories.interface';
+import { safeGet } from '../utils';
+import { omitUndefined } from '../utils';
 import type { AccountRepository } from '../domain/repositories.interface';
 import type { EventStore } from '../domain/repositories.interface';
 
@@ -11,6 +13,7 @@ import {
 } from '../constants/injection.tokens';
 import { ChartOfAccounts } from '../domain/chart-of-accounts.domain';
 import { JournalEntry } from '../domain/journal-entry';
+import { Account } from '../domain/account.domain';
 import { CircuitBreaker } from '../infrastructure/circuit-breaker.infrastructure';
 import { GeneralLedgerProjection } from '../projections/general-ledger.projection';
 import { FinancialReportingService } from './financial-reporting.service';
@@ -82,7 +85,7 @@ export class AccountingService {
     });
   }
 
-  async postJournalEntry(command: PostJournalEntryCommand): Promise<void> {
+  async postJournalEntry(command: PostJournalEntryCommand, idempotencyKey?: string): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       this.logger.log(
         `Posting journal entry: ${command.journalEntryId} for tenant: ${command.tenantId}`,
@@ -180,10 +183,9 @@ export class AccountingService {
         );
         // merge back functional values
         for (let index = 0; index < converted.length; index++) {
-          // eslint-disable-next-line security/detect-object-injection
-          const convertedEntry = converted[index];
-          // eslint-disable-next-line security/detect-object-injection
-          const rebalancedEntry = rebalanced[index];
+          const convertedEntry = /* TODO: allow-list */ safeGet(converted, index, [] as const);
+
+          const rebalancedEntry = /* TODO: allow-list */ safeGet(rebalanced, index, [] as const);
           if (convertedEntry && rebalancedEntry) {
             convertedEntry.functionalDebit = rebalancedEntry.debitAmount;
             convertedEntry.functionalCredit = rebalancedEntry.creditAmount;
@@ -192,16 +194,18 @@ export class AccountingService {
         }
       }
 
-      const enrichedCommand = new PostJournalEntryCommand({
-        journalEntryId: command.journalEntryId,
-        entries: converted,
-        reference: command.reference,
-        description: command.description,
-        postingDate: command.postingDate,
-        tenantId: command.tenantId,
-        userId: command.userId,
-        baseCurrency,
-      });
+      const enrichedCommand = new PostJournalEntryCommand(
+        omitUndefined({
+          journalEntryId: command.journalEntryId,
+          entries: converted,
+          reference: command.reference,
+          description: command.description,
+          postingDate: command.postingDate,
+          tenantId: command.tenantId,
+          userId: command.userId,
+          baseCurrency,
+        }),
+      );
 
       const journalEntry = new JournalEntry(
         enrichedCommand.journalEntryId,
@@ -218,6 +222,7 @@ export class AccountingService {
         events as unknown as Parameters<typeof this.eventStore.append>[1],
         journalEntry.getVersion() - events.length,
         enrichedCommand.tenantId,
+        idempotencyKey,
       );
 
       journalEntry.markEventsAsCommitted();
@@ -267,15 +272,17 @@ export class AccountingService {
   }
 
   private async updateAccountReadModel(command: CreateAccountCommand): Promise<void> {
-    await this.accountRepository.save({
-      accountCode: command.accountCode,
-      accountName: command.accountName,
-      accountType: command.accountType,
-      parentAccountCode: command.parentAccountCode,
-      tenantId: command.tenantId,
-      balance: 0,
-      isActive: true,
-    });
+    await this.accountRepository.save(
+      omitUndefined({
+        accountCode: command.accountCode,
+        accountName: command.accountName,
+        accountType: command.accountType,
+        parentAccountCode: command.parentAccountCode,
+        tenantId: command.tenantId,
+        balance: 0,
+        isActive: true,
+      }),
+    );
   }
 
   // Additional methods required by the controller
@@ -438,5 +445,29 @@ export class AccountingService {
       string,
       unknown
     >;
+  }
+
+  // UI Integration Methods - Clean Architecture Compliant
+  async getAccountsForTenant(tenantId: string): Promise<Account[]> {
+    this.logger.log(`Getting accounts for tenant: ${tenantId}`);
+    return await this.accountRepository.findByTenant(tenantId);
+  }
+
+  async getJournalEntriesForTenant(tenantId: string): Promise<JournalEntry[]> {
+    this.logger.log(`Getting journal entries for tenant: ${tenantId}`);
+    return await this.journalEntryRepository.findByTenant(tenantId);
+  }
+
+  async getAccountByCode(accountCode: string, tenantId: string): Promise<Account | null> {
+    this.logger.log(`Getting account by code: ${accountCode} for tenant: ${tenantId}`);
+    return await this.accountRepository.findByCode(accountCode, tenantId);
+  }
+
+  async getJournalEntryById(
+    journalEntryId: string,
+    tenantId: string,
+  ): Promise<JournalEntry | null> {
+    this.logger.log(`Getting journal entry by ID: ${journalEntryId}`);
+    return await this.journalEntryRepository.findById(journalEntryId, tenantId);
   }
 }

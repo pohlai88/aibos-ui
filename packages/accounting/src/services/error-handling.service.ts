@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+// safeGet import removed as it's not used
 import { randomUUID } from 'node:crypto';
+import { omitUndefined } from '../utils';
 
 // ============================================================================
 // CORE INTERFACES
@@ -144,7 +146,7 @@ export class ErrorHandlingService {
     },
   ): string {
     const errorId = this.generateErrorId();
-    const errorContext: ErrorContext = {
+    const errorContext: ErrorContext = omitUndefined({
       id: errorId,
       type: error.constructor.name,
       message: error.message,
@@ -158,7 +160,7 @@ export class ErrorHandlingService {
       correlationId: context.correlationId,
       causationId: context.causationId,
       resolved: false,
-    };
+    });
 
     // Log error with structured data
     this.logger.error(`Error tracked: ${errorId}`, {
@@ -690,7 +692,7 @@ export class ErrorHandlingService {
           accumulator.lastOccurrence.getTime() - b.lastOccurrence.getTime(),
       )[0];
       if (oldestPattern) {
-        this.errorPatterns.delete(oldestPattern[0]);
+        this.errorPatterns.delete(oldestPattern[0]!);
       }
     }
   }

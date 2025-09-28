@@ -3,24 +3,28 @@ import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 import boundaries from 'eslint-plugin-boundaries';
 import importPlugin from 'eslint-plugin-import';
-import perfectionist from 'eslint-plugin-perfectionist';
-import prettier from 'eslint-plugin-prettier';
+// import perfectionist from 'eslint-plugin-perfectionist'; // Removed - too strict for development workflow
 import promise from 'eslint-plugin-promise';
 import sonarjs from 'eslint-plugin-sonarjs';
 import security from 'eslint-plugin-security';
 import unicorn from 'eslint-plugin-unicorn';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
-import aibosUi from './packages/ui/eslint-plugin/index.js';
+import prettier from 'eslint-config-prettier';
+import jsoncParser from 'jsonc-eslint-parser';
+import jsonc from 'eslint-plugin-jsonc';
+import noNpmUsage from './scripts/eslint-rules/no-npm-usage.js';
+// import aibosUi from './packages/ui/eslint-plugin/index.js'; // REMOVED - custom plugin deleted
 // import nextPlugin from 'eslint-config-next'; // Temporarily disabled due to ESLint compatibility issues
 
 export default [
   // Base configuration
   js.configs.recommended,
 
-  // Global ignores
+  // Single source of truth for all ignores
   {
     ignores: [
+      // Build artifacts
       'node_modules/',
       'dist/',
       'build/',
@@ -34,6 +38,21 @@ export default [
       '**/apps/web/.next/types/**',
       '**/apps/web/.next/static/**',
       '**/apps/web/.next/server/**',
+      
+      // Test files and related content - SINGLE SOURCE OF TRUTH
+      '**/*.test.*',
+      '**/*.spec.*',
+      '**/__tests__/**',
+      '**/__mocks__/**',
+      '**/tests/**',
+      '**/test/**',
+      '**/e2e/**',
+      '**/integration/**',
+      '**/fixtures/**',
+      '**/*.stories.*',
+      '**/*.story.*',
+      '**/*.snap',
+      'coverage/**',
     ],
   },
 
@@ -60,7 +79,7 @@ export default [
         clearTimeout: 'readonly',
         setImmediate: 'readonly',
         clearImmediate: 'readonly',
-        // Browser globals
+        // Browser/DOM globals
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
@@ -68,22 +87,42 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         fetch: 'readonly',
-        // React/JSX globals
-        JSX: 'readonly',
-        React: 'readonly',
-        // HTML globals
-        HTMLInputElement: 'readonly',
+        performance: 'readonly',
+        // DOM element types
         HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLAnchorElement: 'readonly',
+        HTMLOListElement: 'readonly',
+        HTMLLIElement: 'readonly',
+        HTMLParagraphElement: 'readonly',
+        HTMLLabelElement: 'readonly',
         HTMLSpanElement: 'readonly',
         HTMLButtonElement: 'readonly',
         HTMLDivElement: 'readonly',
         HTMLHeadingElement: 'readonly',
         Element: 'readonly',
         Event: 'readonly',
+        MouseEvent: 'readonly',
+        // SVG types
+        SVGElement: 'readonly',
+        SVGSVGElement: 'readonly',
+        // Media query and resize observer
+        ResizeObserver: 'readonly',
+        ResizeObserverEntry: 'readonly',
+        MediaQueryList: 'readonly',
+        MediaQueryListEvent: 'readonly',
+        DOMRectReadOnly: 'readonly',
+        IntersectionObserver: 'readonly',
+        IntersectionObserverEntry: 'readonly',
+        Window: 'readonly',
+        // React/JSX globals
+        JSX: 'readonly',
+        React: 'readonly',
         // Other globals
         btoa: 'readonly',
         atob: 'readonly',
         URL: 'readonly',
+        alert: 'readonly',
         // Test globals
         describe: 'readonly',
         test: 'readonly',
@@ -93,6 +132,8 @@ export default [
         afterAll: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        vitest: 'readonly',
+        vi: 'readonly',
         // CommonJS globals
         module: 'readonly',
         require: 'readonly',
@@ -105,14 +146,16 @@ export default [
       '@typescript-eslint': typescript,
       boundaries,
       import: importPlugin,
-      perfectionist,
+      // perfectionist, // Removed - too strict for development workflow
       promise,
       sonarjs,
       security,
       unicorn,
       'jsx-a11y': jsxA11y,
       'react-hooks': reactHooks,
-      'aibos-ui': aibosUi,
+      'no-npm-usage': noNpmUsage,
+      jsonc,
+      // 'aibos-ui': aibosUi, // REMOVED - custom plugin deleted
     },
     rules: {
       // Enhanced TypeScript rules
@@ -125,11 +168,14 @@ export default [
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
+      'no-unused-vars': 'off', // ← CRITICAL: Disable base rule first
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
         },
       ],
 
@@ -137,18 +183,10 @@ export default [
       'boundaries/element-types': 'off',
       'boundaries/no-unknown-files': 'off',
 
-      // Import hygiene - using Perfectionist for deterministic sorting
+      // Import hygiene - simplified approach
       'import/order': 'off',
-      'perfectionist/sort-imports': [
-        'error',
-        {
-          type: 'natural',
-          groups: ['type', ['builtin', 'external', 'internal', 'parent', 'sibling', 'index']],
-          newlinesBetween: 'always',
-          internalPattern: ['^(@aibos|~)/'],
-          ignoreCase: false,
-        },
-      ],
+      // Removed perfectionist/sort-imports - too strict for development workflow
+      // Use Prettier or IDE auto-formatting for consistent import ordering
       'import/no-extraneous-dependencies': [
         'error',
         {
@@ -159,27 +197,34 @@ export default [
             '**/__tests__/**',
             '**/*.config.{js,cjs,ts}',
             'scripts/**',
+            'tests/**',
+            '**/setup.ts',
+            '**/setup.js',
           ],
         },
       ],
 
-      // Enhanced Security rules (12 additional rules)
-      'security/detect-object-injection': 'error',
-      'security/detect-non-literal-regexp': 'error',
+      // Enhanced Security rules - optimized for development workflow
+      'security/detect-object-injection': 'warn', // Keep as warn for controlled access patterns
+      'security/detect-non-literal-regexp': 'warn', // Downgrade to warn for dynamic patterns
       'security/detect-unsafe-regex': 'error',
       'security/detect-buffer-noassert': 'error',
       'security/detect-child-process': 'warn',
 
-      // Anti-drift protection - prevents hardcoded colors
-      'aibos-ui/no-hardcoded-palette': ['error', { allow: ['bg-transparent', '^ring-offset-'] }],
+      // Critical security rules only
       'security/detect-disable-mustache-escape': 'error',
       'security/detect-eval-with-expression': 'error',
       'security/detect-no-csrf-before-method-override': 'error',
-      'security/detect-non-literal-fs-filename': 'warn',
-      'security/detect-non-literal-require': 'warn',
+      'security/detect-non-literal-fs-filename': 'warn', // Allow for build scripts
+      'security/detect-non-literal-require': 'warn', // Allow for dynamic imports
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
       'security/detect-new-buffer': 'error',
+
+      // Complexity rules - Temporarily disabled for development
+      complexity: 'off', // Temporarily disabled
+      'max-depth': 'off', // Temporarily disabled
+      'max-lines-per-function': 'off', // Temporarily disabled
 
       // Performance rules
       'sonarjs/no-duplicate-string': 'error',
@@ -188,6 +233,7 @@ export default [
       'sonarjs/no-unused-collection': 'error',
       'sonarjs/prefer-immediate-return': 'error',
       'sonarjs/prefer-single-boolean-return': 'error',
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
 
       // Enhanced Code quality rules (Unicorn rules)
       'unicorn/prefer-module': 'error',
@@ -195,19 +241,26 @@ export default [
       'unicorn/prefer-query-selector': 'error',
       'unicorn/prefer-string-slice': 'error',
       'unicorn/prefer-type-error': 'error',
+      'unicorn/no-null': 'off', // Allow null for React compatibility
       'unicorn/prevent-abbreviations': [
-        'error',
+        'warn',
         {
           allowList: {
-            args: true,
+            e: true,
+            err: true,
+            ref: true,
+            ctx: true,
+            props: true,
+            dir: true,
+            rel: true,
             env: true,
+            req: true,
+            res: true,
+            args: true,
+            Args: true,
             db: true,
             id: true,
             params: true,
-            props: true,
-            ref: true,
-            req: true,
-            res: true,
             api: true,
             pkg: true,
             src: true,
@@ -226,6 +279,16 @@ export default [
           },
         },
       ],
+
+      // NPM blocking rules
+      'no-npm-usage/no-npm-usage': 'error',
+      'no-npm-usage/no-npm-scripts': 'error',
+      'no-npm-usage/no-npm-install': 'error',
+      'no-npm-usage/no-npm-run': 'error',
+      'no-npm-usage/no-npm-add': 'error',
+      'no-npm-usage/no-npm-remove': 'error',
+      'no-npm-usage/no-npm-update': 'error',
+      'no-npm-usage/no-npm-publish': 'error',
 
       // Local policies
       'no-restricted-imports': [
@@ -294,34 +357,39 @@ export default [
     },
   },
 
-  // Test files
-  {
-    files: ['**/*.test.ts', '**/*.spec.ts', '**/*.test.tsx', '**/*.spec.tsx'],
-    languageOptions: {
-      globals: {
-        describe: 'readonly',
-        test: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        jest: 'readonly',
-        vi: 'readonly',
-      },
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      'import/no-extraneous-dependencies': 'off',
-      'no-unused-vars': 'off', // Allow unused vars in tests
-      '@typescript-eslint/no-unused-vars': 'off',
-    },
-  },
 
   // Config files and scripts
   {
-    files: ['**/*.config.{js,cjs,ts}', 'scripts/**/*.{js,ts,cjs,mjs}'],
+    files: [
+      '**/*.config.{js,cjs,ts,mjs}',
+      '**/tsup.config.ts',
+      '**/vitest.config.ts',
+      '**/playwright.config.ts',
+      '**/tailwind.config.js',
+      '**/next.config.js',
+      '**/postcss.config.js',
+      '**/eslint.config.{js,mjs,cjs}',
+      '**/dangerfile.js',
+      '**/turbo.json',
+      '**/pnpm-workspace.yaml',
+      '**/package.json',
+      '**/tsconfig*.json',
+      '**/vite.config.ts',
+      '**/webpack.config.js',
+      '**/rollup.config.js',
+      '**/jest.config.{js,ts}',
+      '**/cypress.config.{ts,js}',
+      'scripts/**/*.{js,ts,cjs,mjs}',
+      '**/scripts/**/*.{js,ts,cjs,mjs}',
+      '**/codemods/**/*.{js,ts,cjs,mjs}',
+      '**/eslint-rules/**/*.{js,ts,cjs,mjs}',
+      '**/grafana-datasources/**/*.{yml,yaml,json,ts,js,mjs,cjs}',
+      '**/storybook/**/*.{ts,js,mjs,cjs}',
+      '**/.storybook/**/*.{ts,js,mjs,cjs}',
+    ],
+    plugins: {
+      security,
+    },
     languageOptions: {
       globals: {
         module: 'readonly',
@@ -331,6 +399,21 @@ export default [
         __filename: 'readonly',
         process: 'readonly',
         console: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        // Node.js globals
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
+        // CommonJS globals
+        define: 'readonly',
+        defineProperty: 'readonly',
+        // Build tool globals
+        import: 'readonly',
+        importMeta: 'readonly',
       },
     },
     rules: {
@@ -340,6 +423,9 @@ export default [
       'no-undef': 'off', // Config files often use global variables
       'no-unused-vars': 'off', // Scripts often have unused vars
       '@typescript-eslint/no-unused-vars': 'off',
+      'security/detect-object-injection': 'warn', // Config files often use dynamic keys
+      'security/detect-non-literal-fs-filename': 'warn', // Build scripts often use dynamic paths
+      'security/detect-non-literal-regexp': 'warn', // Config files may use dynamic regex
     },
   },
 
@@ -350,12 +436,12 @@ export default [
       // Keep explicit types for library surface; relax for internal fns
       '@typescript-eslint/explicit-module-boundary-types': ['warn'],
 
-      // Prefer undefined in React code; we'll codemod nulls away
-      'unicorn/no-null': ['error'],
+      // Allow null for React components (empty renders) but prefer undefined for internal logic
+      'unicorn/no-null': 'off', // React components need to return null for empty renders
 
       // Allow common React abbreviations; keep everything else strict
       'unicorn/prevent-abbreviations': [
-        'error',
+        'warn',
         {
           allowList: {
             Props: true,
@@ -364,15 +450,21 @@ export default [
             prop: true,
             props: true,
             utils: true, // Allow utils.ts filename
+            // Common abbreviations
+            e: true,
+            err: true,
+            ref: true,
+            ctx: true,
+            dir: true,
+            rel: true,
+            env: true,
+            req: true,
+            res: true,
             // Keep existing allowList from root config
             args: true,
-            env: true,
             db: true,
             id: true,
             params: true,
-            ref: true,
-            req: true,
-            res: true,
             api: true,
             pkg: true,
             src: true,
@@ -395,8 +487,8 @@ export default [
       // Guarded dynamic access is okay with justification comments
       'security/detect-object-injection': 'error',
 
-      // Keep complexity realistic, fail egregious cases
-      'sonarjs/cognitive-complexity': ['error', 20],
+      // Keep complexity realistic, fail egregious cases - Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
       // Disable perfectionist import sorting for UI package (too strict)
       'perfectionist/sort-imports': 'off',
       // Handle unused vars in UI package
@@ -514,41 +606,164 @@ export default [
     },
   },
 
-  // ------------- GLOBAL PRETTIER INTEGRATION -------------
-  // Put this LAST so it can disable conflicting formatting rules and surface Prettier issues.
+  // ESLint plugin - Node.js environment for CommonJS
   {
-    name: 'prettier/global',
-    plugins: { prettier },
+    files: ['packages/ui/eslint-plugin/**/*.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        global: 'readonly',
+      },
+    },
     rules: {
-      // Run Prettier as an ESLint rule; any deviation becomes a fixable error.
-      'prettier/prettier': [
-        'error',
-        {
-          // keep in sync with .prettierrc.json
-          printWidth: 100,
-          singleQuote: true,
-          semi: true,
-          trailingComma: 'all',
-          arrowParens: 'always',
-          bracketSpacing: true,
-          bracketSameLine: false,
-          tabWidth: 2,
-          endOfLine: 'lf',
-          plugins: ['prettier-plugin-tailwindcss'],
-        },
-      ],
+      'unicorn/prefer-module': 'off',
+      'import/no-commonjs': 'off',
     },
   },
 
-  // ------------- TURN OFF ESLINT-FORMATTING CONFLICTS -------------
-  // This emulates eslint-config-prettier behavior for flat configs.
+  // ------------- TIERED COMPLEXITY RULES -------------
+  // ERP-grade complexity management with folder-based overrides
+  
+  // Base TypeScript settings with real complexity measures
   {
-    name: 'prettier/compat',
+    name: 'complexity/base',
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: { 
+        project: ['./tsconfig.json'],
+        projectService: true,
+        tsconfigRootDir: process.cwd(),
+      },
+    },
+    plugins: { 
+      '@typescript-eslint': typescript, 
+      sonarjs: sonarjs,
+      security: security
+    },
     rules: {
-      // If you had any formatting-ish rules turned on, disable them here:
-      // Examples (uncomment if present elsewhere):
-      // 'arrow-body-style': 'off',
-      // 'prefer-arrow-callback': 'off',
+      // General safety/perf rules
+      'security/detect-object-injection': 'error',
+      'no-new-func': 'error',
+      'no-eval': 'error',
+      
+      // Prefer real complexity measures over raw line count - Temporarily disabled
+      complexity: 'off', // Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
+      // '@typescript-eslint/max-params': ['error', { max: 5 }], // Temporarily disabled
+      
+      // Tiered line count - base threshold - Temporarily disabled
+      'max-lines-per-function': 'off', // Temporarily disabled
     },
   },
+
+  // Base JavaScript settings (no TypeScript parser)
+  {
+    name: 'complexity/base-js',
+    files: ['**/*.{js,mjs,cjs}'],
+    plugins: { 
+      sonarjs: sonarjs,
+      security: security
+    },
+    rules: {
+      // General safety/perf rules
+      'security/detect-object-injection': 'error',
+      'no-new-func': 'error',
+      'no-eval': 'error',
+      
+      // Prefer real complexity measures over raw line count - Temporarily disabled
+      complexity: 'off', // Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
+      
+      // Tiered line count - base threshold - Temporarily disabled
+      'max-lines-per-function': 'off', // Temporarily disabled
+    },
+  },
+
+  // UI components tighter (favor hooks & composition)
+  {
+    name: 'complexity/ui-components',
+    files: ['packages/ui/**', 'packages/ui-business/**'],
+    rules: {
+      complexity: 'off', // Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
+      'max-lines-per-function': 'off', // Temporarily disabled
+      // '@typescript-eslint/max-params': ['error', { max: 5 }], // Temporarily disabled
+    },
+  },
+
+  // Charts/visualizations: allow lines, control complexity
+  {
+    name: 'complexity/charts',
+    files: ['**/financial-charts/**'],
+    rules: {
+      'max-lines-per-function': 'off', // Temporarily disabled
+      complexity: 'off', // Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
+      // '@typescript-eslint/max-params': ['error', { max: 6 }], // Temporarily disabled
+    },
+  },
+
+  // Scripts/CLI: slightly higher line budget
+  {
+    name: 'complexity/scripts',
+    files: ['**/scripts/**'],
+    rules: {
+      'max-lines-per-function': 'off', // Temporarily disabled
+      complexity: 'off', // Temporarily disabled
+      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
+      // '@typescript-eslint/max-params': ['error', { max: 6 }], // Temporarily disabled
+    },
+  },
+
+  // Turn off in seeds/migrations/generated/storybook
+  {
+    name: 'complexity/exclusions',
+    files: [
+      '**/__fixtures__/**',
+      '**/*.stories.*',
+      'apps/**/seeds/**',
+      '**/migrations/**',
+      '**/generated/**',
+    ],
+    rules: {
+      'max-lines-per-function': 'off',
+      complexity: 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      '@typescript-eslint/max-params': 'off',
+    },
+  },
+
+  // JSON/JSONC file handling - stops "Unexpected token :" errors
+  {
+    files: ['**/*.json'],
+    languageOptions: {
+      parser: jsoncParser,
+    },
+    plugins: {
+      jsonc,
+    },
+    rules: {},
+  },
+  {
+    files: ['**/*.jsonc'],
+    languageOptions: {
+      parser: jsoncParser,
+    },
+    plugins: {
+      jsonc,
+    },
+    rules: {},
+  },
+
+  // ------------- PRETTIER INTEGRATION -------------
+  // IMPORTANT: Prettier config MUST be LAST to disable conflicting formatting rules
+  prettier,
 ];

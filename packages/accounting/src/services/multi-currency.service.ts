@@ -1,23 +1,12 @@
 import { type ExchangeRateService } from './exchange-rate.service';
+import { getCurrencyDecimalsStrict, isValidCurrency, round2HalfUp } from '../utils';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class MultiCurrencyService {
   constructor(private readonly exchangeRateService: ExchangeRateService) {}
 
-  private static readonly DECIMALS: Record<string, number> = {
-    USD: 2,
-    EUR: 2,
-    GBP: 2,
-    SGD: 2,
-    MYR: 2,
-    THB: 2,
-    IDR: 0,
-    VND: 0,
-    PHP: 2,
-    JPY: 0,
-    KRW: 0,
-  };
+  // Removed manual DECIMALS mapping - now using getCurrencyDecimalsStrict() utility
 
   async convertAmount(
     amount: number,
@@ -25,6 +14,14 @@ export class MultiCurrencyService {
     toCurrency: string,
     date?: Date,
   ): Promise<number> {
+    // Validate currencies first
+    if (!isValidCurrency(fromCurrency)) {
+      throw new Error(`Invalid from currency: ${fromCurrency}`);
+    }
+    if (!isValidCurrency(toCurrency)) {
+      throw new Error(`Invalid to currency: ${toCurrency}`);
+    }
+    
     if (fromCurrency === toCurrency) {
       return amount;
     }
@@ -95,15 +92,19 @@ export class MultiCurrencyService {
   }
 
   private roundCurrency(amount: number, currency: string): number {
-    // Different currencies have different decimal places
-    const decimalPlaces = this.getCurrencyDecimalPlaces(currency);
-    const factor = Math.pow(10, decimalPlaces);
-    return Math.round((amount + Number.EPSILON) * factor) / factor;
+    // Use our precise rounding utility instead of manual Math.round
+    const decimals = this.getCurrencyDecimalPlaces(currency);
+    return round2HalfUp(amount, decimals);
   }
 
   private getCurrencyDecimalPlaces(currency: string): number {
-    // eslint-disable-next-line security/detect-object-injection
-    return MultiCurrencyService.DECIMALS[currency] ?? 2;
+    // Validate currency first
+    if (!isValidCurrency(currency)) {
+      throw new Error(`Invalid currency: ${currency}`);
+    }
+    
+    // Use our centralized utility instead of manual mapping
+    return getCurrencyDecimalsStrict(currency);
   }
 
   /**
@@ -127,18 +128,15 @@ export class MultiCurrencyService {
       let index = -1;
       let maxAbs = -1;
       for (let index_ = 0; index_ < lines.length; index_++) {
-        // eslint-disable-next-line security/detect-object-injection
         const amt = lines[index_]?.creditAmount ?? 0;
         if (Math.abs(amt) > maxAbs) {
           maxAbs = Math.abs(amt);
           index = index_;
         }
       }
-      // eslint-disable-next-line security/detect-object-injection
+
       if (index >= 0 && lines[index]) {
-        // eslint-disable-next-line security/detect-object-injection
         lines[index]!.creditAmount =
-          // eslint-disable-next-line security/detect-object-injection
           (Math.round(lines[index]!.creditAmount * factor) + diff) / factor;
       }
     } else {
@@ -146,18 +144,15 @@ export class MultiCurrencyService {
       let index = -1;
       let maxAbs = -1;
       for (let index_ = 0; index_ < lines.length; index_++) {
-        // eslint-disable-next-line security/detect-object-injection
         const amt = lines[index_]?.debitAmount ?? 0;
         if (Math.abs(amt) > maxAbs) {
           maxAbs = Math.abs(amt);
           index = index_;
         }
       }
-      // eslint-disable-next-line security/detect-object-injection
+
       if (index >= 0 && lines[index]) {
-        // eslint-disable-next-line security/detect-object-injection
         lines[index]!.debitAmount =
-          // eslint-disable-next-line security/detect-object-injection
           (Math.round(lines[index]!.debitAmount * factor) + Math.abs(diff)) / factor;
       }
     }

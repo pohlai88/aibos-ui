@@ -2,12 +2,15 @@
 
 /**
  * UI Ecosystem Documentation Generator
- * 
+ *
  * Generates HTML documentation with embedded Mermaid graphs
- * Creates a comprehensive UI ecosystem overview in docs/ui-ecosystem/
+ * Creates a comprehensive UI ecosystem overview in packages/ui/docs/ui-ecosystem/
  */
 
 import fs from 'fs';
+import { safeGet } from '@aibos/utils';
+import { safeJoin } from '@aibos/utils';
+const BASE_DIR = process.cwd();
 import path from 'path';
 import { execSync } from 'child_process';
 
@@ -20,11 +23,11 @@ const colors = {
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
   cyan: '\x1b[36m',
-  white: '\x1b[37m'
+  white: '\x1b[37m',
 };
 
 function log(message, color = 'white') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  console.log(`${colors[color] || colors.white}${message}${colors.reset}`);
 }
 
 function createHTMLTemplate(title, mermaidContent, description) {
@@ -185,7 +188,7 @@ ${mermaidContent}
 
 function generateDependencyGraphHTML() {
   log('📊 Generating Dependency Graph HTML...', 'cyan');
-  
+
   const mermaidContent = `
 graph TD
     %% UI Ecosystem Layers
@@ -238,20 +241,20 @@ graph TD
     class UIPrimitives,Tokens,Components,Primitives,Utils uiLayer
     class Contracts,AccountingWeb contractLayer
   `;
-  
+
   const html = createHTMLTemplate(
-    "Dependency Graph",
+    'Dependency Graph',
     mermaidContent,
-    "This graph shows the overall structure of the AIBOS UI ecosystem. The clean architecture follows a three-layer approach: Applications → UI-Business → UI Primitives. Each layer has specific responsibilities and dependencies."
+    'This graph shows the overall structure of the AIBOS UI ecosystem. The clean architecture follows a three-layer approach: Applications → UI-Business → UI Primitives. Each layer has specific responsibilities and dependencies.',
   );
-  
-  fs.writeFileSync('docs/ui-ecosystem/dependency-graph.html', html);
-  log('✅ Generated: docs/ui-ecosystem/dependency-graph.html', 'green');
+
+  fs.writeFileSync('packages/ui/docs/ui-ecosystem/dependency-graph.html', html);
+  log('✅ Generated: packages/ui/docs/ui-ecosystem/dependency-graph.html', 'green');
 }
 
 function generateDetailedAnalysisHTML() {
   log('🔍 Generating Detailed Analysis HTML...', 'cyan');
-  
+
   const mermaidContent = `
 graph LR
     %% Detailed UI Ecosystem with Violations
@@ -294,20 +297,20 @@ graph LR
     class PolyIssues,TypeIssues,DepIssues issue
     class Apps,Business,UI,Contracts layer
   `;
-  
+
   const html = createHTMLTemplate(
-    "Detailed Analysis",
+    'Detailed Analysis',
     mermaidContent,
-    "This analysis shows the current state of the UI ecosystem. While the overall architecture is clean with proper layer boundaries, there are specific issues that need attention, particularly around polymorphic components and TypeScript configuration."
+    'This analysis shows the current state of the UI ecosystem. While the overall architecture is clean with proper layer boundaries, there are specific issues that need attention, particularly around polymorphic components and TypeScript configuration.',
   );
-  
-  fs.writeFileSync('docs/ui-ecosystem/detailed-analysis.html', html);
-  log('✅ Generated: docs/ui-ecosystem/detailed-analysis.html', 'green');
+
+  fs.writeFileSync('packages/ui/docs/ui-ecosystem/detailed-analysis.html', html);
+  log('✅ Generated: packages/ui/docs/ui-ecosystem/detailed-analysis.html', 'green');
 }
 
 function generateViolationAnalysisHTML() {
   log('🚨 Generating Violation Analysis HTML...', 'cyan');
-  
+
   const mermaidContent = `
 graph TD
     %% Violation Analysis
@@ -346,20 +349,20 @@ graph TD
     class P1,P2,P3 priority
     class S1,S2 solution
   `;
-  
+
   const html = createHTMLTemplate(
-    "Violation Analysis",
+    'Violation Analysis',
     mermaidContent,
-    "This analysis breaks down all current violations in the UI ecosystem. The issues are categorized by priority, with specific steps provided for resolution. Most issues are related to polymorphic component implementation and can be fixed quickly."
+    'This analysis breaks down all current violations in the UI ecosystem. The issues are categorized by priority, with specific steps provided for resolution. Most issues are related to polymorphic component implementation and can be fixed quickly.',
   );
-  
-  fs.writeFileSync('docs/ui-ecosystem/violation-analysis.html', html);
-  log('✅ Generated: docs/ui-ecosystem/violation-analysis.html', 'green');
+
+  fs.writeFileSync('packages/ui/docs/ui-ecosystem/violation-analysis.html', html);
+  log('✅ Generated: packages/ui/docs/ui-ecosystem/violation-analysis.html', 'green');
 }
 
 function generateStatusReportHTML() {
   log('📈 Generating Status Report HTML...', 'cyan');
-  
+
   const mermaidContent = `
 graph LR
     %% Status Report
@@ -400,20 +403,20 @@ graph LR
     class I1,I2,I3 issue
     class N1,N2,N3 next
   `;
-  
+
   const html = createHTMLTemplate(
-    "Status Report",
+    'Status Report',
     mermaidContent,
-    "This status report summarizes the current state of the UI ecosystem enhancement project. We've successfully implemented comprehensive validation tools and documentation, with only minor issues remaining to be resolved."
+    "This status report summarizes the current state of the UI ecosystem enhancement project. We've successfully implemented comprehensive validation tools and documentation, with only minor issues remaining to be resolved.",
   );
-  
-  fs.writeFileSync('docs/ui-ecosystem/status-report.html', html);
-  log('✅ Generated: docs/ui-ecosystem/status-report.html', 'green');
+
+  fs.writeFileSync('packages/ui/docs/ui-ecosystem/status-report.html', html);
+  log('✅ Generated: packages/ui/docs/ui-ecosystem/status-report.html', 'green');
 }
 
 function generateIndexHTML() {
   log('🏠 Generating Index HTML...', 'cyan');
-  
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -587,51 +590,60 @@ function generateIndexHTML() {
     </div>
 </body>
 </html>`;
-  
-  fs.writeFileSync('docs/ui-ecosystem/index.html', html);
-  log('✅ Generated: docs/ui-ecosystem/index.html', 'green');
+
+  fs.writeFileSync('packages/ui/docs/ui-ecosystem/index.html', html);
+  log('✅ Generated: packages/ui/docs/ui-ecosystem/index.html', 'green');
 }
 
 function main() {
   log('🎨 AIBOS UI Ecosystem HTML Documentation Generator', 'blue');
   log('Creating comprehensive HTML documentation with embedded Mermaid graphs...', 'cyan');
-  
+
   // Ensure directory exists
-  if (!fs.existsSync('docs/ui-ecosystem')) {
-    fs.mkdirSync('docs/ui-ecosystem', { recursive: true });
+  if (!fs.existsSync(safeJoin(BASE_DIR, 'packages/ui/docs/ui-ecosystem'))) {
+    fs.mkdirSync('packages/ui/docs/ui-ecosystem', { recursive: true });
   }
-  
+
   // Generate all HTML files
   generateIndexHTML();
   generateDependencyGraphHTML();
   generateDetailedAnalysisHTML();
   generateViolationAnalysisHTML();
   generateStatusReportHTML();
-  
+
   log('\n📊 Generated HTML Documentation:', 'magenta');
-  log('• docs/ui-ecosystem/index.html - Main dashboard', 'white');
-  log('• docs/ui-ecosystem/dependency-graph.html - Overall ecosystem structure', 'white');
-  log('• docs/ui-ecosystem/detailed-analysis.html - Current state with issues', 'white');
-  log('• docs/ui-ecosystem/violation-analysis.html - Violation breakdown and fixes', 'white');
-  log('• docs/ui-ecosystem/status-report.html - Project status summary', 'white');
-  
+  log('• packages/ui/docs/ui-ecosystem/index.html - Main dashboard', 'white');
+  log(
+    '• packages/ui/docs/ui-ecosystem/dependency-graph.html - Overall ecosystem structure',
+    'white',
+  );
+  log(
+    '• packages/ui/docs/ui-ecosystem/detailed-analysis.html - Current state with issues',
+    'white',
+  );
+  log(
+    '• packages/ui/docs/ui-ecosystem/violation-analysis.html - Violation breakdown and fixes',
+    'white',
+  );
+  log('• packages/ui/docs/ui-ecosystem/status-report.html - Project status summary', 'white');
+
   log('\n💡 How to View:', 'cyan');
-  log('1. Open docs/ui-ecosystem/index.html in your browser', 'white');
+  log('1. Open packages/ui/docs/ui-ecosystem/index.html in your browser', 'white');
   log('2. Navigate between pages using the navigation links', 'white');
   log('3. All graphs are interactive and responsive', 'white');
-  
+
   log('\n🎉 HTML documentation generated successfully!', 'green');
-  
+
   // Auto-open the documentation in browser
   openDocumentation();
 }
 
 function openDocumentation() {
   log('\n🌐 Opening documentation in browser...', 'cyan');
-  
+
   try {
-    const indexPath = path.resolve('docs/ui-ecosystem/index.html');
-    
+    const indexPath = path.resolve('packages/ui/docs/ui-ecosystem/index.html');
+
     // Try different methods to open the file
     if (process.platform === 'win32') {
       // Windows
@@ -643,13 +655,12 @@ function openDocumentation() {
       // Linux and others
       execSync(`xdg-open "${indexPath}"`, { stdio: 'pipe' });
     }
-    
+
     log('✅ Documentation opened in your default browser!', 'green');
     log(`📍 URL: file://${indexPath.replace(/\\/g, '/')}`, 'cyan');
-    
   } catch (error) {
     log('⚠️  Could not auto-open browser, but documentation is ready!', 'yellow');
-    log('📁 Manual access: docs/ui-ecosystem/index.html', 'cyan');
+    log('📁 Manual access: packages/ui/docs/ui-ecosystem/index.html', 'cyan');
     log(`💡 Error: ${error.message}`, 'red');
   }
 }

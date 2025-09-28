@@ -4,11 +4,12 @@ export default defineConfig({
   entry: ['src/index.ts'],
   format: ['esm', 'cjs'],
   dts: false, // Temporarily disable DTS - will create manually
-  splitting: false,
+  splitting: true,
   sourcemap: true,
   clean: false,
   treeshake: true,
   skipNodeModulesBundle: true,
-  minify: false,
+  minify: true,
   target: 'es2022',
+  external: ['node:*'],
 });

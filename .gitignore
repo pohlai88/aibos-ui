@@ -47,7 +47,7 @@ turbo/generate/*
 # keep project link if you use it
 !.vercel/project.json
 
-# --- Storybook / Tests ---
+# --- Tests ---
 storybook-static/
 .playwright/
 test-results/
@@ -171,7 +171,8 @@ jspm_packages/
 # Gatsby files
 public
 
-# Storybook build outputs
+# Build outputs
+storybook-static/
 .storybook-out
 
 # Temporary folders
@@ -189,9 +190,10 @@ tmp/
 .Trashes
 ehthumbs.db
 
-# Package manager lock files (keep pnpm-lock.yaml)
+# npm lockfile (we use pnpm)
 package-lock.json
-yarn.lock
+npm-shrinkwrap.json
 
 # Test reports and results
 playwright-report/
+*storybook.log

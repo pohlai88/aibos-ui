@@ -1,0 +1,534 @@
+# Tooltip
+
+Contextual information that appears on hover or focus to provide additional details.
+
+## Import
+
+```tsx
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button variant="outline">Hover me</Button>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>This is a tooltip</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+## Variants
+
+### Default Tooltip
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button>Default Tooltip</Button>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>This is a default tooltip</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+### With Icons
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button variant="outline" size="icon">
+        <InfoIcon className="h-4 w-4" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>Click for more information</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+### Multiple Tooltips
+
+```tsx
+<TooltipProvider>
+  <div className="flex gap-4">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Save</Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Save your changes</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Delete</Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Delete this item</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Edit</Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Edit this item</p>
+      </TooltipContent>
+    </Tooltip>
+  </div>
+</TooltipProvider>
+```
+
+## Form Integration
+
+### Form Field Help
+
+```tsx
+<TooltipProvider>
+  <div className="space-y-4">
+    <div>
+      <div className="flex items-center space-x-2">
+        <label className="text-sm font-medium">Password</label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-4 w-4">
+              <InfoIcon className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Password must be at least 8 characters long</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <Input type="password" placeholder="Enter your password" />
+    </div>
+
+    <div>
+      <div className="flex items-center space-x-2">
+        <label className="text-sm font-medium">API Key</label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-4 w-4">
+              <InfoIcon className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Find your API key in the developer settings</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <Input placeholder="Enter your API key" />
+    </div>
+  </div>
+</TooltipProvider>
+```
+
+### Validation Messages
+
+```tsx
+<TooltipProvider>
+  <div className="space-y-4">
+    <div>
+      <label className="text-sm font-medium">Email Address</label>
+      <div className="flex items-center space-x-2">
+        <Input type="email" placeholder="Enter your email" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-semantic-destructive h-4 w-4">
+              <XIcon className="h-3 w-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Please enter a valid email address</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+  </div>
+</TooltipProvider>
+```
+
+## Layout Examples
+
+### Action Buttons
+
+```tsx
+<TooltipProvider>
+  <div className="flex items-center space-x-2">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon">
+          <EditIcon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Edit item</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon">
+          <CopyIcon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Copy to clipboard</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon">
+          <ShareIcon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Share this item</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline" size="icon" className="text-semantic-destructive">
+          <TrashIcon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Delete item</p>
+      </TooltipContent>
+    </Tooltip>
+  </div>
+</TooltipProvider>
+```
+
+### Status Indicators
+
+```tsx
+<TooltipProvider>
+  <div className="flex items-center space-x-4">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center space-x-2">
+          <div className="h-2 w-2 rounded-full bg-green-500" />
+          <span className="text-sm">Active</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>System is running normally</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center space-x-2">
+          <div className="h-2 w-2 rounded-full bg-yellow-500" />
+          <span className="text-sm">Warning</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>System performance is degraded</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center space-x-2">
+          <div className="h-2 w-2 rounded-full bg-red-500" />
+          <span className="text-sm">Error</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>System error detected</p>
+      </TooltipContent>
+    </Tooltip>
+  </div>
+</TooltipProvider>
+```
+
+### Data Table Headers
+
+```tsx
+<TooltipProvider>
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold">User Management</h3>
+      <div className="flex items-center space-x-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon">
+              <FilterIcon className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Filter users</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon">
+              <DownloadIcon className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Export user data</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon">
+              <PlusIcon className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Add new user</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
+
+    <div className="border-semantic-border rounded-md border">
+      <div className="border-semantic-border grid grid-cols-4 gap-4 border-b p-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Name</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4">
+                <InfoIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>User's full name</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Email</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4">
+                <InfoIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>User's email address</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Role</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4">
+                <InfoIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>User's permission level</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Status</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-4 w-4">
+                <InfoIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>User's account status</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  </div>
+</TooltipProvider>
+```
+
+### Navigation Help
+
+```tsx
+<TooltipProvider>
+  <div className="flex items-center space-x-4">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2">
+          <HomeIcon className="h-4 w-4" />
+          <span>Dashboard</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>View your main dashboard</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2">
+          <UsersIcon className="h-4 w-4" />
+          <span>Users</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Manage user accounts</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2">
+          <SettingsIcon className="h-4 w-4" />
+          <span>Settings</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Configure system settings</p>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2">
+          <HelpIcon className="h-4 w-4" />
+          <span>Help</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>Get help and support</p>
+      </TooltipContent>
+    </Tooltip>
+  </div>
+</TooltipProvider>
+```
+
+### Rich Content Tooltips
+
+```tsx
+<TooltipProvider>
+  <div className="flex items-center space-x-4">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline">User Profile</Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="bg-semantic-primary flex h-8 w-8 items-center justify-center rounded-full">
+              <span className="text-sm font-medium text-white">JD</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium">John Doe</p>
+              <p className="text-semantic-muted-foreground text-xs">john@example.com</p>
+            </div>
+          </div>
+          <div className="text-semantic-muted-foreground text-xs">
+            <p>Last active: 2 hours ago</p>
+            <p>Role: Administrator</p>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="outline">Project Status</Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="text-sm font-medium">Project Alpha</span>
+          </div>
+          <div className="text-semantic-muted-foreground text-xs">
+            <p>Progress: 75% complete</p>
+            <p>Due: March 15, 2024</p>
+            <p>Team: 5 members</p>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  </div>
+</TooltipProvider>
+```
+
+## API Reference
+
+### TooltipProvider Props
+
+| Prop                      | Type        | Default | Description                                               |
+| ------------------------- | ----------- | ------- | --------------------------------------------------------- |
+| `delayDuration`           | `number`    | `700`   | Delay before showing tooltip                              |
+| `skipDelayDuration`       | `number`    | `300`   | Delay before showing tooltip when moving between triggers |
+| `disableHoverableContent` | `boolean`   | `false` | Whether to disable hoverable content                      |
+| `className`               | `string`    | -       | Additional CSS classes                                    |
+| `children`                | `ReactNode` | -       | Tooltip content                                           |
+
+### Tooltip Props
+
+| Prop                      | Type        | Default | Description                                 |
+| ------------------------- | ----------- | ------- | ------------------------------------------- |
+| `delayDuration`           | `number`    | -       | Override provider delay duration            |
+| `skipDelayDuration`       | `number`    | -       | Override provider skip delay duration       |
+| `disableHoverableContent` | `boolean`   | -       | Override provider disable hoverable content |
+| `className`               | `string`    | -       | Additional CSS classes                      |
+| `children`                | `ReactNode` | -       | Tooltip content                             |
+
+### TooltipTrigger Props
+
+| Prop        | Type        | Default | Description                               |
+| ----------- | ----------- | ------- | ----------------------------------------- |
+| `asChild`   | `boolean`   | `false` | Whether to merge props with child element |
+| `className` | `string`    | -       | Additional CSS classes                    |
+| `children`  | `ReactNode` | -       | Trigger content                           |
+
+### TooltipContent Props
+
+| Prop          | Type                                     | Default    | Description                         |
+| ------------- | ---------------------------------------- | ---------- | ----------------------------------- |
+| `side`        | `'top' \| 'right' \| 'bottom' \| 'left'` | `'top'`    | Side of the trigger to show tooltip |
+| `align`       | `'start' \| 'center' \| 'end'`           | `'center'` | Alignment of the tooltip            |
+| `sideOffset`  | `number`                                 | `4`        | Distance from the trigger           |
+| `alignOffset` | `number`                                 | `0`        | Alignment offset                    |
+| `className`   | `string`                                 | -          | Additional CSS classes              |
+| `children`    | `ReactNode`                              | -          | Tooltip content                     |
+
+## Accessibility
+
+- **Keyboard Navigation**: Tooltips appear on focus and disappear on blur
+- **Screen Reader Support**: Proper ARIA attributes and announcements
+- **Focus Management**: Clear focus indicators
+- **Hover Behavior**: Tooltips appear on hover and disappear on mouse leave
+- **Touch Support**: Tooltips work with touch devices
+
+## Best Practices
+
+1. **Keep content concise** - Tooltips should be brief and informative
+2. **Use appropriate timing** - Set reasonable delay durations
+3. **Provide meaningful content** - Ensure tooltips add value
+4. **Test with screen readers** - Ensure accessibility compliance
+5. **Consider mobile devices** - Test touch interactions
+6. **Use sparingly** - Don't overuse tooltips as they can create clutter
+
+## Related Components
+
+- [Popover](./popover.mdx) - Floating content with more space
+- [Button](./button.mdx) - Interactive elements
+- [Badge](./badge.mdx) - Status indicators
+- [Icon](./icon.mdx) - Icon components

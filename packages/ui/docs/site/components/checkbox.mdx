@@ -1,0 +1,216 @@
+# Checkbox
+
+Binary choice controls for selecting one or more options from a list.
+
+## Import
+
+```tsx
+import { Checkbox } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Checkbox>Accept terms and conditions</Checkbox>
+```
+
+## Variants
+
+### Default Checkbox
+
+```tsx
+<Checkbox>Default checkbox</Checkbox>
+```
+
+### Checked State
+
+```tsx
+<Checkbox defaultChecked>Pre-checked option</Checkbox>
+```
+
+### Disabled State
+
+```tsx
+<Checkbox disabled>Disabled checkbox</Checkbox>
+```
+
+### Indeterminate State
+
+```tsx
+<Checkbox indeterminate>Indeterminate checkbox</Checkbox>
+```
+
+## Form Integration
+
+### Controlled Checkbox
+
+```tsx
+function ControlledCheckbox() {
+  const [checked, setChecked] = useState(false);
+
+  return (
+    <Checkbox checked={checked} onCheckedChange={setChecked}>
+      Controlled checkbox
+    </Checkbox>
+  );
+}
+```
+
+### Checkbox Group
+
+```tsx
+function CheckboxGroup() {
+  const [selected, setSelected] = useState([]);
+
+  const options = [
+    { id: 'option1', label: 'Option 1' },
+    { id: 'option2', label: 'Option 2' },
+    { id: 'option3', label: 'Option 3' },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {options.map((option) => (
+        <Checkbox
+          key={option.id}
+          checked={selected.includes(option.id)}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              setSelected([...selected, option.id]);
+            } else {
+              setSelected(selected.filter((id) => id !== option.id));
+            }
+          }}
+        >
+          {option.label}
+        </Checkbox>
+      ))}
+    </div>
+  );
+}
+```
+
+## Layout Examples
+
+### Form Fields
+
+```tsx
+<div className="space-y-4">
+  <div className="flex items-center space-x-2">
+    <Checkbox id="newsletter" />
+    <label htmlFor="newsletter" className="text-sm font-medium">
+      Subscribe to newsletter
+    </label>
+  </div>
+
+  <div className="flex items-center space-x-2">
+    <Checkbox id="notifications" defaultChecked />
+    <label htmlFor="notifications" className="text-sm font-medium">
+      Receive notifications
+    </label>
+  </div>
+</div>
+```
+
+### Settings Panel
+
+```tsx
+<div className="space-y-6">
+  <div>
+    <h3 className="mb-3 text-lg font-semibold">Privacy Settings</h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Profile visibility</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Make your profile visible to other users
+          </p>
+        </div>
+        <Checkbox defaultChecked />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="text-sm font-medium">Email notifications</label>
+          <p className="text-semantic-muted-foreground text-sm">
+            Receive email updates about your account
+          </p>
+        </div>
+        <Checkbox />
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Filter Options
+
+```tsx
+<div className="space-y-3">
+  <h4 className="font-medium">Filter by Category</h4>
+  <div className="space-y-2">
+    <Checkbox>Technology</Checkbox>
+    <Checkbox defaultChecked>Business</Checkbox>
+    <Checkbox>Design</Checkbox>
+    <Checkbox>Marketing</Checkbox>
+  </div>
+</div>
+```
+
+### Terms and Conditions
+
+```tsx
+<div className="space-y-4">
+  <div className="flex items-start space-x-2">
+    <Checkbox id="terms" className="mt-1" />
+    <div className="space-y-1">
+      <label htmlFor="terms" className="text-sm font-medium">
+        I agree to the terms and conditions
+      </label>
+      <p className="text-semantic-muted-foreground text-xs">
+        By checking this box, you agree to our Terms of Service and Privacy Policy.
+      </p>
+    </div>
+  </div>
+
+  <Button disabled>Continue</Button>
+</div>
+```
+
+## API Reference
+
+### Checkbox Props
+
+| Prop              | Type                         | Default | Description                                    |
+| ----------------- | ---------------------------- | ------- | ---------------------------------------------- |
+| `checked`         | `boolean`                    | `false` | Controlled checked state                       |
+| `defaultChecked`  | `boolean`                    | `false` | Uncontrolled checked state                     |
+| `disabled`        | `boolean`                    | `false` | Whether the checkbox is disabled               |
+| `indeterminate`   | `boolean`                    | `false` | Whether the checkbox is in indeterminate state |
+| `onCheckedChange` | `(checked: boolean) => void` | -       | Callback when checked state changes            |
+| `className`       | `string`                     | -       | Additional CSS classes                         |
+| `children`        | `ReactNode`                  | -       | Checkbox label content                         |
+
+## Accessibility
+
+- **Keyboard Navigation**: Focusable with Tab key, activated with Space
+- **Screen Reader Support**: Proper ARIA attributes and labels
+- **Focus Management**: Visible focus indicators
+- **Disabled State**: Properly announced to screen readers
+- **Indeterminate State**: Correctly communicated to assistive technology
+
+## Best Practices
+
+1. **Use clear labels** - Provide descriptive text for each checkbox
+2. **Group related options** - Use consistent spacing and grouping
+3. **Handle indeterminate state** - Use for "select all" scenarios
+4. **Provide feedback** - Show loading states for async operations
+5. **Test with screen readers** - Ensure accessibility compliance
+6. **Consider form validation** - Integrate with form validation libraries
+
+## Related Components
+
+- [Radio](./radio.mdx) - Single choice from multiple options
+- [Switch](./switch.mdx) - Toggle switches
+- [Button](./button.mdx) - Interactive elements
+- [Form](./form.mdx) - Form handling with validation

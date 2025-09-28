@@ -6,11 +6,18 @@
  * Enhanced with regulatory reporting capabilities for SEA markets.
  */
 
+// safeGet import removed as it's not used
 import type {
   StandardsComplianceReport,
   StandardsValidationResult,
   TenantCoaAccount,
 } from '../types/standards';
+
+// Constants for compliance descriptions
+const ANNUAL_AUDIT_DESCRIPTION = 'Annual audit requirement';
+const QUARTERLY_REPORTING_DESCRIPTION = 'Quarterly regulatory reporting';
+const ANNUAL_AUDIT_DUE_DATE = '2024-06-30';
+const QUARTERLY_REPORTING_DUE_DATE = '2024-03-31';
 
 export interface RegulatoryReport {
   reportId: string;
@@ -367,7 +374,7 @@ export class StandardsComplianceService {
    */
   private validateCompanionRelationships(
     account: TenantCoaAccount,
-    errors: string[],
+    _errors: string[],
     warnings: string[],
   ): void {
     if (
@@ -406,7 +413,7 @@ export class StandardsComplianceService {
    */
   private extractStandardFromSectionCode(sectionCode: string): string | null {
     const match = sectionCode.match(/^(MFRS|IFRS|IAS)\s+\d+/);
-    return match ? match[0] : null;
+    return match ? match[0]! : null;
   }
 
   /**
@@ -693,7 +700,7 @@ export class StandardsComplianceService {
    */
   private async generateStatisticalData(
     tenantId: string,
-    jurisdiction: 'MY' | 'SG' | 'VN' | 'ID' | 'TH' | 'PH',
+    _jurisdiction: 'MY' | 'SG' | 'VN' | 'ID' | 'TH' | 'PH',
     reportingPeriod: string,
   ): Promise<Record<string, unknown>> {
     return {
@@ -736,8 +743,170 @@ export class StandardsComplianceService {
     return { mock: 'journal entries data' };
   }
 
-  private async getComplianceStatus(_tenantId: string, _jurisdiction: string): Promise<unknown> {
-    return { mock: 'compliance status data' };
+  /**
+   * Get compliance status for a tenant
+   */
+  async getComplianceStatus(
+    tenantId: string,
+    jurisdiction: string = 'GLOBAL',
+  ): Promise<{
+    tenantId: string;
+    jurisdiction: string;
+    status: 'COMPLIANT' | 'NON_COMPLIANT' | 'PENDING' | 'REVIEW_REQUIRED';
+    lastChecked: Date;
+    requirements: Array<{
+      type: string;
+      status: 'COMPLIANT' | 'NON_COMPLIANT' | 'PENDING';
+      dueDate: string;
+      description: string;
+    }>;
+  }> {
+    // In a real implementation, this would query actual compliance data
+    // For now, return a realistic compliance status structure
+    return {
+      tenantId,
+      jurisdiction,
+      status: 'COMPLIANT',
+      lastChecked: new Date(),
+      requirements: [
+        {
+          type: 'TAX_FILING',
+          status: 'COMPLIANT',
+          dueDate: '2024-12-31',
+          description: 'Annual tax filing requirement',
+        },
+        {
+          type: 'AUDIT_REQUIREMENT',
+          status: 'COMPLIANT',
+          dueDate: ANNUAL_AUDIT_DUE_DATE,
+          description: ANNUAL_AUDIT_DESCRIPTION,
+        },
+        {
+          type: 'REGULATORY_REPORTING',
+          status: 'PENDING',
+          dueDate: QUARTERLY_REPORTING_DUE_DATE,
+          description: QUARTERLY_REPORTING_DESCRIPTION,
+        },
+      ],
+    };
+  }
+
+  /**
+   * Get compliance requirements for a tenant
+   */
+  async getComplianceRequirements(
+    tenantId: string,
+    jurisdiction: string = 'GLOBAL',
+  ): Promise<{
+    tenantId: string;
+    jurisdiction: string;
+    requirements: Array<{
+      id: string;
+      type: string;
+      title: string;
+      description: string;
+      dueDate: string;
+      status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE';
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      category: string;
+    }>;
+  }> {
+    // In a real implementation, this would query actual compliance requirements
+    return {
+      tenantId,
+      jurisdiction,
+      requirements: [
+        {
+          id: 'req-001',
+          type: 'TAX_FILING',
+          title: 'Annual Tax Return',
+          description: 'Submit annual tax return for the fiscal year',
+          dueDate: '2024-12-31',
+          status: 'PENDING',
+          priority: 'HIGH',
+          category: 'TAX_COMPLIANCE',
+        },
+        {
+          id: 'req-002',
+          type: 'AUDIT_REQUIREMENT',
+          title: 'Annual Audit',
+          description: 'Complete annual financial audit',
+          dueDate: ANNUAL_AUDIT_DUE_DATE,
+          status: 'IN_PROGRESS',
+          priority: 'HIGH',
+          category: 'FINANCIAL_AUDIT',
+        },
+        {
+          id: 'req-003',
+          type: 'REGULATORY_REPORTING',
+          title: 'Quarterly Report',
+          description: 'Submit quarterly regulatory report',
+          dueDate: QUARTERLY_REPORTING_DUE_DATE,
+          status: 'OVERDUE',
+          priority: 'CRITICAL',
+          category: 'REGULATORY',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Get compliance calendar for a tenant
+   */
+  async getComplianceCalendar(
+    tenantId: string,
+    jurisdiction: string = 'GLOBAL',
+  ): Promise<{
+    tenantId: string;
+    jurisdiction: string;
+    calendar: Array<{
+      id: string;
+      title: string;
+      type: string;
+      dueDate: string;
+      status: 'UPCOMING' | 'DUE_SOON' | 'OVERDUE' | 'COMPLETED';
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+      description: string;
+      category: string;
+    }>;
+  }> {
+    // In a real implementation, this would query actual compliance calendar
+    return {
+      tenantId,
+      jurisdiction,
+      calendar: [
+        {
+          id: 'cal-001',
+          title: 'Monthly Tax Payment',
+          type: 'TAX_PAYMENT',
+          dueDate: '2024-01-15',
+          status: 'COMPLETED',
+          priority: 'HIGH',
+          description: 'Monthly tax payment for December 2023',
+          category: 'TAX_COMPLIANCE',
+        },
+        {
+          id: 'cal-002',
+          title: 'Quarterly Report Submission',
+          type: 'REGULATORY_REPORTING',
+          dueDate: QUARTERLY_REPORTING_DUE_DATE,
+          status: 'DUE_SOON',
+          priority: 'CRITICAL',
+          description: 'Q1 2024 quarterly regulatory report',
+          category: 'REGULATORY',
+        },
+        {
+          id: 'cal-003',
+          title: 'Annual Audit Preparation',
+          type: 'AUDIT_REQUIREMENT',
+          dueDate: ANNUAL_AUDIT_DUE_DATE,
+          status: 'UPCOMING',
+          priority: 'HIGH',
+          description: 'Annual financial audit preparation',
+          category: 'FINANCIAL_AUDIT',
+        },
+      ],
+    };
   }
 
   private async getRevenueByMonth(_tenantId: string, _reportingPeriod: string): Promise<unknown> {

@@ -1,6 +1,7 @@
 import { CreateAccountCommand } from '../commands/create-account.command';
 import { type Account, AccountType, SpecialAccountType } from '../domain/account.domain';
 import { type ChartOfAccounts } from '../domain/chart-of-accounts.domain';
+import { omitUndefined } from '../utils';
 
 export interface DepreciableAssetBundleInput {
   asset: { code: string; name: string; parentCode?: string };
@@ -30,43 +31,49 @@ export class DepreciableAssetBundleFactory {
     };
 
     // 1) Create Accumulated Depreciation (contra-asset) first
-    const accumulatorDepCommand = new CreateAccountCommand({
-      ...baseProperties,
-      accountCode: input.accumulatedDepreciation.code,
-      accountName: input.accumulatedDepreciation.name,
-      accountType: AccountType.ASSET,
-      parentAccountCode: input.accumulatedDepreciation.parentCode,
-      specialAccountType: SpecialAccountType.ACCUMULATED_DEPRECIATION,
-      postingAllowed: true,
-    });
+    const accumulatorDepCommand = new CreateAccountCommand(
+      omitUndefined({
+        ...baseProperties,
+        accountCode: input.accumulatedDepreciation.code,
+        accountName: input.accumulatedDepreciation.name,
+        accountType: AccountType.ASSET,
+        parentAccountCode: input.accumulatedDepreciation.parentCode,
+        specialAccountType: SpecialAccountType.ACCUMULATED_DEPRECIATION,
+        postingAllowed: true,
+      }),
+    );
     coa.createAccount(accumulatorDepCommand);
 
     // 2) Create Depreciation Expense
-    const depExpCommand = new CreateAccountCommand({
-      ...baseProperties,
-      accountCode: input.depreciationExpense.code,
-      accountName: input.depreciationExpense.name,
-      accountType: AccountType.EXPENSE,
-      parentAccountCode: input.depreciationExpense.parentCode,
-      specialAccountType: SpecialAccountType.DEPRECIATION_EXPENSE,
-      postingAllowed: true,
-    });
+    const depExpCommand = new CreateAccountCommand(
+      omitUndefined({
+        ...baseProperties,
+        accountCode: input.depreciationExpense.code,
+        accountName: input.depreciationExpense.name,
+        accountType: AccountType.EXPENSE,
+        parentAccountCode: input.depreciationExpense.parentCode,
+        specialAccountType: SpecialAccountType.DEPRECIATION_EXPENSE,
+        postingAllowed: true,
+      }),
+    );
     coa.createAccount(depExpCommand);
 
     // 3) Create Asset with companion links (now that companions exist)
-    const assetCommand = new CreateAccountCommand({
-      ...baseProperties,
-      accountCode: input.asset.code,
-      accountName: input.asset.name,
-      accountType: AccountType.ASSET,
-      parentAccountCode: input.asset.parentCode,
-      specialAccountType: SpecialAccountType.NONE,
-      postingAllowed: true,
-      companionLinks: {
-        accumulatedDepreciationCode: input.accumulatedDepreciation.code,
-        depreciationExpenseCode: input.depreciationExpense.code,
-      },
-    });
+    const assetCommand = new CreateAccountCommand(
+      omitUndefined({
+        ...baseProperties,
+        accountCode: input.asset.code,
+        accountName: input.asset.name,
+        accountType: AccountType.ASSET,
+        parentAccountCode: input.asset.parentCode,
+        specialAccountType: SpecialAccountType.NONE,
+        postingAllowed: true,
+        companionLinks: {
+          accumulatedDepreciationCode: input.accumulatedDepreciation.code,
+          depreciationExpenseCode: input.depreciationExpense.code,
+        },
+      }),
+    );
     coa.createAccount(assetCommand);
   }
 

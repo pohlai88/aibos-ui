@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+  typedRoutes: true,
+  eslint: { 
+    ignoreDuringBuilds: false 
+  },
+  typescript: { 
+    ignoreBuildErrors: false 
+  },
+  output: 'standalone',
   transpilePackages: [
     '@aibos/accounting',
     '@aibos/accounting-contracts',

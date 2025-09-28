@@ -8,6 +8,5 @@
     "outDir": "dist/types",
     "stripInternal": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["**/*.test.*", "**/*.spec.*", "**/*.stories.*", "**/__tests__/**", "**/tests/**"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

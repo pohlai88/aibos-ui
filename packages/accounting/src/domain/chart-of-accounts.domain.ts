@@ -12,6 +12,7 @@ import {
 import { AccountType, SpecialAccountType } from './account.domain';
 import { Account } from './account.domain';
 import { AggregateRoot } from '@aibos/eventsourcing';
+import { omitUndefined } from '../utils';
 
 export class ChartOfAccounts extends AggregateRoot {
   private accounts: Map<string, Account> = new Map();
@@ -36,20 +37,22 @@ export class ChartOfAccounts extends AggregateRoot {
     this.validateAccountCreation(command);
     this.validateDepth(command.parentAccountCode);
 
-    const account = new Account({
-      accountCode: command.accountCode,
-      accountName: command.accountName,
-      accountType: command.accountType,
-      parentAccountCode: command.parentAccountCode,
-      tenantId: command.tenantId,
-      isActive: true,
-      balance: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      specialAccountType: command.specialAccountType,
-      postingAllowed: command.postingAllowed,
-      companionLinks: command.companionLinks,
-    });
+    const account = new Account(
+      omitUndefined({
+        accountCode: command.accountCode,
+        accountName: command.accountName,
+        accountType: command.accountType,
+        parentAccountCode: command.parentAccountCode,
+        tenantId: command.tenantId,
+        isActive: true,
+        balance: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        specialAccountType: command.specialAccountType,
+        postingAllowed: command.postingAllowed,
+        companionLinks: command.companionLinks,
+      }),
+    );
 
     this.accounts.set(command.accountCode, account);
     this.updateHierarchy(command.accountCode, command.parentAccountCode);
@@ -409,17 +412,19 @@ export class ChartOfAccounts extends AggregateRoot {
     // Update the stored account instance to reflect parent
     const account = this.accounts.get(accountCode);
     if (account) {
-      const updated = new Account({
-        accountCode: account.accountCode,
-        accountName: account.accountName,
-        accountType: account.accountType,
-        parentAccountCode: newParent,
-        tenantId: account.tenantId,
-        isActive: account.isActive,
-        balance: account.balance,
-        createdAt: account.createdAt,
-        updatedAt: new Date(),
-      });
+      const updated = new Account(
+        omitUndefined({
+          accountCode: account.accountCode,
+          accountName: account.accountName,
+          accountType: account.accountType,
+          parentAccountCode: newParent,
+          tenantId: account.tenantId,
+          isActive: account.isActive,
+          balance: account.balance,
+          createdAt: account.createdAt,
+          updatedAt: new Date(),
+        }),
+      );
       this.accounts.set(accountCode, updated);
     }
   }
@@ -483,17 +488,19 @@ export class ChartOfAccounts extends AggregateRoot {
   }
 
   private whenAccountCreated(event: AccountCreatedEvent): void {
-    const account = new Account({
-      accountCode: event.accountCode,
-      accountName: event.accountName,
-      accountType: event.accountType,
-      parentAccountCode: event.parentAccountCode,
-      tenantId: event.tenantId,
-      isActive: true,
-      balance: 0,
-      createdAt: event.occurredAt,
-      updatedAt: event.occurredAt,
-    });
+    const account = new Account(
+      omitUndefined({
+        accountCode: event.accountCode,
+        accountName: event.accountName,
+        accountType: event.accountType,
+        parentAccountCode: event.parentAccountCode,
+        tenantId: event.tenantId,
+        isActive: true,
+        balance: 0,
+        createdAt: event.occurredAt,
+        updatedAt: event.occurredAt,
+      }),
+    );
 
     this.accounts.set(event.accountCode, account);
     this.updateHierarchy(event.accountCode, event.parentAccountCode);
@@ -502,36 +509,40 @@ export class ChartOfAccounts extends AggregateRoot {
   private whenAccountBalanceUpdated(event: AccountBalanceUpdatedEvent): void {
     const existing = this.accounts.get(event.accountCode);
     if (!existing) return;
-    const updated = new Account({
-      ...{
-        accountCode: existing.accountCode,
-        accountName: existing.accountName,
-        accountType: existing.accountType,
-        parentAccountCode: existing.parentAccountCode,
-        tenantId: existing.tenantId,
-        isActive: existing.isActive,
-        createdAt: existing.createdAt,
-      },
-      balance: event.balance,
-      updatedAt: event.occurredAt,
-    });
+    const updated = new Account(
+      omitUndefined({
+        ...{
+          accountCode: existing.accountCode,
+          accountName: existing.accountName,
+          accountType: existing.accountType,
+          parentAccountCode: existing.parentAccountCode,
+          tenantId: existing.tenantId,
+          isActive: existing.isActive,
+          createdAt: existing.createdAt,
+        },
+        balance: event.balance,
+        updatedAt: event.occurredAt,
+      }),
+    );
     this.accounts.set(event.accountCode, updated);
   }
 
   private whenAccountStateUpdated(event: AccountStateUpdatedEvent): void {
     const existing = this.accounts.get(event.accountCode);
     const createdAt = existing?.createdAt ?? event.occurredAt;
-    const updated = new Account({
-      accountCode: event.accountCode,
-      accountName: event.accountName,
-      accountType: event.accountType,
-      parentAccountCode: event.parentAccountCode,
-      tenantId: event.tenantId,
-      isActive: event.isActive,
-      balance: existing?.balance ?? 0,
-      createdAt,
-      updatedAt: event.occurredAt,
-    });
+    const updated = new Account(
+      omitUndefined({
+        accountCode: event.accountCode,
+        accountName: event.accountName,
+        accountType: event.accountType,
+        parentAccountCode: event.parentAccountCode,
+        tenantId: event.tenantId,
+        isActive: event.isActive,
+        balance: existing?.balance ?? 0,
+        createdAt,
+        updatedAt: event.occurredAt,
+      }),
+    );
     this.accounts.set(event.accountCode, updated);
     // keep hierarchy in sync if parent was changed inside state update
     if (existing?.parentAccountCode !== event.parentAccountCode) {
@@ -546,20 +557,22 @@ export class ChartOfAccounts extends AggregateRoot {
   private whenAccountPostingPolicyChanged(event: AccountPostingPolicyChangedEvent): void {
     const accumulator = this.accounts.get(event.accountCode);
     if (!accumulator) return;
-    const updated = new Account({
-      accountCode: accumulator.accountCode,
-      accountName: accumulator.accountName,
-      accountType: accumulator.accountType,
-      parentAccountCode: accumulator.parentAccountCode,
-      tenantId: accumulator.tenantId,
-      isActive: accumulator.isActive,
-      balance: accumulator.balance,
-      createdAt: accumulator.createdAt,
-      updatedAt: event.occurredAt,
-      specialAccountType: accumulator.specialAccountType,
-      postingAllowed: event.postingAllowed,
-      companionLinks: accumulator.companionLinks,
-    });
+    const updated = new Account(
+      omitUndefined({
+        accountCode: accumulator.accountCode,
+        accountName: accumulator.accountName,
+        accountType: accumulator.accountType,
+        parentAccountCode: accumulator.parentAccountCode,
+        tenantId: accumulator.tenantId,
+        isActive: accumulator.isActive,
+        balance: accumulator.balance,
+        createdAt: accumulator.createdAt,
+        updatedAt: event.occurredAt,
+        specialAccountType: accumulator.specialAccountType,
+        postingAllowed: event.postingAllowed,
+        companionLinks: accumulator.companionLinks,
+      }),
+    );
     this.accounts.set(event.accountCode, updated);
   }
 
@@ -592,24 +605,26 @@ export class ChartOfAccounts extends AggregateRoot {
 
     const accumulator = this.accounts.get(event.accountCode);
     if (!accumulator) return;
-    const updated = new Account({
-      accountCode: accumulator.accountCode,
-      accountName: accumulator.accountName,
-      accountType: accumulator.accountType,
-      parentAccountCode: accumulator.parentAccountCode,
-      tenantId: accumulator.tenantId,
-      isActive: accumulator.isActive,
-      balance: accumulator.balance,
-      createdAt: accumulator.createdAt,
-      updatedAt: event.occurredAt,
-      specialAccountType: accumulator.specialAccountType,
-      postingAllowed: accumulator.postingAllowed,
-      companionLinks: {
-        accumulatedDepreciationCode: event.accumulatedDepreciationCode ?? undefined,
-        depreciationExpenseCode: event.depreciationExpenseCode ?? undefined,
-        allowanceAccountCode: event.allowanceAccountCode ?? undefined,
-      },
-    });
+    const updated = new Account(
+      omitUndefined({
+        accountCode: accumulator.accountCode,
+        accountName: accumulator.accountName,
+        accountType: accumulator.accountType,
+        parentAccountCode: accumulator.parentAccountCode,
+        tenantId: accumulator.tenantId,
+        isActive: accumulator.isActive,
+        balance: accumulator.balance,
+        createdAt: accumulator.createdAt,
+        updatedAt: event.occurredAt,
+        specialAccountType: accumulator.specialAccountType,
+        postingAllowed: accumulator.postingAllowed,
+        companionLinks: {
+          accumulatedDepreciationCode: event.accumulatedDepreciationCode ?? undefined,
+          depreciationExpenseCode: event.depreciationExpenseCode ?? undefined,
+          allowanceAccountCode: event.allowanceAccountCode ?? undefined,
+        },
+      }),
+    );
     this.accounts.set(event.accountCode, updated);
   }
 }

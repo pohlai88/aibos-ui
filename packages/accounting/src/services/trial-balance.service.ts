@@ -65,7 +65,7 @@ export class TrialBalanceService {
    */
   public async generateTrialBalance(
     tenantId: string,
-    period: string,
+    _period: string,
     asOfDate?: Date,
   ): Promise<TrialBalanceData> {
     const trialBalance = this.glProjection.getTrialBalanceData(tenantId, asOfDate);
@@ -277,7 +277,7 @@ export class TrialBalanceService {
 
   private validateAccountTypeConsistency(
     trialBalance: TrialBalanceData,
-    errors: string[],
+    _errors: string[],
     warnings: string[],
   ): void {
     for (const account of trialBalance.accounts) {

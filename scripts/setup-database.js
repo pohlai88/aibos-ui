@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { safeJoin } from '@aibos/utils';
+const BASE_DIR = process.cwd();
 
 /**
  * Database Setup Script for AI-BOS ERP
@@ -59,7 +61,7 @@ function createDatabase() {
 // Check environment file
 function checkEnvironmentFile() {
   const envPath = path.join(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
+  if (fs.existsSync(safeJoin(BASE_DIR, envPath))) {
     console.log('✅ Environment file .env.local exists');
     return true;
   } else {

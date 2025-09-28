@@ -33,18 +33,26 @@ export class AccountCreatedEvent implements DomainEvent {
     causationId?: string,
     options?: { id?: string }, // optional: allow ULID/UUID injection for idempotency
   ) {
-    this.id = options?.id ?? randomUUID();
+    // Use conditional spreads to handle exactOptionalPropertyTypes safely
+    const payload = {
+      id: options?.id ?? randomUUID(),
+      ...(correlationId ? { correlationId } : {}),
+      ...(causationId ? { causationId } : {}),
+      ...(parentAccountCode ? { parentAccountCode } : {}),
+    };
+
+    this.id = payload.id;
     this.aggregateId = AccountCreatedEvent.buildAggregateId(tenantId);
     this.version = version;
     this.occurredAt = new Date();
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
+    if (payload.correlationId !== undefined) this.correlationId = payload.correlationId;
+    if (payload.causationId !== undefined) this.causationId = payload.causationId;
 
     this.accountCode = accountCode;
     this.accountName = accountName;
     this.accountType = accountType;
-    this.parentAccountCode = parentAccountCode;
+    if (payload.parentAccountCode !== undefined) this.parentAccountCode = payload.parentAccountCode;
     this.validate();
     Object.freeze(this);
   }

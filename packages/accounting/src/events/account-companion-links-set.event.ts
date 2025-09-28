@@ -1,5 +1,6 @@
 import { type DomainEvent } from '@aibos/eventsourcing';
 import { randomUUID } from 'node:crypto';
+import { omitUndefined } from '../utils';
 
 /**
  * Companion link semantics:
@@ -48,13 +49,20 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
     causationId?: string,
     id?: string,
   ) {
-    this.id = id ?? randomUUID();
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanOptions = omitUndefined({
+      id: id ?? randomUUID(),
+      correlationId,
+      causationId,
+    });
+
+    this.id = cleanOptions.id;
     this.aggregateId = aggregateId;
     this.version = version;
     this.occurredAt = new Date();
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
+    this.correlationId = cleanOptions.correlationId;
+    this.causationId = cleanOptions.causationId;
     this.accountCode = accountCode;
     this.accumulatedDepreciationCode = accumulatedDepreciationCode;
     this.depreciationExpenseCode = depreciationExpenseCode;

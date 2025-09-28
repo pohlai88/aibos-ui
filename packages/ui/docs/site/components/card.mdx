@@ -1,0 +1,261 @@
+# Card
+
+A flexible container component for grouping related content with semantic tokens and consistent spacing.
+
+## Import
+
+```tsx
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@aibos/ui';
+```
+
+## Basic Usage
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>Card Title</CardTitle>
+    <CardDescription>Card description goes here</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p>Card content goes here</p>
+  </CardContent>
+</Card>
+```
+
+## Variants
+
+### Default Card
+
+```tsx
+<Card>
+  <CardContent>
+    <p>Simple card with just content</p>
+  </CardContent>
+</Card>
+```
+
+### Card with Header and Footer
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>Product Details</CardTitle>
+    <CardDescription>Manage your product information</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <div className="space-y-2">
+      <p>Product Name: AIBOS ERP</p>
+      <p>Version: 2.0</p>
+      <p>Status: Active</p>
+    </div>
+  </CardContent>
+  <CardFooter>
+    <Button variant="outline">Edit</Button>
+    <Button>Save</Button>
+  </CardFooter>
+</Card>
+```
+
+### Card with Actions
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>User Profile</CardTitle>
+    <CardDescription>Update your profile information</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Name</label>
+        <Input placeholder="Enter your name" />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Email</label>
+        <Input type="email" placeholder="Enter your email" />
+      </div>
+    </div>
+  </CardContent>
+  <CardFooter className="justify-between">
+    <Button variant="outline">Cancel</Button>
+    <Button>Save Changes</Button>
+  </CardFooter>
+</Card>
+```
+
+## Layout Examples
+
+### Grid Layout
+
+```tsx
+<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+  <Card>
+    <CardHeader>
+      <CardTitle>Sales</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-2xl font-bold">$45,231</p>
+      <p className="text-semantic-muted-foreground text-sm">+20.1% from last month</p>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Orders</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-2xl font-bold">+2350</p>
+      <p className="text-semantic-muted-foreground text-sm">+180.1% from last month</p>
+    </CardContent>
+  </Card>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Customers</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-2xl font-bold">+12,234</p>
+      <p className="text-semantic-muted-foreground text-sm">+19% from last month</p>
+    </CardContent>
+  </Card>
+</div>
+```
+
+### Dashboard Layout
+
+```tsx
+<div className="space-y-6">
+  <Card>
+    <CardHeader>
+      <CardTitle>Recent Activity</CardTitle>
+      <CardDescription>Your recent system activity</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="bg-semantic-primary h-2 w-2 rounded-full" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">User login</p>
+            <p className="text-semantic-muted-foreground text-sm">2 minutes ago</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="bg-semantic-success h-2 w-2 rounded-full" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Data export completed</p>
+            <p className="text-semantic-muted-foreground text-sm">5 minutes ago</p>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</div>
+```
+
+## Interactive Cards
+
+### Clickable Card
+
+```tsx
+<Card className="cursor-pointer transition-shadow hover:shadow-md">
+  <CardHeader>
+    <CardTitle>Project Alpha</CardTitle>
+    <CardDescription>Click to view project details</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p>Status: In Progress</p>
+    <p>Team: 5 members</p>
+  </CardContent>
+</Card>
+```
+
+### Card with Form
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>Create New Project</CardTitle>
+    <CardDescription>Fill out the form below to create a new project</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <form className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Project Name</label>
+        <Input placeholder="Enter project name" />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Description</label>
+        <textarea
+          className="border-semantic-border w-full rounded-md border p-2"
+          placeholder="Enter project description"
+          rows={3}
+        />
+      </div>
+    </form>
+  </CardContent>
+  <CardFooter>
+    <Button variant="outline">Cancel</Button>
+    <Button>Create Project</Button>
+  </CardFooter>
+</Card>
+```
+
+## API Reference
+
+### Card Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Card content           |
+
+### CardHeader Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Header content         |
+
+### CardTitle Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Title content          |
+
+### CardDescription Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Description content    |
+
+### CardContent Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Content                |
+
+### CardFooter Props
+
+| Prop        | Type        | Default | Description            |
+| ----------- | ----------- | ------- | ---------------------- |
+| `className` | `string`    | -       | Additional CSS classes |
+| `children`  | `ReactNode` | -       | Footer content         |
+
+## Accessibility
+
+- **Semantic Structure**: Uses proper HTML elements for content organization
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Readers**: Proper heading hierarchy and content structure
+- **Focus Management**: Clear focus indicators
+
+## Best Practices
+
+1. **Use consistent spacing** with semantic tokens
+2. **Provide clear hierarchy** with proper heading levels
+3. **Keep content focused** - one main topic per card
+4. **Use appropriate actions** in footers
+5. **Test with screen readers** for accessibility
+6. **Consider responsive design** for different screen sizes

@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2025-09-27T09:35:17.761Z",
+  "environment": {
+    "node": "v22.18.0",
+    "platform": "win32"
+  },
+  "metrics": {
+    "button.render": {
+      "median": 1,
+      "p95": 1,
+      "mean": 0.6
+    },
+    "input.render": {
+      "median": 0,
+      "p95": 1,
+      "mean": 0.35
+    },
+    "modal.open": {
+      "median": 22,
+      "p95": 25,
+      "mean": 20.583333333333332
+    },
+    "table.500rows.render": {
+      "median": 11.5,
+      "p95": 23,
+      "mean": 13
+    },
+    "memory.delta.table.500rows": null
+  }
+}

@@ -1,3 +1,7 @@
+import { safeRegExpFromUser } from '@aibos/utils';
+import { safeGet } from '@aibos/utils';
+import { safeJoin } from '@aibos/utils';
+const BASE_DIR = process.cwd();
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -100,7 +104,7 @@ function processFile(filePath) {
     // Apply renames
     for (const [oldName, newName] of Object.entries(renameMap)) {
       // Use word boundaries to avoid partial replacements
-      const regex = new RegExp(`\\b${oldName}\\b`, 'g');
+      const regex = safeRegExpFromUser(`\\b${oldName}\\b`, 'g');
       if (content.includes(oldName)) {
         content = content.replace(regex, newName);
         modified = true;
@@ -124,11 +128,11 @@ function processFile(filePath) {
 }
 
 function processDirectory(dirPath) {
-  const files = fs.readdirSync(dirPath);
+  const files = fs.readdirSync(safeJoin(BASE_DIR, dirPath));
 
   for (const file of files) {
     const fullPath = path.join(dirPath, file);
-    const stat = fs.statSync(fullPath);
+    const stat = fs.statSync(safeJoin(BASE_DIR, fullPath));
 
     if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules') {
       processDirectory(fullPath);

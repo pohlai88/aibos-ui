@@ -1,0 +1,24 @@
+# Ensure consistent line endings across all platforms
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# Package files
+*.tgz binary
+*.zip binary
+*.tar.gz binary
+
+# Lock files
+package-lock.json text eol=lf
+pnpm-lock.yaml text eol=lf
+yarn.lock text eol=lf

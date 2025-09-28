@@ -1,0 +1,625 @@
+/* ===== Tailwind layers ===== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Custom Utilities ===== */
+@import '../styles/utilities.css';
+
+/* ===== Premium Design System - CSS Variables ===== */
+@layer base {
+  :root {
+    /* System hint for better native control theming */
+    color-scheme: light dark;
+
+    /* ===== Motion & Timing ===== */
+    --ease-premium: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --ease-premium-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --ease-premium-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-premium-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --dur-xs: 160ms;
+    --dur-sm: 220ms;
+    --dur-md: 320ms;
+    --dur-lg: 400ms;
+
+    /* ===== Premium Neutral Palette ===== */
+    --aibos-neutral-0: 0 0% 100%;
+    --aibos-neutral-50: 220 12% 98%;
+    --aibos-neutral-100: 220 10% 96%;
+    --aibos-neutral-200: 220 10% 92%;
+    --aibos-neutral-300: 220 8% 88%;
+    --aibos-neutral-400: 220 7% 70%;
+    --aibos-neutral-500: 220 7% 54%;
+    --aibos-neutral-600: 220 8% 40%;
+    --aibos-neutral-700: 220 9% 28%;
+    --aibos-neutral-800: 220 10% 18%;
+    --aibos-neutral-900: 220 12% 10%;
+
+    /* ===== Brand Colors ===== */
+    --aibos-brand-400: 220 12% 48%;
+    --aibos-brand-500: 220 13% 42%;
+    --aibos-brand-600: 220 14% 36%;
+
+    /* ===== Accent Colors ===== */
+    --aibos-accent-500: 268 10% 46%;
+
+    /* ===== Semantic Colors - Light Theme ===== */
+    --aibos-semantic-background: var(--aibos-neutral-50);
+    --aibos-semantic-foreground: 220 20% 14%;
+    --aibos-semantic-card: var(--aibos-neutral-0);
+    --aibos-semantic-card-foreground: 220 22% 16%;
+    --aibos-semantic-popover: var(--aibos-neutral-0);
+    --aibos-semantic-popover-foreground: 220 22% 16%;
+    --aibos-semantic-border: 220 12% 85%;
+    --aibos-semantic-input: 220 12% 90%;
+    --aibos-semantic-ring: var(--aibos-brand-400);
+    --aibos-semantic-primary: var(--aibos-brand-500);
+    --aibos-semantic-primary-foreground: 0 0% 100%;
+    --aibos-semantic-muted: var(--aibos-neutral-100);
+    --aibos-semantic-muted-foreground: 220 10% 40%;
+    --aibos-semantic-accent: var(--aibos-accent-500);
+    --aibos-semantic-accent-foreground: 0 0% 100%;
+    --aibos-semantic-destructive: 7 78% 53%;
+    --aibos-semantic-destructive-foreground: 0 0% 100%;
+
+    /* ===== Premium Shadows ===== */
+    --aibos-shadow-elev-1: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --aibos-shadow-elev-2: 0 4px 10px -2px rgb(0 0 0 / 0.06);
+    --aibos-shadow-elev-3: 0 16px 40px -12px rgb(0 0 0 / 0.08);
+
+    /* ===== Premium Gradients ===== */
+    --aibos-bg-gradient: linear-gradient(
+      to bottom,
+      hsl(var(--aibos-semantic-background)),
+      hsl(var(--aibos-neutral-100)) 40%,
+      hsl(var(--aibos-neutral-200)) 100%
+    );
+
+    --aibos-card-gradient: linear-gradient(
+      to bottom,
+      hsl(var(--aibos-semantic-card)),
+      hsl(var(--aibos-neutral-50)) 100%
+    );
+
+    --aibos-primary-gradient: linear-gradient(
+      135deg,
+      hsl(var(--aibos-semantic-primary)),
+      hsl(var(--aibos-brand-600)) 100%
+    );
+
+    /* ===== Border Radius ===== */
+    --radius: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+
+    /* ===== Spacing Unit ===== */
+    --aibos-spacing-unit: 4px;
+  }
+
+  /* ===== Dark Theme ===== */
+  .dark {
+    --aibos-neutral-0: 220 18% 10%;
+    --aibos-neutral-50: 220 18% 12%;
+    --aibos-neutral-100: 220 18% 14%;
+    --aibos-neutral-200: 220 18% 16%;
+    --aibos-neutral-300: 220 18% 18%;
+    --aibos-neutral-400: 220 18% 25%;
+    --aibos-neutral-500: 220 18% 35%;
+    --aibos-neutral-600: 220 18% 45%;
+    --aibos-neutral-700: 220 18% 55%;
+    --aibos-neutral-800: 220 18% 65%;
+    --aibos-neutral-900: 220 18% 75%;
+
+    --aibos-brand-400: 220 14% 64%;
+    --aibos-brand-500: 220 14% 58%;
+    --aibos-brand-600: 220 14% 52%;
+    --aibos-accent-500: 268 14% 64%;
+
+    --aibos-semantic-background: 220 18% 10%;
+    --aibos-semantic-foreground: 220 15% 92%;
+    --aibos-semantic-card: 220 16% 12%;
+    --aibos-semantic-card-foreground: 220 15% 92%;
+    --aibos-semantic-popover: 220 16% 12%;
+    --aibos-semantic-popover-foreground: 220 15% 92%;
+    --aibos-semantic-border: 220 14% 24%;
+    --aibos-semantic-input: 220 13% 20%;
+    --aibos-semantic-ring: var(--aibos-brand-400);
+    --aibos-semantic-primary: 220 14% 64%;
+    --aibos-semantic-primary-foreground: 220 22% 12%;
+    --aibos-semantic-muted: 220 18% 14%;
+    --aibos-semantic-muted-foreground: 220 14% 66%;
+    --aibos-semantic-accent: 268 14% 64%;
+    --aibos-semantic-accent-foreground: 220 22% 12%;
+    --aibos-semantic-destructive: 0 62.8% 30.6%;
+    --aibos-semantic-destructive-foreground: 210 40% 98%;
+
+    --aibos-shadow-elev-1: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+    --aibos-shadow-elev-2: 0 4px 10px -2px rgb(0 0 0 / 0.25);
+    --aibos-shadow-elev-3: 0 16px 40px -12px rgb(0 0 0 / 0.35);
+
+    --aibos-bg-gradient: linear-gradient(
+      to bottom,
+      hsl(var(--aibos-semantic-background)),
+      hsl(220 18% 12%) 40%,
+      hsl(220 18% 14%) 100%
+    );
+
+    --aibos-card-gradient: linear-gradient(
+      to bottom,
+      hsl(var(--aibos-semantic-card)),
+      hsl(220 18% 10%) 100%
+    );
+  }
+
+  /* ===== Base Styles ===== */
+  html {
+    @apply antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply min-h-dvh;
+    background: var(--aibos-bg-gradient);
+    color: hsl(var(--aibos-semantic-foreground));
+    transition:
+      background var(--dur-md) var(--ease-premium),
+      color var(--dur-md) var(--ease-premium);
+  }
+
+  /* ===== Premium Focus Ring ===== */
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 4px hsl(var(--aibos-semantic-ring) / 0.15),
+      0 0 0 2px hsl(var(--aibos-semantic-ring));
+    border-radius: var(--radius);
+    transition: box-shadow var(--dur-sm) var(--ease-premium);
+  }
+
+  /* ===== High-contrast / forced-colors support ===== */
+  @media (forced-colors: active) {
+    :where(button, a, input, textarea, select):focus-visible {
+      outline: 2px solid CanvasText;
+      box-shadow: none;
+    }
+  }
+
+  /* ===== Premium Scrollbar ===== */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--aibos-semantic-muted));
+    border-radius: var(--radius);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--aibos-semantic-border));
+    border-radius: var(--radius);
+    transition: background var(--dur-sm) var(--ease-premium);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--aibos-semantic-foreground) / 0.3);
+  }
+
+  /* Firefox scrollbar parity */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--aibos-semantic-border)) hsl(var(--aibos-semantic-muted));
+  }
+}
+
+/* ===== Premium Component Styles ===== */
+@layer components {
+  /* ===== Premium Card ===== */
+  .premium-card {
+    @apply border-semantic-border bg-semantic-card shadow-elev-1 rounded-2xl border;
+    background: var(--aibos-card-gradient);
+    transition: all var(--dur-md) var(--ease-premium);
+  }
+
+  .premium-card:hover {
+    @apply shadow-elev-2;
+    transform: translateY(-1px);
+  }
+
+  /* ===== Premium Button ===== */
+  .premium-button {
+    @apply bg-semantic-primary text-semantic-primary-foreground shadow-elev-1 rounded-2xl px-4 py-2;
+    background: var(--aibos-primary-gradient);
+    transition: all var(--dur-sm) var(--ease-premium);
+  }
+
+  .premium-button:hover {
+    @apply shadow-elev-2;
+    transform: translateY(-1px);
+  }
+
+  .premium-button:active {
+    @apply shadow-elev-1;
+    transform: translateY(0);
+  }
+
+  /* ===== Premium Input ===== */
+  .premium-input {
+    @apply border-semantic-border bg-semantic-input text-semantic-foreground rounded-xl border px-3 py-2;
+    transition: all var(--dur-sm) var(--ease-premium);
+  }
+
+  .premium-input:focus {
+    @apply border-semantic-ring shadow-elev-1;
+    outline: none;
+  }
+
+  /* ===== Premium Surface ===== */
+  .premium-surface {
+    @apply bg-semantic-card border-semantic-border rounded-xl border;
+    background: var(--aibos-card-gradient);
+    transition: all var(--dur-md) var(--ease-premium);
+  }
+
+  .premium-surface:hover {
+    @apply shadow-elev-1;
+  }
+}
+
+/* ===== Premium Utilities ===== */
+@layer utilities {
+  /* ===== Premium Text ===== */
+  .text-premium {
+    @apply text-semantic-foreground;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* ===== Premium Gradient Text ===== */
+  .text-gradient {
+    background: var(--aibos-primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ===== Premium Glass Effect ===== */
+  .glass {
+    background: hsl(var(--aibos-semantic-card) / 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--aibos-semantic-border) / 0.2);
+  }
+
+  /* ===== Premium Animation Classes ===== */
+  .animate-premium-fade {
+    animation: premium-fade 0.4s var(--ease-premium);
+  }
+
+  .animate-premium-slide {
+    animation: premium-slide 0.3s var(--ease-premium);
+  }
+
+  .animate-premium-scale {
+    animation: premium-scale 0.2s var(--ease-premium);
+  }
+
+  .animate-premium-bounce {
+    animation: premium-bounce 0.6s var(--ease-premium) infinite;
+  }
+
+  /* ===== Premium Transition Classes ===== */
+  .transition-premium {
+    transition: all var(--dur-md) var(--ease-premium);
+  }
+
+  .transition-premium-fast {
+    transition: all var(--dur-sm) var(--ease-premium);
+  }
+
+  .transition-premium-slow {
+    transition: all var(--dur-lg) var(--ease-premium);
+  }
+
+  /* ===== Reduced Motion: respect user preference ===== */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+    .animate-premium-bounce,
+    .animate-premium-scale,
+    .animate-premium-slide,
+    .animate-premium-fade {
+      animation: none !important;
+    }
+  }
+
+  /* ===== Performance Mode: Variance Reduction ===== */
+  [data-perf='1'],
+  [data-perf='1'] * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+    caret-color: auto !important;
+  }
+
+  /* Input component performance optimizations */
+  [data-perf='1'] [data-perf-stable='input'] {
+    caret-color: transparent;
+  }
+
+  /* Button component performance optimizations */
+  [data-perf='1'] .no-outline {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Badge component performance optimizations */
+  [data-perf='1'] .badge {
+    filter: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Avoid paint reflows when we flip aria/data-state */
+  [data-perf='1'] [data-perf-stable] {
+    contain: content; /* isolate layout/paint */
+    content-visibility: auto; /* skip offscreen work */
+    will-change: auto; /* avoid speculative paint */
+  }
+
+  /* Tooltip / Popover stable path */
+  [data-perf='1'] [data-perf-stable='tooltip'][data-state='open'] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Accordion stable path - avoid height animation variance */
+  [data-perf='1'] [data-perf-stable][data-state='open'] {
+    height: auto;
+    overflow: visible;
+  }
+
+  [data-perf='1'] [data-perf-stable][data-state='closed'] {
+    height: 0;
+    overflow: hidden;
+  }
+
+  /* Input focus ring inert in perf mode */
+  [data-perf='1'] [data-perf-stable='input'] {
+    caret-color: transparent;
+  }
+  [data-perf='1'] input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Button static interaction - neutralize pseudo-classes */
+  [data-perf='1'] .static-interaction {
+    pointer-events: auto;
+  }
+  [data-perf='1'] .static-interaction:hover,
+  [data-perf='1'] .static-interaction:active,
+  [data-perf='1'] .static-interaction:focus {
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* Tooltip geometry pinned in perf */
+  [data-perf='1'] .tooltip-host .tooltip {
+    transform: none !important;
+    top: auto !important;
+    left: auto !important;
+  }
+
+  /* Tabs performance optimizations */
+  [data-perf='1'] [role='tabpanel'] {
+    contain: layout style paint;
+    will-change: auto;
+  }
+
+  [data-perf='1'] [role='tabpanel'][hidden] {
+    display: none !important;
+  }
+
+  [data-perf='1'] [role='tab'] {
+    pointer-events: auto;
+  }
+
+  [data-perf='1'] [role='tab']:hover,
+  [data-perf='1'] [role='tab']:active,
+  [data-perf='1'] [role='tab']:focus {
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* Tooltip: zero geometry work in perf */
+  [data-perf='1'] .tooltip-host {
+    position: relative !important;
+    display: inline-block !important;
+  }
+  [data-perf='1'] .tooltip-host > .tooltip {
+    position: absolute !important;
+    top: 0 !important;
+    left: 100% !important;
+    transform: none !important;
+    will-change: auto !important;
+  }
+  [data-perf='1'] .tooltip-host > .tooltip[data-state='closed'] {
+    display: none !important;
+  }
+
+  /* Static interaction: no visual state changes */
+  [data-perf='1'] .perf-static,
+  [data-perf='1'] .perf-static:hover,
+  [data-perf='1'] .perf-static:active,
+  [data-perf='1'] .perf-static:focus {
+    outline: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* Tabs: fully skip layout on inactive panels */
+  [data-perf='1'] [role='tabpanel'][hidden] {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* Inputs: caret & focus rings off */
+  [data-perf='1'] [data-perf-stable='input'] {
+    caret-color: transparent !important;
+  }
+  [data-perf='1'] input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Additional variance reduction */
+  [data-perf='1'] * {
+    contain: layout style paint !important;
+    will-change: auto !important;
+  }
+
+  /* Force stable layout for complex components */
+  [data-perf='1'] [role='tabpanel'],
+  [data-perf='1'] [role='tab'],
+  [data-perf='1'] [role='radiogroup'],
+  [data-perf='1'] [role='checkbox'],
+  [data-perf='1'] [role='switch'] {
+    contain: layout style paint !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* Static classes for perf mode */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    height: 2.5rem;
+    padding: 0.5rem 1rem;
+    background-color: hsl(var(--aibos-semantic-primary));
+    color: hsl(var(--aibos-semantic-primary-foreground));
+  }
+
+  .input {
+    display: flex;
+    height: 2.5rem;
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid hsl(var(--aibos-semantic-input));
+    background-color: hsl(var(--aibos-semantic-background));
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* Button perf-static class */
+  [data-perf='1'] .perf-static {
+    filter: none !important;
+    transform: none !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+  }
+  [data-perf='1'] .perf-static:hover,
+  [data-perf='1'] .perf-static:active,
+  [data-perf='1'] .perf-static:focus {
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* ===== Performance Mode: Variance Reduction (consolidated) ===== */
+
+  /* 0) Opt-in pins: static surfaces and stable nodes */
+  [data-perf='1'] .perf-static,
+  [data-perf='1'] [data-perf-stable] {
+    /* Visual state neutrality */
+    outline: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+
+    /* Layout/paint isolation */
+    contain: layout style paint !important;
+  }
+
+  /* 1) Nuke motion globally only once */
+  [data-perf='1'],
+  [data-perf='1'] * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Optional: force motion tokens to zero to reduce specificity battles */
+  [data-perf='1'] {
+    --dur-xs: 0ms;
+    --dur-sm: 0ms;
+    --dur-md: 0ms;
+    --dur-lg: 0ms;
+  }
+
+  /* 2) Inputs: caret & focus ring inert, one place only */
+  [data-perf='1'] [data-perf-stable='input'] {
+    caret-color: transparent !important;
+  }
+  [data-perf='1'] input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 3) Tabs: skip layout on inactive panels (single source of truth) */
+  [data-perf='1'] [role='tabpanel'][hidden] {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* 4) Tooltip: single geometry pin */
+  [data-perf='1'] .tooltip-host {
+    position: relative !important;
+    display: inline-block !important;
+  }
+  [data-perf='1'] .tooltip-host > .tooltip {
+    position: absolute !important;
+    top: 0 !important;
+    left: 100% !important;
+    transform: none !important;
+  }
+
+  /* 5) Accordion: details marker + height pins */
+  [data-perf='1'] summary::-webkit-details-marker {
+    display: none !important;
+  }
+  [data-perf='1'] summary::marker {
+    content: '' !important;
+  }
+  [data-perf='1'] [data-perf-stable][data-state='open'] {
+    height: auto;
+    overflow: visible;
+  }
+  [data-perf='1'] [data-perf-stable][data-state='closed'] {
+    height: 0;
+    overflow: hidden;
+  }
+
+  /* 6) Buttons/interactive: static interaction neutrality via perf-static */
+  [data-perf='1'] .perf-static:hover,
+  [data-perf='1'] .perf-static:active,
+  [data-perf='1'] .perf-static:focus {
+    filter: none !important;
+    transform: none !important;
+  }
+
+  /* 7) Roles we commonly pin (keep minimal) */
+  [data-perf='1'] [role='tab'],
+  [data-perf='1'] [role='radiogroup'],
+  [data-perf='1'] [role='checkbox'],
+  [data-perf='1'] [role='switch'] {
+    contain: layout style paint !important;
+  }
+}

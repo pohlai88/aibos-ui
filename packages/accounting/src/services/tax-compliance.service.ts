@@ -1,3 +1,4 @@
+// safeGet import removed as it's not used
 /**
  * Tax Compliance Service for Malaysian SST and SEA Markets
  *
@@ -97,7 +98,7 @@ export class TaxComplianceService {
       isRecoverable: taxCodeInfo.isRecoverable,
       taxType: taxCodeInfo.taxType,
       taxableAmount,
-      description: taxCodeInfo.description,
+      description: taxCodeInfo.description ?? '',
     };
 
     return {

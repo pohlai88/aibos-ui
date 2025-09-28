@@ -10,6 +10,44 @@ A modern, cloud-native Enterprise Resource Planning (ERP) system built with cutt
 
 **Reference Working Packages:** `packages/ui/`, `packages/utils/`, `packages/contracts/`
 
+## 🔒 **NPM BLOCKING POLICY**
+
+**⚠️ CRITICAL:** This monorepo **BLOCKS npm usage** and enforces pnpm exclusively to prevent dependency conflicts and ensure consistent package management.
+
+### **Why NPM is Blocked:**
+
+- **Dependency Conflicts**: npm creates inconsistent lock files in monorepos
+- **Performance Issues**: npm is slower than pnpm for workspace management
+- **Security Risks**: npm has different security policies than pnpm
+- **Consistency**: pnpm ensures deterministic installs across environments
+
+### **Enforcement Mechanisms:**
+
+- **Pre-install Hook**: `scripts/block-npm.js` runs before any install
+- **ESLint Rules**: Custom rules block npm usage in code
+- **Engine Restrictions**: `package.json` engines field blocks npm
+- **Lock File Detection**: Automatically detects and blocks npm lock files
+
+### **Allowed Package Managers:**
+
+- ✅ **pnpm** (Primary - Required)
+- ❌ **npm** (Blocked - Will cause errors)
+- ❌ **yarn** (Blocked - Will cause errors)
+
+### **Quick Commands:**
+
+```bash
+# ✅ CORRECT - Use pnpm
+pnpm install
+pnpm run dev
+pnpm add package-name
+
+# ❌ WRONG - Will cause errors
+npm install
+npm run dev
+npm add package-name
+```
+
 ## 🎯 **Phase 1 Status: 80% Complete (2 Days Ahead of Schedule)**
 
 ### **✅ COMPLETED INFRASTRUCTURE**

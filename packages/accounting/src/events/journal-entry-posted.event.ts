@@ -1,6 +1,7 @@
 import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { JournalEntryLine } from '../domain/journal-entry-line';
+import { omitUndefined } from '../utils';
 import { randomUUID } from 'node:crypto';
 
 export class JournalEntryPostedEvent implements DomainEvent {
@@ -189,14 +190,22 @@ export class JournalEntryPostedEvent implements DomainEvent {
       }>;
     },
   ) {
-    this.id = options?.id ?? randomUUID();
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanOptions = omitUndefined({
+      id: options?.id ?? randomUUID(),
+      correlationId,
+      causationId,
+      schemaVersion: options?.schemaVersion,
+    });
+
+    this.id = cleanOptions.id;
     this.aggregateId = `journal-entry-${journalEntryId}`;
     this.version = version;
     this.occurredAt = new Date();
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
-    if (options?.schemaVersion !== undefined) this.schemaVersion = options.schemaVersion;
+    this.correlationId = cleanOptions.correlationId;
+    this.causationId = cleanOptions.causationId;
+    if (cleanOptions.schemaVersion !== undefined) this.schemaVersion = cleanOptions.schemaVersion;
     if (options?.postingDate) this.postingDate = new Date(options.postingDate);
     if (options?.book) this.book = options.book;
 
@@ -217,8 +226,15 @@ export class JournalEntryPostedEvent implements DomainEvent {
     // Multi-Currency Support (SEA Markets)
     this.currencyCode = options?.currencyCode ?? 'MYR'; // Default to Malaysian Ringgit
     this.baseCurrencyCode = options?.baseCurrencyCode ?? 'MYR';
-    this.exchangeRate = options?.exchangeRate;
-    this.exchangeRateDate = options?.exchangeRateDate;
+
+    // Use omitUndefined to handle exactOptionalPropertyTypes safely
+    const cleanExchangeOptions = omitUndefined({
+      exchangeRate: options?.exchangeRate,
+      exchangeRateDate: options?.exchangeRateDate,
+    });
+
+    this.exchangeRate = cleanExchangeOptions.exchangeRate;
+    this.exchangeRateDate = cleanExchangeOptions.exchangeRateDate;
     this.isFXRevaluation = options?.isFXRevaluation ?? false;
 
     // Tax Compliance (Malaysian SST & SEA Markets)
@@ -350,13 +366,15 @@ export class JournalEntryPostedEvent implements DomainEvent {
         creditCentsString !== undefined
           ? centsToNumber(BigInt(creditCentsString))
           : expectNumber(r.creditAmount ?? 0, 'entries[].creditAmount');
-      return new JournalEntryLine({
-        accountCode: expectString(r.accountCode, 'entries[].accountCode'),
-        description: expectString(r.description, 'entries[].description'),
-        debitAmount,
-        creditAmount,
-        reference: optionalString(r.reference),
-      });
+      return new JournalEntryLine(
+        omitUndefined({
+          accountCode: expectString(r.accountCode, 'entries[].accountCode'),
+          description: expectString(r.description, 'entries[].description'),
+          debitAmount,
+          creditAmount,
+          reference: optionalString(r.reference),
+        }),
+      );
     });
 
     // Hydrate without constructor so we preserve id/aggregateId/occurredAt exactly

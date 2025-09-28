@@ -4,6 +4,7 @@ import {
   type TaxJurisdiction,
 } from './tax-compliance.service';
 import { Injectable } from '@nestjs/common';
+import { omitUndefined } from '../utils';
 
 export type LineSide = 'DEBIT' | 'CREDIT';
 export type Flow = 'SALE' | 'PURCHASE';
@@ -122,12 +123,12 @@ export class TaxLineCalculatorService {
     memo?: string,
   ): GeneratedLine {
     // Keep positive numbers; caller preserves sign via debit/credit selection
-    return {
+    return omitUndefined({
       accountCode,
       debitAmount: this.toCentsRound(debit, base.currency),
       creditAmount: this.toCentsRound(credit, base.currency),
       memo,
-    };
+    });
   }
 
   private toCentsRound(x: number, currency: string): number {

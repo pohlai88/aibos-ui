@@ -2,8 +2,8 @@
   "name": "@aibos/accounting-web",
   "version": "0.1.0",
   "private": false,
-  "type": "module",
   "sideEffects": false,
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/types/src/index.d.ts",
@@ -22,24 +22,24 @@
     "LICENSE"
   ],
   "scripts": {
-    "build:types": "tsc -p tsconfig.types.json",
-    "build:js": "tsup",
     "build": "pnpm run build:types && pnpm run build:js",
+    "build:js": "tsup",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rimraf dist",
+    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
+    "dev": "tsup --watch",
     "format": "prettier -w .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo 'No tests yet'",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
-    "dev": "tsup --watch",
-    "clean": "rimraf dist"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@aibos/accounting": "workspace:*",
     "@aibos/accounting-contracts": "workspace:*",
     "@aibos/ui": "workspace:*",
     "@aibos/ui-business": "workspace:*",
-    "zod": "^3.22.4"
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/react": "18.2.0",
