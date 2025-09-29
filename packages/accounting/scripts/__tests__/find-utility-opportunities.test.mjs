@@ -28,7 +28,7 @@ beforeAll(async () => {
     tmpFile1,
     `
       const amount = 123.456;
-      const rounded = Math.round(amount * 100) / 100; // Manual Rounding
+      const rounded = round2(amount); // Manual Rounding
 
       const currency = " usd ".toUpperCase().trim();  // Manual Currency Normalization
       const supported = ["USD","EUR","JPY","GBP","CAD"]; // Manual Currency Constants
@@ -44,10 +44,12 @@ beforeAll(async () => {
   writeFileSync(
     tmpFile2,
     `
+      import { hasKey } from '../utils/safe-object';
+      
       const maybe = { a: 1 };
-      if (typeof maybe === "object" && !Array.isArray(maybe)) { /* Manual Object Type Checking */ }
+      if (isRecord(maybe)) { /* Manual Object Type Checking */ }
 
-      if (Object.hasOwn(maybe, 'a')) { /* Manual Property Existence Checking */ }
+      if (hasKey(maybe, 'a')) { /* Manual Property Existence Checking */ }
 
       const period = "2025-09"; const [y, m] = period.split('-').map(Number); // Manual Period Parsing
 

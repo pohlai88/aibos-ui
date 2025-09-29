@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 // safeGet import removed as it's not used
 import { randomUUID, createHash, type BinaryLike } from 'node:crypto';
+import { isEmpty } from '../utils';
+import { createValidationError } from '../utils/error-utilities';
 
 export interface PeriodSnapshot {
   id: string;
@@ -276,7 +278,7 @@ export class PeriodCloseService {
   }
 
   private async lockPeriod(
-    tenantId: string,
+    _tenantId: string,
     periodId: string,
     status: string,
     _lockedBy: string,
@@ -289,7 +291,7 @@ export class PeriodCloseService {
   }
 
   private async unlockPeriod(
-    tenantId: string,
+    _tenantId: string,
     periodId: string,
     status: string,
     _unlockedBy: string,
@@ -318,7 +320,7 @@ export class PeriodCloseService {
     // Implementation of Merkle tree for data integrity
     const entries = Array.from(balances.entries()).sort(([a], [b]) => a.localeCompare(b));
 
-    if (entries.length === 0) {
+    if (isEmpty(entries)) {
       return 'empty';
     }
 
@@ -360,7 +362,12 @@ export class PeriodCloseService {
 
   private assertBase64(s: string, name: string): void {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(s)) {
-      throw new Error(`Invalid base64 for ${name}: ${s}`);
+      throw createValidationError(
+        'INVALID_BASE64',
+        `Invalid base64 for ${name}: ${s}`,
+        s,
+        { operation: 'validate-base64' }
+      );
     }
   }
 

@@ -1,8 +1,14 @@
 import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { JournalEntryLine } from '../domain/journal-entry-line';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty, toMinorUnits, fromMinorUnits, isEmpty } from '../utils';
 import { randomUUID } from 'node:crypto';
+import { createBusinessError } from '../utils/error-utilities';
+
+// Constants for error messages
+const PERIOD_CLOSED_MESSAGE = 'Cannot post to closed period {period}. Use adjusting entry flag if authorized.';
+const PERIOD_LOCKED_MESSAGE = 'Period {period} is locked and cannot accept new entries.';
+const VALIDATE_PERIOD_STATUS_OPERATION = 'validate-period-status';
 
 export class JournalEntryPostedEvent implements DomainEvent {
   public static readonly TYPE = 'JournalEntryPosted' as const;
@@ -352,7 +358,7 @@ export class JournalEntryPostedEvent implements DomainEvent {
     const causationId = optionalString(data.causationId);
 
     const rawEntries = Array.isArray(data.entries) ? (data.entries as unknown[]) : [];
-    if (rawEntries.length === 0) throw new TypeError('entries must be a non-empty array');
+    if (isEmpty(rawEntries)) throw new TypeError('entries must be a non-empty array');
     const entries = rawEntries.map((row) => {
       const r = row as Record<string, unknown>;
       // Prefer cents if provided (precision-safe); else fall back to numbers.
@@ -546,7 +552,7 @@ export class JournalEntryPostedEvent implements DomainEvent {
 
   private validate(): void {
     const nonEmpty = (v: string, label: string) => {
-      if (typeof v !== 'string' || v.trim().length === 0)
+      if (typeof v !== 'string' || !isNonEmpty(v))
         throw new TypeError(`${label} must be a non-empty string`);
     };
     nonEmpty(this.tenantId, 'tenantId');
@@ -554,7 +560,7 @@ export class JournalEntryPostedEvent implements DomainEvent {
     nonEmpty(this.reference, 'reference');
     nonEmpty(this.description, 'description');
     nonEmpty(this.postedBy, 'postedBy');
-    if (!Array.isArray(this.entries) || this.entries.length === 0) {
+    if (!Array.isArray(this.entries) || isEmpty(this.entries)) {
       throw new TypeError('entries must be a non-empty array');
     }
 
@@ -597,7 +603,7 @@ export class JournalEntryPostedEvent implements DomainEvent {
       throw new TypeError('postingDate must be a valid Date when provided');
     }
     if (this.book !== undefined) {
-      if (typeof this.book !== 'string' || this.book.trim().length === 0) {
+      if (typeof this.book !== 'string' || !isNonEmpty(this.book)) {
         throw new TypeError('book must be a non-empty string when provided');
       }
     }
@@ -644,18 +650,29 @@ export class JournalEntryPostedEvent implements DomainEvent {
 
     // MFRS compliance: Check if posting to closed period is allowed
     if (this.periodStatus === 'CLOSED' && !this.isAdjustingEntry) {
-      throw new Error(
-        `Cannot post to closed period ${this.accountingPeriod}. Use adjusting entry flag if authorized.`,
+      throw createBusinessError(
+        'PERIOD_CLOSED',
+        PERIOD_CLOSED_MESSAGE.replace('{period}', this.accountingPeriod),
+        this.accountingPeriod,
+        { operation: VALIDATE_PERIOD_STATUS_OPERATION }
       );
     }
 
     if (this.periodStatus === 'LOCKED') {
-      throw new Error(`Period ${this.accountingPeriod} is locked and cannot accept new entries.`);
+      throw createBusinessError(
+        'PERIOD_LOCKED',
+        PERIOD_LOCKED_MESSAGE.replace('{period}', this.accountingPeriod),
+        this.accountingPeriod,
+        { operation: VALIDATE_PERIOD_STATUS_OPERATION }
+      );
     }
 
     if (this.periodStatus === 'FINALIZED') {
-      throw new Error(
+      throw createBusinessError(
+        'PERIOD_FINALIZED',
         `Period ${this.accountingPeriod} is finalized and cannot accept any entries.`,
+        this.accountingPeriod,
+        { operation: VALIDATE_PERIOD_STATUS_OPERATION }
       );
     }
   }
@@ -739,7 +756,7 @@ function assertJournalAggregateId(aggregateId: string, journalEntryId: string): 
 }
 
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0)
+  if (typeof v !== 'string' || !isNonEmpty(v))
     throw new TypeError(`${label} must be a non-empty string`);
   return v.trim();
 }
@@ -749,7 +766,7 @@ function expectNumber(v: unknown, label: string): number {
   return v;
 }
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }
 
 function expectBoolean(v: unknown, label: string): boolean {
@@ -766,8 +783,8 @@ function optionalNumber(v: unknown): number | undefined {
 }
 function toCents(amount: number): bigint {
   // enforce <= 2dp by construction; JournalEntryLine already validates.
-  return BigInt(Math.round(amount * 100));
+  return BigInt(toMinorUnits(amount, 2));
 }
 function centsToNumber(cents: bigint): number {
-  return Number(cents) / 100;
+  return fromMinorUnits(Number(cents), 2);
 }

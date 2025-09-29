@@ -18,7 +18,9 @@ export class IdempotencyKey {
   ) {
     this.key = key;
     this.requestId = requestId;
-    this.responseData = responseData;
+    if (responseData !== undefined) {
+      this.responseData = responseData;
+    }
     this.createdAt = new Date();
     this.expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
   }

@@ -1,5 +1,4 @@
-import type { JournalEntry } from '@aibos/accounting/domain/accounting-entities';
-import type { JournalEntryRepository } from '@aibos/accounting/domain/repositories.interface';
+import type { JournalEntry, JournalEntryRepository } from '@aibos/accounting';
 
 import { JournalEntryEntity } from './journal-entry.entity';
 import { Injectable } from '@nestjs/common';
@@ -40,31 +39,35 @@ export class TypeormJournalEntryRepository implements JournalEntryRepository {
     await this.repo.save(entity);
   }
 
-  private toDomain = (entity: JournalEntryEntity): JournalEntry => ({
-    id: entity.id,
-    tenantId: entity.tenantId,
-    reference: entity.reference,
-    description: entity.description,
-    postingDate: entity.postingDate,
-    status: entity.status,
-    entries:
-      entity.generalLedgerEntries?.map((gle) => ({
-        accountCode: gle.accountCode,
-        debitAmount: Number(gle.debitAmount),
-        creditAmount: Number(gle.creditAmount),
-        currency: gle.currency,
-        description: gle.description,
-      })) || [],
-  });
+  private toDomain = (entity: JournalEntryEntity): JournalEntry => {
+    const journalEntry = new JournalEntry(
+      entity.reference,
+      entity.description,
+      entity.postingDate,
+      entity.tenantId,
+      entity.userId || 'system'
+    );
+    // Set private properties using reflection or public methods if available
+    (journalEntry as any).id = entity.id;
+    (journalEntry as any).status = entity.status;
+    (journalEntry as any).entries = entity.generalLedgerEntries?.map((gle) => ({
+      accountCode: gle.accountCode,
+      debitAmount: Number(gle.debitAmount),
+      creditAmount: Number(gle.creditAmount),
+      currency: gle.currency,
+      description: gle.description,
+    })) || [];
+    return journalEntry;
+  };
 
   private toEntity(journalEntry: JournalEntry): JournalEntryEntity {
     const entity = new JournalEntryEntity();
-    entity.id = journalEntry.id;
-    entity.tenantId = journalEntry.tenantId;
-    entity.reference = journalEntry.reference;
-    entity.description = journalEntry.description;
-    entity.postingDate = journalEntry.postingDate;
-    entity.status = journalEntry.status;
+    entity.id = (journalEntry as any).id;
+    entity.tenantId = (journalEntry as any).tenantId;
+    entity.reference = (journalEntry as any).reference;
+    entity.description = (journalEntry as any).description;
+    entity.postingDate = (journalEntry as any).postingDate;
+    entity.status = (journalEntry as any).status;
     return entity;
   }
 }

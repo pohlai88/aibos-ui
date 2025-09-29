@@ -170,7 +170,11 @@ const RULES = [
   },
   {
     name: 'Manual Property Existence',
-    re: [ /(\.hasOwnProperty|Object\.hasOwn|\bin\s+[A-Za-z_$][\w$]*)/g ],
+    re: [ 
+      /\.hasOwnProperty\s*\(/g,
+      /Object\.hasOwn\s*\(/g,
+      /if\s*\(\s*[A-Za-z_$][\w$]*\s+in\s+[A-Za-z_$][\w$]*\s*\)/g
+    ],
     suggestion: 'Use hasKey() for type-safe checks',
     utility: 'hasKey'
   },

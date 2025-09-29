@@ -4,7 +4,7 @@ import {
   type TaxJurisdiction,
 } from './tax-compliance.service';
 import { Injectable } from '@nestjs/common';
-import { omitUndefined } from '../utils';
+import { omitUndefined, getCurrencyDecimalsStrict } from '../utils';
 
 export type LineSide = 'DEBIT' | 'CREDIT';
 export type Flow = 'SALE' | 'PURCHASE';
@@ -138,20 +138,7 @@ export class TaxLineCalculatorService {
   }
 
   private decimals(currency: string): number {
-    // Reuse MultiCurrencyService decimals if available via global; default 2
-    const DECIMALS = new Map([
-      ['USD', 2],
-      ['EUR', 2],
-      ['GBP', 2],
-      ['SGD', 2],
-      ['MYR', 2],
-      ['THB', 2],
-      ['IDR', 0],
-      ['VND', 0],
-      ['PHP', 2],
-      ['JPY', 0],
-      ['KRW', 0],
-    ]);
-    return DECIMALS.get(currency) ?? 2;
+    // Use centralized currency decimals utility
+    return getCurrencyDecimalsStrict(currency);
   }
 }

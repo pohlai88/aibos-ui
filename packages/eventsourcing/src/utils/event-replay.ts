@@ -176,10 +176,25 @@ export class EventReplayEngine {
     const timestamps = events.map((event) => event.occurredAt);
     const sortedTimestamps = timestamps.sort((a, b) => a.getTime() - b.getTime());
 
-    return {
+    const result: {
+      totalEvents: number;
+      lastEventTimestamp?: Date;
+      firstEventTimestamp?: Date;
+    } = {
       totalEvents: events.length,
-      firstEventTimestamp: sortedTimestamps[0],
-      lastEventTimestamp: sortedTimestamps.at(-1),
     };
+
+    if (sortedTimestamps.length > 0) {
+      const firstTimestamp = sortedTimestamps[0];
+      const lastTimestamp = sortedTimestamps.at(-1);
+      if (firstTimestamp !== undefined) {
+        result.firstEventTimestamp = firstTimestamp;
+      }
+      if (lastTimestamp !== undefined) {
+        result.lastEventTimestamp = lastTimestamp;
+      }
+    }
+
+    return result;
   }
 }

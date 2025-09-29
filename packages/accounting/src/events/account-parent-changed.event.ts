@@ -1,7 +1,12 @@
 import type { DomainEvent } from '@aibos/eventsourcing';
 
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty } from '../utils';
 import { randomUUID } from 'node:crypto';
+import { createValidationError } from '../utils/error-utilities';
+
+// Constants for error messages
+const NO_EFFECTIVE_CHANGE_MESSAGE = 'AccountParentChangedEvent would cause no effective change';
+const VALIDATE_PARENT_CHANGE_OPERATION = 'validate-parent-change';
 
 export class AccountParentChangedEvent implements DomainEvent {
   public static readonly TYPE = 'AccountParentChanged' as const;
@@ -107,14 +112,12 @@ export class AccountParentChangedEvent implements DomainEvent {
 
     // Schema version (lenient): default 1; require integer >=1 if provided
     const rawSchema = (data as Record<string, unknown>).schemaVersion;
-    const _schemaVersion =
-      rawSchema === undefined
-        ? 1
-        : Number.isInteger(rawSchema as number) && (rawSchema as number) >= 1
-          ? (rawSchema as number)
-          : (() => {
-              throw new TypeError('schemaVersion must be a positive integer');
-            })();
+    // Schema version validation (currently unused but kept for future migrations)
+    if (rawSchema !== undefined) {
+      if (!Number.isInteger(rawSchema as number) || (rawSchema as number) < 1) {
+        throw new TypeError('schemaVersion must be a positive integer');
+      }
+    }
 
     // occurredAt must be a valid ISO string
     const occurredAtIso = expectString(data.occurredAt, 'occurredAt');
@@ -208,12 +211,22 @@ export class AccountParentChangedEvent implements DomainEvent {
     }
 
     if (!Number.isInteger(this.version) || this.version < 1) {
-      throw new Error('version must be a positive integer');
+      throw createValidationError(
+        'INVALID_VERSION',
+        'version must be a positive integer',
+        this.version.toString(),
+        { operation: 'validate-version' }
+      );
     }
 
     const nonEmpty = (v: string, label: string) => {
-      if (typeof v !== 'string' || v.trim().length === 0) {
-        throw new Error(label + ' must be a non-empty string');
+      if (typeof v !== 'string' || !isNonEmpty(v)) {
+        throw createValidationError(
+        'NON_EMPTY_STRING_REQUIRED',
+        label + ' must be a non-empty string',
+        String(v),
+        { operation: 'validate-non-empty-string' }
+      );
       }
       return v.trim();
     };
@@ -221,7 +234,12 @@ export class AccountParentChangedEvent implements DomainEvent {
     const okCode = (v: string, label: string) => {
       const t = nonEmpty(v, label);
       if (!CODE.test(t)) {
-        throw new Error(label + ' has invalid format (allowed A-Z 0-9 . _ -, max 64): ' + v);
+        throw createValidationError(
+        'INVALID_FORMAT',
+        label + ' has invalid format (allowed A-Z 0-9 . _ -, max 64): ' + v,
+        String(v),
+        { operation: 'validate-format' }
+      );
       }
       return t;
     };
@@ -242,15 +260,30 @@ export class AccountParentChangedEvent implements DomainEvent {
       (old !== undefined && neu !== undefined && old === neu);
 
     if (isTrueNoop) {
-      throw new Error('AccountParentChangedEvent would cause no effective change');
+      throw createValidationError(
+        'NO_EFFECTIVE_CHANGE',
+        NO_EFFECTIVE_CHANGE_MESSAGE,
+        'parentChange',
+        { operation: VALIDATE_PARENT_CHANGE_OPERATION }
+      );
     }
 
     // Self-parent guards
     if (old !== undefined && old === acct) {
-      throw new Error('oldParentAccountCode must not equal accountCode.');
+      throw createValidationError(
+        'INVALID_PARENT_CODE',
+        'oldParentAccountCode must not equal accountCode.',
+        this.oldParentAccountCode,
+        { operation: VALIDATE_PARENT_CHANGE_OPERATION }
+      );
     }
     if (neu !== undefined && neu === acct) {
-      throw new Error('newParentAccountCode must not equal accountCode.');
+      throw createValidationError(
+        'INVALID_PARENT_CODE',
+        'newParentAccountCode must not equal accountCode.',
+        this.newParentAccountCode,
+        { operation: VALIDATE_PARENT_CHANGE_OPERATION }
+      );
     }
 
     // Prevent circular parent references (basic check)
@@ -262,7 +295,12 @@ export class AccountParentChangedEvent implements DomainEvent {
   private validateNoCircularReference(accountCode: string, potentialParentCode: string): void {
     // Basic check - in practice, you might need to check against current hierarchy state
     if (accountCode === potentialParentCode) {
-      throw new Error('Account cannot be its own parent');
+      throw createValidationError(
+        'SELF_PARENT_NOT_ALLOWED',
+        'Account cannot be its own parent',
+        accountCode,
+        { operation: VALIDATE_PARENT_CHANGE_OPERATION }
+      );
     }
 
     // Note: Full circular reference detection requires checking the entire parent chain
@@ -272,7 +310,7 @@ export class AccountParentChangedEvent implements DomainEvent {
 
 // ---------- helpers ----------
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0) {
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return v.trim();
@@ -284,5 +322,5 @@ function expectNumber(v: unknown, label: string): number {
   return v;
 }
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }

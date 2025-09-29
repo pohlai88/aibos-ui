@@ -1,6 +1,5 @@
 import { AccountEntity } from './account.entity';
-import { type Account } from '@aibos/accounting/domain/accounting-entities';
-import { type AccountRepository } from '@aibos/accounting/domain/repositories.interface';
+import { type Account, type AccountRepository } from '@aibos/accounting';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, type Repository } from 'typeorm';

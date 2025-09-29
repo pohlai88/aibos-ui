@@ -1,6 +1,7 @@
 import { type ExchangeRateService } from './exchange-rate.service';
 import { getCurrencyDecimalsStrict, isValidCurrency, round2HalfUp } from '../utils';
 import { Injectable } from '@nestjs/common';
+import { createValidationError } from '../utils/error-utilities';
 
 @Injectable()
 export class MultiCurrencyService {
@@ -16,10 +17,20 @@ export class MultiCurrencyService {
   ): Promise<number> {
     // Validate currencies first
     if (!isValidCurrency(fromCurrency)) {
-      throw new Error(`Invalid from currency: ${fromCurrency}`);
+      throw createValidationError(
+        'INVALID_FROM_CURRENCY',
+        `Invalid from currency: ${fromCurrency}`,
+        fromCurrency,
+        { operation: 'convert-amount' }
+      );
     }
     if (!isValidCurrency(toCurrency)) {
-      throw new Error(`Invalid to currency: ${toCurrency}`);
+      throw createValidationError(
+        'INVALID_TO_CURRENCY',
+        `Invalid to currency: ${toCurrency}`,
+        toCurrency,
+        { operation: 'convert-amount' }
+      );
     }
     
     if (fromCurrency === toCurrency) {
@@ -100,7 +111,12 @@ export class MultiCurrencyService {
   private getCurrencyDecimalPlaces(currency: string): number {
     // Validate currency first
     if (!isValidCurrency(currency)) {
-      throw new Error(`Invalid currency: ${currency}`);
+      throw createValidationError(
+        'INVALID_CURRENCY',
+        `Invalid currency: ${currency}`,
+        currency,
+        { operation: 'get-currency-decimal-places' }
+      );
     }
     
     // Use our centralized utility instead of manual mapping
@@ -128,32 +144,40 @@ export class MultiCurrencyService {
       let index = -1;
       let maxAbs = -1;
       for (let index_ = 0; index_ < lines.length; index_++) {
-        const amt = lines[index_]?.creditAmount ?? 0;
+        const line = lines.at(index_);
+        const amt = line?.creditAmount ?? 0;
         if (Math.abs(amt) > maxAbs) {
           maxAbs = Math.abs(amt);
           index = index_;
         }
       }
 
-      if (index >= 0 && lines[index]) {
-        lines[index]!.creditAmount =
-          (Math.round(lines[index]!.creditAmount * factor) + diff) / factor;
+      if (index >= 0) {
+        const line = lines.at(index);
+        if (line) {
+          line.creditAmount =
+            (Math.round(line.creditAmount * factor) + diff) / factor;
+        }
       }
     } else {
       // credits > debits → bump a debit
       let index = -1;
       let maxAbs = -1;
       for (let index_ = 0; index_ < lines.length; index_++) {
-        const amt = lines[index_]?.debitAmount ?? 0;
+        const line = lines.at(index_);
+        const amt = line?.debitAmount ?? 0;
         if (Math.abs(amt) > maxAbs) {
           maxAbs = Math.abs(amt);
           index = index_;
         }
       }
 
-      if (index >= 0 && lines[index]) {
-        lines[index]!.debitAmount =
-          (Math.round(lines[index]!.debitAmount * factor) + Math.abs(diff)) / factor;
+      if (index >= 0) {
+        const line = lines.at(index);
+        if (line) {
+          line.debitAmount =
+            (Math.round(line.debitAmount * factor) + Math.abs(diff)) / factor;
+        }
       }
     }
     return lines;

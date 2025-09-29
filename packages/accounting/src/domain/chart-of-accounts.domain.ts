@@ -12,7 +12,26 @@ import {
 import { AccountType, SpecialAccountType } from './account.domain';
 import { Account } from './account.domain';
 import { AggregateRoot } from '@aibos/eventsourcing';
-import { omitUndefined } from '../utils';
+import { omitUndefined, hasItems } from '../utils';
+import { 
+  createBusinessError,
+  type ErrorContext 
+} from '../utils/error-utilities';
+
+// Constants for error messages
+const ACCOUNT_NOT_FOUND_MESSAGE = 'Account {accountCode} not found';
+const ACCOUNT_INACTIVE_MESSAGE = 'Account {accountCode} is not active';
+const UPDATE_ACCOUNT_BALANCE_OPERATION = 'update-account-balance';
+const ACCOUNT_NOT_FOUND_OPERATION = 'account-not-found';
+const ACCOUNT_NOT_FOUND_ERROR_CODE = 'ACCOUNT_NOT_FOUND';
+const ACCOUNT_CODE_PARAM = 'accountCode';
+
+// Helper functions to format messages
+const formatAccountNotFoundMessage = (accountCode: string): string => 
+  ACCOUNT_NOT_FOUND_MESSAGE.replace('{accountCode}', accountCode);
+
+const formatAccountInactiveMessage = (accountCode: string): string =>
+  ACCOUNT_INACTIVE_MESSAGE.replace('{accountCode}', accountCode);
 
 export class ChartOfAccounts extends AggregateRoot {
   private accounts: Map<string, Account> = new Map();
@@ -30,9 +49,22 @@ export class ChartOfAccounts extends AggregateRoot {
 
   public createAccount(command: CreateAccountCommand): void {
     command.validate();
+    
+    const context: ErrorContext = {
+      operation: 'create-account',
+      userId: command.userId,
+      tenantId: command.tenantId,
+      data: { accountCode: command.accountCode, accountType: command.accountType }
+    };
+
     // Guard: ensure the command matches this aggregate's tenant
     if (this._tenantId && command.tenantId !== this._tenantId) {
-      throw new Error(`Tenant mismatch: aggregate=${this._tenantId}, command=${command.tenantId}`);
+      throw createBusinessError(
+        'TENANT_MISMATCH',
+        `Tenant mismatch: aggregate=${this._tenantId}, command=${command.tenantId}`,
+        'ChartOfAccounts',
+        context
+      );
     }
     this.validateAccountCreation(command);
     this.validateDepth(command.parentAccountCode);
@@ -72,20 +104,40 @@ export class ChartOfAccounts extends AggregateRoot {
   public updateAccountBalance(accountCode: string, amount: number): void {
     const account = this.accounts.get(accountCode);
     if (!account) {
-      throw new Error(`Account ${accountCode} not found`);
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        formatAccountNotFoundMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: UPDATE_ACCOUNT_BALANCE_OPERATION }
+      );
     }
 
     if (!account.isActive) {
-      throw new Error(`Account ${accountCode} is not active`);
+      throw createBusinessError(
+        'ACCOUNT_INACTIVE',
+        formatAccountInactiveMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: UPDATE_ACCOUNT_BALANCE_OPERATION }
+      );
     }
 
     // Posting rule: cannot post to accounts that have children (headers) or when posting is not allowed
-    const hasChildren = (this.accountHierarchy.get(accountCode) || []).length > 0;
+    const hasChildren = hasItems(this.accountHierarchy.get(accountCode) || []);
     if (hasChildren) {
-      throw new Error(`Cannot post to header account ${accountCode} (has child accounts)`);
+      throw createBusinessError(
+        'POSTING_TO_HEADER_ACCOUNT',
+        `Cannot post to header account ${accountCode} (has child accounts)`,
+        ACCOUNT_CODE_PARAM,
+        { operation: UPDATE_ACCOUNT_BALANCE_OPERATION }
+      );
     }
     if (!account.postingAllowed) {
-      throw new Error(`Posting is blocked by policy on account ${accountCode}`);
+      throw createBusinessError(
+        'POSTING_BLOCKED_BY_POLICY',
+        `Posting is blocked by policy on account ${accountCode}`,
+        ACCOUNT_CODE_PARAM,
+        { operation: UPDATE_ACCOUNT_BALANCE_OPERATION }
+      );
     }
 
     const updatedAccount = account.updateBalance(amount);
@@ -95,7 +147,7 @@ export class ChartOfAccounts extends AggregateRoot {
 
     this.addEvent(
       new AccountBalanceUpdatedEvent(
-        accountCode,
+        ACCOUNT_CODE_PARAM,
         updatedAccount.balance,
         this.id,
         this.getVersion() + 1,
@@ -107,17 +159,32 @@ export class ChartOfAccounts extends AggregateRoot {
   public deactivateAccount(accountCode: string): void {
     const account = this.accounts.get(accountCode);
     if (!account) {
-      throw new Error(`Account ${accountCode} not found`);
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        formatAccountNotFoundMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: 'deactivate-account' }
+      );
     }
 
     if (!account.isActive) {
-      throw new Error(`Account ${accountCode} is already inactive`);
+      throw createBusinessError(
+        'ACCOUNT_ALREADY_INACTIVE',
+        `Account ${accountCode} is already inactive`,
+        ACCOUNT_CODE_PARAM,
+        { operation: 'account-already-inactive' }
+      );
     }
 
     // Check if account has children
     const children = this.accountHierarchy.get(accountCode) || [];
-    if (children.length > 0) {
-      throw new Error(`Cannot deactivate account ${accountCode} with active child accounts`);
+    if (hasItems(children)) {
+      throw createBusinessError(
+        'CANNOT_DEACTIVATE_ACCOUNT_WITH_CHILDREN',
+        `Cannot deactivate account ${accountCode} with active child accounts`,
+        ACCOUNT_CODE_PARAM,
+        { operation: 'cannot-deactivate-account-with-children' }
+      );
     }
 
     const deactivatedAccount = account.deactivate();
@@ -125,7 +192,7 @@ export class ChartOfAccounts extends AggregateRoot {
 
     this.addEvent(
       new AccountStateUpdatedEvent(
-        accountCode,
+        ACCOUNT_CODE_PARAM,
         deactivatedAccount.accountName,
         deactivatedAccount.accountType,
         deactivatedAccount.parentAccountCode,
@@ -140,16 +207,44 @@ export class ChartOfAccounts extends AggregateRoot {
   /** Move an account to a new parent (or detach to root) */
   public changeAccountParent(accountCode: string, newParentAccountCode?: string): void {
     const account = this.accounts.get(accountCode);
-    if (!account) throw new Error(`Account ${accountCode} not found`);
-    if (!account.isActive) throw new Error(`Account ${accountCode} is not active`);
+    if (!account) {
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        formatAccountNotFoundMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: ACCOUNT_NOT_FOUND_OPERATION }
+      );
+    }
+    if (!account.isActive) {
+      throw createBusinessError(
+        'ACCOUNT_INACTIVE',
+        formatAccountInactiveMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: 'account-inactive' }
+      );
+    }
 
     const oldParent = account.parentAccountCode;
     if (oldParent === newParentAccountCode) return; // no-op
 
     if (newParentAccountCode) {
       const parent = this.accounts.get(newParentAccountCode);
-      if (!parent) throw new Error(`Parent account ${newParentAccountCode} does not exist`);
-      if (!parent.isActive) throw new Error(`Parent account ${newParentAccountCode} is not active`);
+      if (!parent) {
+        throw createBusinessError(
+        'PARENT_ACCOUNT_NOT_FOUND',
+        `Parent account ${newParentAccountCode} does not exist`,
+        ACCOUNT_CODE_PARAM,
+        { operation: 'parent-account-not-found' }
+      );
+      }
+      if (!parent.isActive) {
+        throw createBusinessError(
+        'PARENT_ACCOUNT_INACTIVE',
+        `Parent account ${newParentAccountCode} is not active`,
+        ACCOUNT_CODE_PARAM,
+        { operation: 'parent-account-inactive' }
+      );
+      }
       // Type hierarchy check
       this.validateAccountTypeHierarchy(account.accountType, parent.accountType);
       // Cycle check
@@ -164,7 +259,7 @@ export class ChartOfAccounts extends AggregateRoot {
     // Emit explicit parent-changed event
     this.addEvent(
       new AccountParentChangedEvent(
-        accountCode,
+        ACCOUNT_CODE_PARAM,
         oldParent,
         newParentAccountCode,
         this.id,
@@ -177,12 +272,19 @@ export class ChartOfAccounts extends AggregateRoot {
   /** Governance: toggle posting policy (e.g., lock control accounts) */
   public setPostingPolicy(accountCode: string, postingAllowed: boolean): void {
     const account = this.accounts.get(accountCode);
-    if (!account) throw new Error(`Account ${accountCode} not found`);
+    if (!account) {
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        formatAccountNotFoundMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: ACCOUNT_NOT_FOUND_OPERATION }
+      );
+    }
     if (account.postingAllowed === postingAllowed) return; // no-op
 
     this.addEvent(
       new AccountPostingPolicyChangedEvent(
-        accountCode,
+        ACCOUNT_CODE_PARAM,
         postingAllowed,
         this.id,
         this.getVersion() + 1,
@@ -197,19 +299,29 @@ export class ChartOfAccounts extends AggregateRoot {
     links: NonNullable<Account['companionLinks']>,
   ): void {
     const accumulator = this.accounts.get(accountCode);
-    if (!accumulator) throw new Error(`Account ${accountCode} not found`);
+    if (!accumulator) {
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        formatAccountNotFoundMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: ACCOUNT_NOT_FOUND_OPERATION }
+      );
+    }
 
     // Minimal shape check; deeper checks reuse creation rules
     if (!!links.accumulatedDepreciationCode !== !!links.depreciationExpenseCode) {
-      throw new Error(
+      throw createBusinessError(
+        'INCOMPLETE_COMPANION_LINKS',
         'Both accumulatedDepreciationCode and depreciationExpenseCode must be provided together',
+        ACCOUNT_CODE_PARAM,
+        { operation: 'incomplete-companion-links' }
       );
     }
 
     // Emit event; on apply we'll re-validate existence and types
     this.addEvent(
       new AccountCompanionLinksSetEvent(
-        accountCode,
+        ACCOUNT_CODE_PARAM,
         this.id,
         this.getVersion() + 1,
         this._tenantId,
@@ -243,34 +355,71 @@ export class ChartOfAccounts extends AggregateRoot {
 
   public validateAccountExists(accountCode: string): void {
     if (!this.accounts.has(accountCode)) {
-      throw new Error(`Account ${accountCode} does not exist`);
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        `Account ${accountCode} does not exist`,
+        ACCOUNT_CODE_PARAM,
+        { operation: ACCOUNT_NOT_FOUND_OPERATION }
+      );
     }
   }
 
   public validateAccountActive(accountCode: string): void {
     const account = this.accounts.get(accountCode);
     if (!account) {
-      throw new Error(`Account ${accountCode} does not exist`);
+      throw createBusinessError(
+        ACCOUNT_NOT_FOUND_ERROR_CODE,
+        `Account ${accountCode} does not exist`,
+        ACCOUNT_CODE_PARAM,
+        { operation: ACCOUNT_NOT_FOUND_OPERATION }
+      );
     }
 
     if (!account.isActive) {
-      throw new Error(`Account ${accountCode} is not active`);
+      throw createBusinessError(
+        'ACCOUNT_INACTIVE',
+        formatAccountInactiveMessage(accountCode),
+        ACCOUNT_CODE_PARAM,
+        { operation: 'account-inactive' }
+      );
     }
   }
 
   private validateAccountCreation(command: CreateAccountCommand): void {
+    const context: ErrorContext = {
+      operation: 'validate-account-creation',
+      userId: command.userId,
+      tenantId: command.tenantId,
+      data: { accountCode: command.accountCode, accountType: command.accountType }
+    };
+
     if (this.accounts.has(command.accountCode)) {
-      throw new Error(`Account code ${command.accountCode} already exists`);
+      throw createBusinessError(
+        'ACCOUNT_CODE_EXISTS',
+        `Account code ${command.accountCode} already exists`,
+        'ChartOfAccounts',
+        context
+      );
     }
 
     if (command.parentAccountCode) {
       const parentAccount = this.accounts.get(command.parentAccountCode);
       if (!parentAccount) {
-        throw new Error(`Parent account ${command.parentAccountCode} does not exist`);
+        throw createBusinessError(
+          'PARENT_ACCOUNT_NOT_FOUND',
+          `Parent account ${command.parentAccountCode} does not exist`,
+          'ChartOfAccounts',
+          context
+        );
       }
 
       if (!parentAccount.isActive) {
-        throw new Error(`Parent account ${command.parentAccountCode} is not active`);
+        throw createBusinessError(
+          'PARENT_ACCOUNT_INACTIVE',
+          `Parent account ${command.parentAccountCode} is not active`,
+          'ChartOfAccounts',
+          context
+        );
       }
 
       // Validate account type hierarchy
@@ -285,42 +434,69 @@ export class ChartOfAccounts extends AggregateRoot {
     // If creating an Accumulated Depreciation account
     if (special === SpecialAccountType.ACCUMULATED_DEPRECIATION) {
       if (command.accountType !== AccountType.ASSET) {
-        throw new Error(
-          'Accumulated Depreciation must be created as base type Asset (contra-asset).',
-        );
+        throw createBusinessError(
+        'INVALID_ACCOUNT_TYPE_FOR_ACCUMULATED_DEPRECIATION',
+        'Accumulated Depreciation must be created as base type Asset (contra-asset).',
+        command.accountCode,
+        { operation: 'invalid-account-type-for-accumulated-depreciation' }
+      );
       }
     }
     // If creating a Depreciation Expense account
     if (special === SpecialAccountType.DEPRECIATION_EXPENSE) {
       if (command.accountType !== AccountType.EXPENSE) {
-        throw new Error('Depreciation Expense must be created as an Expense.');
+        throw createBusinessError(
+        'INVALID_ACCOUNT_TYPE_FOR_DEPRECIATION_EXPENSE',
+        'Depreciation Expense must be created as an Expense.',
+        command.accountCode,
+        { operation: 'invalid-account-type-for-depreciation-expense' }
+      );
       }
     }
 
     // If creating a depreciable asset (opt-in via links), both links must be present and valid
     if (links?.accumulatedDepreciationCode || links?.depreciationExpenseCode) {
       if (!links?.accumulatedDepreciationCode || !links?.depreciationExpenseCode) {
-        throw new Error(
-          'Depreciable asset requires both accumulatedDepreciationCode and depreciationExpenseCode.',
-        );
+        throw createBusinessError(
+        'INCOMPLETE_DEPRECIATION_LINKS',
+        'Depreciable asset requires both accumulatedDepreciationCode and depreciationExpenseCode.',
+        command.accountCode,
+        { operation: 'incomplete-depreciation-links' }
+      );
       }
       const accumulatorDep = this.accounts.get(links.accumulatedDepreciationCode);
       const depExp = this.accounts.get(links.depreciationExpenseCode);
-      if (!accumulatorDep)
-        throw new Error(
-          `Accumulated Depreciation account ${links.accumulatedDepreciationCode} not found`,
-        );
-      if (!depExp)
-        throw new Error(`Depreciation Expense account ${links.depreciationExpenseCode} not found`);
+      if (!accumulatorDep) {
+        throw createBusinessError(
+        'ACCUMULATED_DEPRECIATION_ACCOUNT_NOT_FOUND',
+        `Accumulated Depreciation account ${links.accumulatedDepreciationCode} not found`,
+        command.accountCode,
+        { operation: 'accumulated-depreciation-account-not-found' }
+      );
+      }
+      if (!depExp) {
+        throw createBusinessError(
+        'DEPRECIATION_EXPENSE_ACCOUNT_NOT_FOUND',
+        `Depreciation Expense account ${links.depreciationExpenseCode} not found`,
+        command.accountCode,
+        { operation: 'depreciation-expense-account-not-found' }
+      );
+      }
       if (accumulatorDep.specialAccountType !== SpecialAccountType.ACCUMULATED_DEPRECIATION) {
-        throw new Error(
-          `Account ${accumulatorDep.accountCode} must be SpecialAccountType=AccumulatedDepreciation`,
-        );
+        throw createBusinessError(
+        'INVALID_ACCUMULATED_DEPRECIATION_TYPE',
+        `Account ${accumulatorDep.accountCode} must be SpecialAccountType=AccumulatedDepreciation`,
+        command.accountCode,
+        { operation: 'invalid-accumulated-depreciation-type' }
+      );
       }
       if (depExp.specialAccountType !== SpecialAccountType.DEPRECIATION_EXPENSE) {
-        throw new Error(
-          `Account ${depExp.accountCode} must be SpecialAccountType=DepreciationExpense`,
-        );
+        throw createBusinessError(
+        'INVALID_DEPRECIATION_EXPENSE_TYPE',
+        `Account ${depExp.accountCode} must be SpecialAccountType=DepreciationExpense`,
+        command.accountCode,
+        { operation: 'invalid-depreciation-expense-type' }
+      );
       }
     }
   }
@@ -337,15 +513,23 @@ export class ChartOfAccounts extends AggregateRoot {
 
     const allowedTypes = validHierarchies.get(parentType);
     if (!allowedTypes?.includes(childType)) {
-      throw new Error(`Account type ${childType} is not valid under parent type ${parentType}`);
+      throw createBusinessError(
+        'INVALID_ACCOUNT_TYPE_HIERARCHY',
+        `Account type ${childType} is not valid under parent type ${parentType}`,
+        childType,
+        { operation: 'invalid-account-type-hierarchy' }
+      );
     }
   }
 
   private validateDepth(parentAccountCode?: string): void {
     const depth = this.computeDepth(parentAccountCode);
     if (depth >= ChartOfAccounts.MAX_DEPTH) {
-      throw new Error(
+      throw createBusinessError(
+        'DEPTH_LIMIT_EXCEEDED',
         `Depth limit exceeded: parent depth=${depth}. Max allowed is ${ChartOfAccounts.MAX_DEPTH}`,
+        parentAccountCode,
+        { operation: 'depth-limit-exceeded' }
       );
     }
   }
@@ -357,7 +541,14 @@ export class ChartOfAccounts extends AggregateRoot {
       const parent = this.findParentOf(current);
       d += 1;
       current = parent ?? undefined;
-      if (d > 64) throw new Error('Hierarchy appears cyclic or too deep'); // safety cap
+      if (d > 64) {
+        throw createBusinessError(
+        'HIERARCHY_TOO_DEEP_OR_CYCLIC',
+        'Hierarchy appears cyclic or too deep',
+        ACCOUNT_CODE_PARAM,
+        { operation: 'hierarchy-too-deep-or-cyclic' }
+      );
+      }
     }
     return d;
   }
@@ -375,10 +566,22 @@ export class ChartOfAccounts extends AggregateRoot {
     let hops = 0;
     while (cursor) {
       if (cursor === movingCode) {
-        throw new Error(`Cycle detected: cannot make ${newParentCode} a parent of ${movingCode}`);
+        throw createBusinessError(
+        'CYCLE_DETECTED',
+        `Cycle detected: cannot make ${newParentCode} a parent of ${movingCode}`,
+        movingCode,
+        { operation: 'cycle-detected' }
+      );
       }
       cursor = this.findParentOf(cursor);
-      if (++hops > 64) throw new Error('Hierarchy appears cyclic or too deep');
+      if (++hops > 64) {
+        throw createBusinessError(
+        'HIERARCHY_TOO_DEEP_OR_CYCLIC',
+        'Hierarchy appears cyclic or too deep',
+        movingCode,
+        { operation: 'hierarchy-too-deep-or-cyclic' }
+      );
+      }
     }
   }
 
@@ -582,24 +785,38 @@ export class ChartOfAccounts extends AggregateRoot {
     const accumulatorDep = check(event.accumulatedDepreciationCode);
     const depExp = check(event.depreciationExpenseCode);
     if (event.accumulatedDepreciationCode && !accumulatorDep) {
-      throw new Error(
+      throw createBusinessError(
+        'ACCUMULATED_DEPRECIATION_ACCOUNT_NOT_FOUND',
         `Accumulated Depreciation account ${event.accumulatedDepreciationCode} not found`,
+        event.accountCode,
+        { operation: 'accumulated-depreciation-account-not-found' }
       );
     }
     if (event.depreciationExpenseCode && !depExp) {
-      throw new Error(`Depreciation Expense account ${event.depreciationExpenseCode} not found`);
+      throw createBusinessError(
+        'DEPRECIATION_EXPENSE_ACCOUNT_NOT_FOUND',
+        `Depreciation Expense account ${event.depreciationExpenseCode} not found`,
+        event.accountCode,
+        { operation: 'depreciation-expense-account-not-found' }
+      );
     }
     if (
       accumulatorDep &&
       accumulatorDep.specialAccountType !== SpecialAccountType.ACCUMULATED_DEPRECIATION
     ) {
-      throw new Error(
+      throw createBusinessError(
+        'INVALID_ACCUMULATED_DEPRECIATION_TYPE',
         `Account ${accumulatorDep.accountCode} must be SpecialAccountType=AccumulatedDepreciation`,
+        event.accountCode,
+        { operation: 'invalid-accumulated-depreciation-type' }
       );
     }
     if (depExp && depExp.specialAccountType !== SpecialAccountType.DEPRECIATION_EXPENSE) {
-      throw new Error(
+      throw createBusinessError(
+        'INVALID_DEPRECIATION_EXPENSE_TYPE',
         `Account ${depExp.accountCode} must be SpecialAccountType=DepreciationExpense`,
+        event.accountCode,
+        { operation: 'invalid-depreciation-expense-type' }
       );
     }
 
@@ -618,11 +835,11 @@ export class ChartOfAccounts extends AggregateRoot {
         updatedAt: event.occurredAt,
         specialAccountType: accumulator.specialAccountType,
         postingAllowed: accumulator.postingAllowed,
-        companionLinks: {
-          accumulatedDepreciationCode: event.accumulatedDepreciationCode ?? undefined,
-          depreciationExpenseCode: event.depreciationExpenseCode ?? undefined,
-          allowanceAccountCode: event.allowanceAccountCode ?? undefined,
-        },
+        companionLinks: omitUndefined({
+          accumulatedDepreciationCode: event.accumulatedDepreciationCode || undefined,
+          depreciationExpenseCode: event.depreciationExpenseCode || undefined,
+          allowanceAccountCode: event.allowanceAccountCode || undefined,
+        }),
       }),
     );
     this.accounts.set(event.accountCode, updated);

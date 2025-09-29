@@ -38,6 +38,12 @@ import {
   requestLogger,
 } from './validation.middleware.js';
 
+// Common type descriptions
+const STRING_REQUIRED = 'string (required)';
+const STRING_OPTIONAL = 'string (optional)';
+const ENUM_REQUIRED = 'enum (required)';
+const ENUM_OPTIONAL = 'enum (optional)';
+
 // Constants
 const API_BASE_PATH = '/api/accounting';
 const HEALTH_ENDPOINT = '/health';
@@ -62,12 +68,12 @@ const DATE_OPTIONAL = 'string (optional) - ISO date string for historical rate';
 const DATE_OPTIONAL_RATES = 'string (optional) - ISO date string for historical rates';
 const DATE_OPTIONAL_DEFAULT = 'string (optional) - ISO date string, defaults to current date';
 const SOURCE_OPTIONAL = 'string (optional) - Rate source identifier';
-const JURISDICTION_FILTER = 'string (optional) - Jurisdiction filter';
-const REPORT_TYPE_FILTER = 'string (optional) - Report type filter';
-const REPORT_TYPE_ENUM = 'enum (required) - TAX, REGULATORY, AUDIT, FINANCIAL';
-const PERIOD_FORMAT = 'string (required) - Period in YYYY-MM format';
-const JURISDICTION_CODE = 'string (required) - Jurisdiction code';
-const FORMAT_ENUM = 'enum (optional) - PDF, EXCEL, XML, JSON (default: PDF)';
+const JURISDICTION_FILTER = `${STRING_OPTIONAL} - Jurisdiction filter`;
+const REPORT_TYPE_FILTER = `${STRING_OPTIONAL} - Report type filter`;
+const REPORT_TYPE_ENUM = `${ENUM_REQUIRED} - TAX, REGULATORY, AUDIT, FINANCIAL`;
+const PERIOD_FORMAT = `${STRING_REQUIRED} - Period in YYYY-MM format`;
+const JURISDICTION_CODE = `${STRING_REQUIRED} - Jurisdiction code`;
+const FORMAT_ENUM = `${ENUM_OPTIONAL} - PDF, EXCEL, XML, JSON (default: PDF)`;
 
 /**
  * Public shape of API documentation. Keep in sync with controllers/routes.

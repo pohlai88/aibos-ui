@@ -3,20 +3,33 @@ import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { Money } from '../domain/Money';
 import { assertAggregateMatchesTenant, moneyFromCentsShim } from './common.utility';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty, isEmpty } from '../utils';
 import { randomUUID } from 'node:crypto';
+import { createValidationError } from '../utils/error-utilities';
 
 const CODE = /^[A-Z0-9._-]{1,64}$/i;
 const CHART_OF_ACCOUNTS_PREFIX = 'chart-of-accounts-';
 const nonEmpty = (v: unknown, label: string): string => {
-  if (typeof v !== 'string' || v.trim().length === 0) {
-    throw new Error(`${label} must be a non-empty string`);
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
+    throw createValidationError(
+      'NON_EMPTY_STRING_REQUIRED',
+      `${label} must be a non-empty string`,
+      String(v),
+      { operation: 'validate-non-empty-string' }
+    );
   }
   return v.trim();
 };
 const okCode = (v: unknown, label: string): string => {
   const t = nonEmpty(v, label);
-  if (!CODE.test(t)) throw new Error(`${label} invalid (A-Z 0-9 . _ -, max 64): ${v as string}`);
+  if (!CODE.test(t)) {
+    throw createValidationError(
+      'INVALID_CODE_FORMAT',
+      `${label} invalid (A-Z 0-9 . _ -, max 64): ${v as string}`,
+      String(v),
+      { operation: 'validate-code-format' }
+    );
+  }
   return t;
 };
 
@@ -403,7 +416,7 @@ export class AccountStateUpdatedEvent implements DomainEvent {
     parentAccountCode?: string | undefined;
     isActive: boolean;
   }): boolean {
-    return this.changedFields(previous).length === 0;
+    return isEmpty(this.changedFields(previous));
   }
 
   /** Utility method for debugging */
@@ -446,7 +459,12 @@ export class AccountStateUpdatedEvent implements DomainEvent {
     if (this.parentAccountCode !== undefined) {
       const parent = okCode(this.parentAccountCode, 'parentAccountCode');
       if (parent === code) {
-        throw new Error('parentAccountCode must differ from accountCode');
+        throw createValidationError(
+          'PARENT_ACCOUNT_SAME_AS_ACCOUNT',
+          'parentAccountCode must differ from accountCode',
+          parent,
+          { operation: 'validate-account-updated-event' }
+        );
       }
     }
 
@@ -470,14 +488,19 @@ export class AccountStateUpdatedEvent implements DomainEvent {
   private validateBusinessRules(): void {
     // Example: System accounts cannot be deactivated
     if (this.accountCode.startsWith('SYS-') && !this.isActive) {
-      throw new Error('System accounts cannot be deactivated');
+      throw createValidationError(
+        'SYSTEM_ACCOUNT_CANNOT_BE_DEACTIVATED',
+        'System accounts cannot be deactivated',
+        this.accountCode,
+        { operation: 'validate-business-rules' }
+      );
     }
   }
 }
 
 // ---------- helpers ----------
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0) {
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return v.trim();
@@ -498,5 +521,5 @@ function expectBoolean(v: unknown, label: string): boolean {
 }
 
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }

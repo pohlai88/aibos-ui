@@ -9,6 +9,18 @@
  */
 
 import { z } from 'zod';
+import { validateAccountType } from '../utils/validation-utilities';
+
+// Custom account type validator using Phase 2 utility
+const AccountTypeValidator = z.string().refine(
+  (type) => {
+    const result = validateAccountType(type);
+    return result.isValid;
+  },
+  {
+    message: 'Account type must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE',
+  }
+);
 
 // Constants for error messages
 const ACCOUNT_CODE_ERROR: string = 'Account code is required';
@@ -31,11 +43,7 @@ export const CreateAccountRequestSchema = z.object({
     .string()
     .min(1, 'Account name is required')
     .max(100, 'Account name must be 100 characters or less'),
-  accountType: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'], {
-    errorMap: () => ({
-      message: 'Account type must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE',
-    }),
-  }),
+  accountType: AccountTypeValidator,
   parentCode: z
     .string()
     .min(1, ACCOUNT_CODE_ERROR)
@@ -143,7 +151,7 @@ export const SetCompanionLinksRequestSchema = z
 // ============================================================================
 
 export const AccountQuerySchema = z.object({
-  accountType: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']).optional(),
+  accountType: AccountTypeValidator.optional(),
   parentCode: z.string().optional(),
   specialAccountType: z.string().optional(),
   postingAllowed: z.boolean().optional(),

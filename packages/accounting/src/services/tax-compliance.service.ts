@@ -1,4 +1,7 @@
 // safeGet import removed as it's not used
+import { isEmpty, hasItems } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
+
 /**
  * Tax Compliance Service for Malaysian SST and SEA Markets
  *
@@ -87,7 +90,12 @@ export class TaxComplianceService {
   ): TaxCalculationResult {
     const taxCodeInfo = this.getTaxCode(taxCode, jurisdiction);
     if (!taxCodeInfo) {
-      throw new Error(`Tax code ${taxCode} not found for jurisdiction ${jurisdiction}`);
+      throw createBusinessError(
+        'TAX_CODE_NOT_FOUND',
+        `Tax code ${taxCode} not found for jurisdiction ${jurisdiction}`,
+        taxCode,
+        { operation: 'calculate-tax', jurisdiction }
+      );
     }
 
     const taxAmount = taxableAmount * taxCodeInfo.rate;
@@ -209,7 +217,7 @@ export class TaxComplianceService {
     this.validateJurisdictionSpecificRules(taxLines, jurisdiction, errors, warnings, suggestions);
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
       suggestions,
@@ -436,13 +444,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Malaysian SST validation');
+      return;
+    }
     // SST is not recoverable for most businesses
     const sstLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.SST_PREFIX),
     );
     const recoverableSstLines = sstLines.filter((line) => line.isRecoverable);
 
-    if (recoverableSstLines.length > 0) {
+    if (hasItems(recoverableSstLines)) {
       warnings.push(
         'SST is generally not recoverable in Malaysia. Verify business registration status.',
       );
@@ -468,13 +481,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Singapore GST validation');
+      return;
+    }
     // GST is generally recoverable for GST-registered businesses
     const gstLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.GST_PREFIX),
     );
     const nonRecoverableGstLines = gstLines.filter((line) => !line.isRecoverable);
 
-    if (nonRecoverableGstLines.length > 0) {
+    if (hasItems(nonRecoverableGstLines)) {
       warnings.push(
         `GST ${TaxComplianceService.RECOVERABLE_WARNING} GST-registered ${TaxComplianceService.BUSINESS_REGISTRATION} in Singapore.`,
       );
@@ -490,13 +508,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Vietnam VAT validation');
+      return;
+    }
     // VAT is recoverable for VAT-registered businesses
     const vatLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.VAT_PREFIX),
     );
     const nonRecoverableVatLines = vatLines.filter((line) => !line.isRecoverable);
 
-    if (nonRecoverableVatLines.length > 0) {
+    if (hasItems(nonRecoverableVatLines)) {
       warnings.push(
         `VAT ${TaxComplianceService.RECOVERABLE_WARNING} VAT-registered ${TaxComplianceService.BUSINESS_REGISTRATION} in Vietnam.`,
       );
@@ -512,13 +535,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Indonesia PPN validation');
+      return;
+    }
     // PPN is recoverable for PKP (Pengusaha Kena Pajak) businesses
     const ppnLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.PPN_PREFIX),
     );
     const nonRecoverablePpnLines = ppnLines.filter((line) => !line.isRecoverable);
 
-    if (nonRecoverablePpnLines.length > 0) {
+    if (hasItems(nonRecoverablePpnLines)) {
       warnings.push(
         `PPN ${TaxComplianceService.RECOVERABLE_WARNING} PKP-registered ${TaxComplianceService.BUSINESS_REGISTRATION} in Indonesia.`,
       );
@@ -534,13 +562,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Thailand VAT validation');
+      return;
+    }
     // VAT is recoverable for VAT-registered businesses
     const vatLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.VAT_PREFIX),
     );
     const nonRecoverableVatLines = vatLines.filter((line) => !line.isRecoverable);
 
-    if (nonRecoverableVatLines.length > 0) {
+    if (hasItems(nonRecoverableVatLines)) {
       warnings.push(
         `VAT ${TaxComplianceService.RECOVERABLE_WARNING} VAT-registered ${TaxComplianceService.BUSINESS_REGISTRATION} in Thailand.`,
       );
@@ -556,13 +589,18 @@ export class TaxComplianceService {
     warnings: string[],
     _suggestions: string[],
   ): void {
+    // Basic validation: check for required fields
+    if (isEmpty(taxLines)) {
+      errors.push('No tax lines provided for Philippines VAT validation');
+      return;
+    }
     // VAT is recoverable for VAT-registered businesses
     const vatLines = taxLines.filter((line) =>
       line.taxCode.startsWith(TaxComplianceService.VAT_PREFIX),
     );
     const nonRecoverableVatLines = vatLines.filter((line) => !line.isRecoverable);
 
-    if (nonRecoverableVatLines.length > 0) {
+    if (hasItems(nonRecoverableVatLines)) {
       warnings.push(
         `VAT ${TaxComplianceService.RECOVERABLE_WARNING} VAT-registered ${TaxComplianceService.BUSINESS_REGISTRATION} in the Philippines.`,
       );

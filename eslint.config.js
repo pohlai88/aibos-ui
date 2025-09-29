@@ -7,7 +7,6 @@ import importPlugin from 'eslint-plugin-import';
 import promise from 'eslint-plugin-promise';
 import sonarjs from 'eslint-plugin-sonarjs';
 import security from 'eslint-plugin-security';
-import unicorn from 'eslint-plugin-unicorn';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
@@ -79,6 +78,8 @@ export default [
         clearTimeout: 'readonly',
         setImmediate: 'readonly',
         clearImmediate: 'readonly',
+        // Node.js namespace
+        NodeJS: 'readonly',
         // Browser/DOM globals
         window: 'readonly',
         document: 'readonly',
@@ -118,6 +119,10 @@ export default [
         // React/JSX globals
         JSX: 'readonly',
         React: 'readonly',
+        // Theme/Design system globals (for UI components)
+        primary: 'readonly',
+        spacing: 'readonly',
+        neutral: 'readonly',
         // Other globals
         btoa: 'readonly',
         atob: 'readonly',
@@ -150,7 +155,6 @@ export default [
       promise,
       sonarjs,
       security,
-      unicorn,
       'jsx-a11y': jsxA11y,
       'react-hooks': reactHooks,
       'no-npm-usage': noNpmUsage,
@@ -234,51 +238,6 @@ export default [
       'sonarjs/prefer-immediate-return': 'error',
       'sonarjs/prefer-single-boolean-return': 'error',
       'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-
-      // Enhanced Code quality rules (Unicorn rules)
-      'unicorn/prefer-module': 'error',
-      'unicorn/prefer-node-protocol': 'error',
-      'unicorn/prefer-query-selector': 'error',
-      'unicorn/prefer-string-slice': 'error',
-      'unicorn/prefer-type-error': 'error',
-      'unicorn/no-null': 'off', // Allow null for React compatibility
-      'unicorn/prevent-abbreviations': [
-        'warn',
-        {
-          allowList: {
-            e: true,
-            err: true,
-            ref: true,
-            ctx: true,
-            props: true,
-            dir: true,
-            rel: true,
-            env: true,
-            req: true,
-            res: true,
-            args: true,
-            Args: true,
-            db: true,
-            id: true,
-            params: true,
-            api: true,
-            pkg: true,
-            src: true,
-            ts: true,
-            tx: true,
-            ulid: true,
-            uuid: true,
-            i18n: true,
-            erp: true,
-            ui: true,
-            bff: true,
-            crm: true,
-            hrm: true,
-            scm: true,
-            wms: true,
-          },
-        },
-      ],
 
       // NPM blocking rules
       'no-npm-usage/no-npm-usage': 'error',
@@ -386,6 +345,10 @@ export default [
       '**/grafana-datasources/**/*.{yml,yaml,json,ts,js,mjs,cjs}',
       '**/storybook/**/*.{ts,js,mjs,cjs}',
       '**/.storybook/**/*.{ts,js,mjs,cjs}',
+      // Root-level scripts
+      '*.js',
+      '*.mjs',
+      '*.cjs',
     ],
     plugins: {
       security,
@@ -402,6 +365,7 @@ export default [
         Buffer: 'readonly',
         global: 'readonly',
         // Node.js globals
+        NodeJS: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         setInterval: 'readonly',
@@ -417,7 +381,6 @@ export default [
       },
     },
     rules: {
-      'unicorn/prefer-module': 'off',
       'import/no-commonjs': 'off',
       '@typescript-eslint/no-var-requires': 'off',
       'no-undef': 'off', // Config files often use global variables
@@ -437,52 +400,7 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': ['warn'],
 
       // Allow null for React components (empty renders) but prefer undefined for internal logic
-      'unicorn/no-null': 'off', // React components need to return null for empty renders
-
-      // Allow common React abbreviations; keep everything else strict
-      'unicorn/prevent-abbreviations': [
-        'warn',
-        {
-          allowList: {
-            Props: true,
-            Ref: true,
-            refs: true,
-            prop: true,
-            props: true,
-            utils: true, // Allow utils.ts filename
-            // Common abbreviations
-            e: true,
-            err: true,
-            ref: true,
-            ctx: true,
-            dir: true,
-            rel: true,
-            env: true,
-            req: true,
-            res: true,
-            // Keep existing allowList from root config
-            args: true,
-            db: true,
-            id: true,
-            params: true,
-            api: true,
-            pkg: true,
-            src: true,
-            ts: true,
-            tx: true,
-            ulid: true,
-            uuid: true,
-            i18n: true,
-            erp: true,
-            ui: true,
-            bff: true,
-            crm: true,
-            hrm: true,
-            scm: true,
-            wms: true,
-          },
-        },
-      ],
+      // Note: React components need to return null for empty renders
 
       // Guarded dynamic access is okay with justification comments
       'security/detect-object-injection': 'error',
@@ -620,10 +538,34 @@ export default [
         Buffer: 'readonly',
         console: 'readonly',
         global: 'readonly',
+        NodeJS: 'readonly',
       },
     },
     rules: {
-      'unicorn/prefer-module': 'off',
+      'import/no-commonjs': 'off',
+    },
+  },
+
+  // Tailwind plugins - CommonJS files
+  {
+    files: ['**/tailwind.plugins/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        NodeJS: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'off', // Allow globals in CommonJS files
       'import/no-commonjs': 'off',
     },
   },

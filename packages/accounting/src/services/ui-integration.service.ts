@@ -15,10 +15,13 @@ import { CreateAccountCommand } from '../commands/create-account.command';
 import { PostJournalEntryCommand } from '../commands/post-journal-entry.command';
 import { TrialBalanceService } from './trial-balance.service';
 import { AccountType } from '../domain/account.domain';
-import { omitUndefined } from '../utils/omitUndefined.js';
+import { omitUndefined, roundAmount } from '../utils';
+import { createBusinessError, createValidationError, ErrorContext } from '../utils/error-utilities';
+import { PerformanceProfiler, createProfiler, PerformanceTimer } from '../utils/performance-utilities';
 
 // Constants for error messages
-const UNKNOWN_ERROR_MESSAGE = 'Unknown error';
+const UI_GET_ACCOUNTS_FAILED_MESSAGE = 'Failed to get accounts for UI';
+const UI_INTEGRATION_ENTITY = 'ui-integration';
 
 export interface UIAccountSummary {
   id: string;
@@ -63,10 +66,14 @@ export interface UIAccountingContext {
 
 @Injectable()
 export class UIIntegrationService {
+  private readonly profiler: PerformanceProfiler;
+
   constructor(
     private readonly accountingService: AccountingService,
     private readonly trialBalanceService: TrialBalanceService,
-  ) {}
+  ) {
+    this.profiler = createProfiler();
+  }
 
   /**
    * Get accounts optimized for UI display
@@ -81,6 +88,14 @@ export class UIIntegrationService {
       searchTerm?: string;
     } = {},
   ): Promise<UIAccountSummary[]> {
+    const timer = new PerformanceTimer('getAccountsForUI');
+    const errorContext: ErrorContext = {
+      operation: 'getAccountsForUI',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+    };
+
     try {
       // Use proper service method - Clean Architecture compliant
       const accounts = await this.accountingService.getAccountsForTenant(context.tenantId);
@@ -114,9 +129,16 @@ export class UIIntegrationService {
             ).length,
           }),
         );
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to get accounts for UI: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-get-accounts-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -135,6 +157,14 @@ export class UIIntegrationService {
       offset?: number;
     } = {},
   ): Promise<UIJournalEntrySummary[]> {
+    const timer = new PerformanceTimer('getJournalEntriesForUI');
+    const errorContext: ErrorContext = {
+      operation: 'getJournalEntriesForUI',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+    };
+
     try {
       // Use proper service method - Clean Architecture compliant
       const journalEntries = await this.accountingService.getJournalEntriesForTenant(
@@ -167,9 +197,16 @@ export class UIIntegrationService {
             lineCount: entry.getEntries().length,
           };
         });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to get journal entries for UI: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-get-journal-entries-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -187,6 +224,14 @@ export class UIIntegrationService {
       description: string;
     }>,
   ): Promise<UIBalanceValidation> {
+    const timer = new PerformanceTimer('validateJournalEntryBalance');
+    const errorContext: ErrorContext = {
+      operation: 'validateJournalEntryBalance',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+    };
+
     try {
       const totalDebits = entries.reduce((sum, entry) => sum + entry.debitAmount, 0);
       const totalCredits = entries.reduce((sum, entry) => sum + entry.creditAmount, 0);
@@ -197,7 +242,7 @@ export class UIIntegrationService {
 
       if (!isBalanced) {
         errors.push(
-          `Debits (${totalDebits.toFixed(2)}) and credits (${totalCredits.toFixed(2)}) must balance`,
+          `Debits (${roundAmount(totalDebits, 2)}) and credits (${roundAmount(totalCredits, 2)}) must balance`,
         );
       }
 
@@ -222,9 +267,16 @@ export class UIIntegrationService {
         difference,
         errors,
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to validate journal entry balance: ${errorMessage}`);
+    } catch (_error) {
+      throw createValidationError(
+        'journalEntryBalance',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        entries,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -242,6 +294,16 @@ export class UIIntegrationService {
       postingAllowed: boolean;
     },
   ): Promise<UIAccountSummary> {
+    const timer = new PerformanceTimer('createAccountFromUI');
+    const errorContext: ErrorContext = {
+      operation: 'createAccountFromUI',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+      accountCode: accountData.accountCode,
+      accountName: accountData.accountName,
+    };
+
     try {
       const command = new CreateAccountCommand(
         omitUndefined({
@@ -264,7 +326,12 @@ export class UIIntegrationService {
       );
 
       if (!account) {
-        throw new Error('Account was not created successfully');
+        throw createBusinessError(
+          'account-creation-failed',
+          'Account was not created successfully',
+          'account',
+          errorContext
+        );
       }
 
       return omitUndefined({
@@ -278,9 +345,16 @@ export class UIIntegrationService {
         parentCode: account.parentAccountCode,
         childrenCount: 0,
       });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to create account from UI: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-create-account-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -305,6 +379,16 @@ export class UIIntegrationService {
     },
     idempotencyKey?: string,
   ): Promise<UIJournalEntrySummary> {
+    const timer = new PerformanceTimer('postJournalEntryFromUI');
+    const errorContext: ErrorContext = {
+      operation: 'postJournalEntryFromUI',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+      journalEntryId: journalEntryData.journalEntryId,
+      reference: journalEntryData.reference,
+    };
+
     try {
       const command = new PostJournalEntryCommand({
         journalEntryId: journalEntryData.journalEntryId,
@@ -325,7 +409,12 @@ export class UIIntegrationService {
       );
 
       if (!journalEntry) {
-        throw new Error('Journal entry was not posted successfully');
+        throw createBusinessError(
+          'journal-entry-posting-failed',
+          'Journal entry was not posted successfully',
+          'journal-entry',
+          errorContext
+        );
       }
 
       const totalDebits = journalEntry.getTotalDebit();
@@ -342,9 +431,16 @@ export class UIIntegrationService {
         status: journalEntry.getStatus(),
         lineCount: journalEntry.getEntries().length,
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to post journal entry from UI: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-post-journal-entry-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -356,6 +452,14 @@ export class UIIntegrationService {
     context: UIAccountingContext,
     accountCodes: string[],
   ): Promise<Map<string, number>> {
+    const timer = new PerformanceTimer('getRealTimeBalances');
+    const errorContext: ErrorContext = {
+      operation: 'getRealTimeBalances',
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+    };
+
     try {
       const balances = new Map<string, number>();
 
@@ -380,9 +484,16 @@ export class UIIntegrationService {
       }
 
       return balances;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to get real-time balances: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-get-real-time-balances-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 
@@ -391,6 +502,13 @@ export class UIIntegrationService {
    * Provides user-specific context and permissions
    */
   async getAccountingContext(tenantId: string, userId: string): Promise<UIAccountingContext> {
+    const timer = new PerformanceTimer('getAccountingContext');
+    const errorContext: ErrorContext = {
+      operation: 'getAccountingContext',
+      tenantId,
+      userId,
+    };
+
     try {
       // This would typically fetch from user service
       // For now, returning default context
@@ -402,9 +520,16 @@ export class UIIntegrationService {
         userRole: 'Accountant',
         permissions: ['CREATE_ACCOUNT', 'POST_JOURNAL_ENTRY', 'VIEW_REPORTS'],
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE;
-      throw new Error(`Failed to get accounting context: ${errorMessage}`);
+    } catch (_error) {
+      throw createBusinessError(
+        'ui-get-accounting-context-failed',
+        UI_GET_ACCOUNTS_FAILED_MESSAGE,
+        UI_INTEGRATION_ENTITY,
+        errorContext
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 }

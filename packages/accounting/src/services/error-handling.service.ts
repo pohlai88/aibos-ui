@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-// safeGet import removed as it's not used
 import { randomUUID } from 'node:crypto';
 import { omitUndefined } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
+import { PerformanceProfiler, createProfiler, PerformanceTimer } from '../utils/performance-utilities';
 
 // ============================================================================
 // CORE INTERFACES
@@ -107,6 +108,7 @@ export interface RecoveryOptions {
 @Injectable()
 export class ErrorHandlingService {
   private readonly logger = new Logger(ErrorHandlingService.name);
+  private readonly profiler: PerformanceProfiler;
   private readonly errorPatterns = new Map<string, ErrorPattern>();
   private readonly recoveryStrategies = new Map<string, ErrorRecoveryStrategy>();
   private readonly errorAlerts = new Map<string, ErrorAlert>();
@@ -123,6 +125,7 @@ export class ErrorHandlingService {
   private static readonly CIRCUIT_BREAKER = 'circuit-breaker';
 
   constructor() {
+    this.profiler = createProfiler();
     this.initializeDefaultStrategies();
   }
 
@@ -145,47 +148,57 @@ export class ErrorHandlingService {
       severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     },
   ): string {
-    const errorId = this.generateErrorId();
-    const errorContext: ErrorContext = omitUndefined({
-      id: errorId,
-      type: error.constructor.name,
-      message: error.message,
-      stackTrace: error.stack || '',
-      userId: context.userId,
-      tenantId: context.tenantId,
-      operation: context.operation,
-      component: context.component,
-      timestamp: new Date(),
-      severity: context.severity || 'MEDIUM',
-      correlationId: context.correlationId,
-      causationId: context.causationId,
-      resolved: false,
-    });
+    const timer = new PerformanceTimer();
+    try {
+      const errorId = this.generateErrorId();
+      const errorContext: ErrorContext = omitUndefined({
+        id: errorId,
+        type: error.constructor.name,
+        message: error.message,
+        stackTrace: error.stack || '',
+        userId: context.userId,
+        tenantId: context.tenantId,
+        operation: context.operation,
+        component: context.component,
+        timestamp: new Date(),
+        severity: context.severity || 'MEDIUM',
+        correlationId: context.correlationId,
+        causationId: context.causationId,
+        resolved: false,
+      });
 
-    // Log error with structured data
-    this.logger.error(`Error tracked: ${errorId}`, {
-      errorId,
-      correlationId: context.correlationId,
-      causationId: context.causationId,
-      errorType: error.constructor.name,
-      errorMessage: error.message,
-      stackTrace: error.stack,
-      context,
-    });
+      // Log error with structured data
+      this.logger.error(`Error tracked: ${errorId}`, {
+        errorId,
+        correlationId: context.correlationId,
+        causationId: context.causationId,
+        errorType: error.constructor.name,
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        context,
+      });
 
-    // Update error patterns
-    this.updateErrorPatterns(errorContext);
+      // Update error patterns
+      this.updateErrorPatterns(errorContext);
 
-    // Emit error event for observability
-    this.emitErrorEvent(errorContext);
+      // Emit error event for observability
+      this.emitErrorEvent(errorContext);
 
-    // Auto-resolve if pattern suggests it
-    const pattern = this.getErrorPattern(errorContext);
-    if (pattern?.autoFixable) {
-      this.autoResolveError(errorContext);
+      // Auto-resolve if pattern suggests it
+      const pattern = this.getErrorPattern(errorContext);
+      if (pattern?.autoFixable) {
+        this.autoResolveError(errorContext);
+      }
+
+      // Record performance metrics
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+
+      return errorId;
+    } catch (trackingError) {
+      this.logger.error('Failed to track error', trackingError);
+      return this.generateErrorId(); // Return a fallback ID
     }
-
-    return errorId;
   }
 
   /**
@@ -205,15 +218,31 @@ export class ErrorHandlingService {
     },
     options: RecoveryOptions = {},
   ): Promise<RecoveryResult> {
-    const errorId = this.trackError(error, context);
+    const timer = new PerformanceTimer();
+    try {
+      const errorId = this.trackError(error, context);
 
-    // If recovery is disabled, just return tracking result
-    if (!options.enableRecovery) {
-      return { recovered: false, errorId };
+      // If recovery is disabled, just return tracking result
+      if (!options.enableRecovery) {
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+        return { recovered: false, errorId };
+      }
+
+      // Apply recovery strategies
+      const result = await this.handleErrorWithRecovery(error, context, options);
+      
+      // Record performance metrics
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      
+      return result;
+    } catch (handlingError) {
+      this.logger.error('Failed to handle error', handlingError);
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      return { recovered: false, errorId: this.generateErrorId() };
     }
-
-    // Apply recovery strategies
-    return this.handleErrorWithRecovery(error, context, options);
   }
 
   // ============================================================================
@@ -235,42 +264,60 @@ export class ErrorHandlingService {
     },
     options: RecoveryOptions = {},
   ): Promise<RecoveryResult> {
-    const errorId = randomUUID();
-    const errorMessage = error.message;
-    const errorStack = error.stack || '';
-
-    this.logger.error(`Advanced error handling: ${errorId}`, errorStack, context);
-
-    // Find matching recovery strategy
-    const strategy = this.findMatchingStrategy(errorMessage, options.customStrategies);
-    if (!strategy) {
-      this.logger.warn(`No recovery strategy found for error: ${errorMessage}`);
-      return { recovered: false, errorId };
-    }
-
-    this.logger.log(`Applying recovery strategy: ${strategy.name} for error: ${errorId}`);
-
+    const timer = new PerformanceTimer();
     try {
-      const result = await this.executeRecoveryStrategy(strategy, error, context);
+      const errorId = randomUUID();
+      const errorMessage = error.message;
+      const errorStack = error.stack || '';
 
-      // Log recovery event
-      this.logger.log(`Error recovered: ${errorId} using strategy: ${strategy.name}`);
+      this.logger.error(`Advanced error handling: ${errorId}`, errorStack, context);
 
-      return { recovered: true, recoveryAction: strategy.recoveryAction, result, errorId };
-    } catch (recoveryError) {
-      this.logger.error(`Recovery strategy failed: ${strategy.name}`, recoveryError);
+      // Find matching recovery strategy
+      const strategy = this.findMatchingStrategy(errorMessage, options.customStrategies);
+      if (!strategy) {
+        this.logger.warn(`No recovery strategy found for error: ${errorMessage}`);
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+        return { recovered: false, errorId };
+      }
 
-      // Send alert for failed recovery
-      await this.sendAlert({
-        errorId,
-        severity: context.severity || 'HIGH',
-        title: `Recovery Failed: ${strategy.name}`,
-        message: `Recovery strategy ${strategy.name} failed for error: ${errorMessage}`,
-        recipients: options.alertRecipients || [ErrorHandlingService.ADMIN_EMAIL],
-        channels: ['email', 'slack'],
-      });
+      this.logger.log(`Applying recovery strategy: ${strategy.name} for error: ${errorId}`);
 
-      return { recovered: false, errorId };
+      try {
+        const result = await this.executeRecoveryStrategy(strategy, error, context);
+
+        // Log recovery event
+        this.logger.log(`Error recovered: ${errorId} using strategy: ${strategy.name}`);
+
+        // Record performance metrics
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+
+        return { recovered: true, recoveryAction: strategy.recoveryAction, result, errorId };
+      } catch (recoveryError) {
+        this.logger.error(`Recovery strategy failed: ${strategy.name}`, recoveryError);
+
+        // Send alert for failed recovery
+        await this.sendAlert({
+          errorId,
+          severity: context.severity || 'HIGH',
+          title: `Recovery Failed: ${strategy.name}`,
+          message: `Recovery strategy ${strategy.name} failed for error: ${errorMessage}`,
+          recipients: options.alertRecipients || [ErrorHandlingService.ADMIN_EMAIL],
+          channels: ['email', 'slack'],
+        });
+
+        // Record performance metrics
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+
+        return { recovered: false, errorId };
+      }
+    } catch (handlingError) {
+      this.logger.error('Failed to handle error with recovery', handlingError);
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      return { recovered: false, errorId: randomUUID() };
     }
   }
 
@@ -354,7 +401,12 @@ export class ErrorHandlingService {
       case 'auto-fix':
         return this.executeAutoFix(strategy, error, context);
       default:
-        throw new Error(`Unknown recovery action: ${strategy.recoveryAction}`);
+        throw createBusinessError(
+          'UNKNOWN_RECOVERY_ACTION',
+          `Unknown recovery action: ${strategy.recoveryAction}`,
+          strategy.recoveryAction,
+          { operation: 'execute-recovery-strategy' }
+        );
     }
   }
 
@@ -422,7 +474,12 @@ export class ErrorHandlingService {
         channels: ['email', 'slack'],
       });
 
-      throw new Error(`Circuit breaker is open for operation: ${operation}`);
+      throw createBusinessError(
+        'CIRCUIT_BREAKER_OPEN',
+        `Circuit breaker is open for operation: ${operation}`,
+        operation,
+        { operation: 'circuit-breaker-check' }
+      );
     }
 
     return { circuitBreakerState: circuitBreaker.state, failures: circuitBreaker.failures };

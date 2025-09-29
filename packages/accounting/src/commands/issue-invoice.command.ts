@@ -5,7 +5,12 @@
  */
 
 import { type InvoiceLineItem, type PaymentTerms } from '../domain/invoice.domain';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isEmpty, isNonEmpty } from '../utils';
+import { 
+  createValidationError, 
+  createBusinessError,
+  type ErrorContext 
+} from '../utils/error-utilities';
 
 export interface IssueInvoiceCommandProperties {
   readonly invoiceId: string;
@@ -59,59 +64,101 @@ export class IssueInvoiceCommand {
   }
 
   private _validate(): void {
-    if (!this.invoiceId || this.invoiceId.trim().length === 0) {
-      throw new Error('Invoice ID is required');
+    const context: ErrorContext = {
+      operation: 'issue-invoice-validation',
+      userId: this.userId,
+      tenantId: this.tenantId,
+      data: { invoiceId: this.invoiceId, customerId: this.customerId }
+    };
+
+    if (!isNonEmpty(this.invoiceId)) {
+      throw createValidationError('invoiceId', 'Invoice ID is required', this.invoiceId, context);
     }
 
-    if (!this.tenantId || this.tenantId.trim().length === 0) {
-      throw new Error('Tenant ID is required');
+    if (!isNonEmpty(this.tenantId)) {
+      throw createValidationError('tenantId', 'Tenant ID is required', this.tenantId, context);
     }
 
-    if (!this.userId || this.userId.trim().length === 0) {
-      throw new Error('User ID is required');
+    if (!isNonEmpty(this.userId)) {
+      throw createValidationError('userId', 'User ID is required', this.userId, context);
     }
 
-    if (!this.customerId || this.customerId.trim().length === 0) {
-      throw new Error('Customer ID is required');
+    if (!isNonEmpty(this.customerId)) {
+      throw createValidationError('customerId', 'Customer ID is required', this.customerId, context);
     }
 
-    if (!this.invoiceNumber || this.invoiceNumber.trim().length === 0) {
-      throw new Error('Invoice number is required');
+    if (!isNonEmpty(this.invoiceNumber)) {
+      throw createValidationError('invoiceNumber', 'Invoice number is required', this.invoiceNumber, context);
     }
 
-    if (!this.lineItems || this.lineItems.length === 0) {
-      throw new Error('At least one line item is required');
+    if (isEmpty(this.lineItems)) {
+      throw createValidationError('lineItems', 'At least one line item is required', this.lineItems, context);
     }
 
     // Validate line items
     for (const [index, item] of this.lineItems.entries()) {
-      if (!item.description || item.description.trim().length === 0) {
-        throw new Error(`Line item ${index + 1}: Description is required`);
+      const lineItemContext: ErrorContext = {
+        ...context,
+        data: { ...context.data, lineItemIndex: index, lineItem: item }
+      };
+
+      if (!isNonEmpty(item.description)) {
+        throw createValidationError(
+          `lineItems[${index}].description`, 
+          'Description is required', 
+          item.description, 
+          lineItemContext
+        );
       }
 
       if (item.quantity <= 0) {
-        throw new Error(`Line item ${index + 1}: Quantity must be greater than 0`);
+        throw createValidationError(
+          `lineItems[${index}].quantity`, 
+          'Quantity must be greater than 0', 
+          item.quantity, 
+          lineItemContext
+        );
       }
 
       if (item.unitPrice < 0) {
-        throw new Error(`Line item ${index + 1}: Unit price cannot be negative`);
+        throw createValidationError(
+          `lineItems[${index}].unitPrice`, 
+          'Unit price cannot be negative', 
+          item.unitPrice, 
+          lineItemContext
+        );
       }
 
-      if (!item.accountCode || item.accountCode.trim().length === 0) {
-        throw new Error(`Line item ${index + 1}: Account code is required`);
+      if (!isNonEmpty(item.accountCode)) {
+        throw createValidationError(
+          `lineItems[${index}].accountCode`, 
+          'Account code is required', 
+          item.accountCode, 
+          lineItemContext
+        );
       }
 
       if (item.taxRate < 0 || item.taxRate > 1) {
-        throw new Error(`Line item ${index + 1}: Tax rate must be between 0 and 1`);
+        throw createValidationError(
+          `lineItems[${index}].taxRate`, 
+          'Tax rate must be between 0 and 1', 
+          item.taxRate, 
+          lineItemContext
+        );
       }
     }
 
     if (!this.issueDate) {
-      throw new Error('Issue date is required');
+      throw createValidationError('issueDate', 'Issue date is required', this.issueDate, context);
     }
 
     if (this.issueDate > new Date()) {
-      throw new Error('Issue date cannot be in the future');
+      throw createBusinessError(
+        'FUTURE_ISSUE_DATE',
+        'Issue date cannot be in the future',
+        'IssueInvoiceCommand',
+        context
+      );
     }
   }
 }

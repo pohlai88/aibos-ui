@@ -8,9 +8,18 @@
  */
 
 import { z } from 'zod';
+import { validateAccountType } from '../utils/validation-utilities';
 
-// Account Type Enum
-export const AccountTypeSchema = z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']);
+// Custom account type validator using Phase 2 utility
+export const AccountTypeSchema = z.string().refine(
+  (type) => {
+    const result = validateAccountType(type);
+    return result.isValid;
+  },
+  {
+    message: 'Account type must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE',
+  }
+);
 
 // Currency Schema
 export const CurrencySchema = z

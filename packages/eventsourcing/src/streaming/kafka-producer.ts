@@ -36,7 +36,7 @@ export class KafkaEventProducer {
   private producer: Producer;
   private isConnected = false;
 
-  constructor(private config: KafkaProducerConfig) {
+  constructor(config: KafkaProducerConfig) {
     const kafka = new Kafka({
       clientId: config.clientId,
       brokers: config.brokers,

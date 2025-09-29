@@ -8,7 +8,8 @@
 import { CreateAccountCommand } from '../commands/create-account.command';
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
 import { ChartOfAccounts } from '../domain/chart-of-accounts.domain';
-import { omitUndefined } from '../utils';
+import { isEmpty, omitUndefined } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
 import {
   type TemplateBundle,
   type CoaTemplateAccount,
@@ -199,7 +200,7 @@ export class TemplateImporter {
     }
 
     // Process queue
-    while (queue.length > 0) {
+    while (!isEmpty(queue)) {
       const current = queue.shift()!;
       const account = accountMap.get(current);
 
@@ -221,7 +222,12 @@ export class TemplateImporter {
 
     // Check for circular dependencies
     if (result.length !== accounts.length) {
-      throw new Error('Circular dependency detected in account hierarchy');
+      throw createBusinessError(
+        'CIRCULAR_DEPENDENCY_DETECTED',
+        'Circular dependency detected in account hierarchy',
+        'accountHierarchy',
+        { operation: 'topological-sort' }
+      );
     }
 
     return result;
@@ -270,7 +276,7 @@ export class TemplateImporter {
     }
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
     };
   }
@@ -291,7 +297,12 @@ export class TemplateImporter {
       case 'Expense':
         return AccountType.EXPENSE;
       default:
-        throw new Error(`Unknown account type: ${type}`);
+        throw createBusinessError(
+          'UNKNOWN_ACCOUNT_TYPE',
+          `Unknown account type: ${type}`,
+          type,
+          { operation: 'map-account-type' }
+        );
     }
   }
 

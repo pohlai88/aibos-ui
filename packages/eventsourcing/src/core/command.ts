@@ -13,8 +13,12 @@ export abstract class Command {
   constructor(tenantId: string, correlationId?: string, causationId?: string) {
     this.id = crypto.randomUUID();
     this.tenantId = tenantId;
-    this.correlationId = correlationId;
-    this.causationId = causationId;
+    if (correlationId !== undefined) {
+      this.correlationId = correlationId;
+    }
+    if (causationId !== undefined) {
+      this.causationId = causationId;
+    }
     this.timestamp = new Date();
   }
 

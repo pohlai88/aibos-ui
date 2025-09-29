@@ -4,34 +4,23 @@
   "description": "Accounting domain for AI-BOS ERP",
   "type": "module",
   "sideEffects": false,
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/src/index.d.ts",
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+    }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/types/src/index.d.ts",
   "scripts": {
-    "build": "pnpm run build:types && pnpm run build:js",
+    "build:types": "tsc -p tsconfig.dts.json",
     "build:js": "tsup",
-    "build:types": "tsc -p tsconfig.types.json",
-    "clean": "rm -rf dist",
-    "dev": "tsup --watch",
-    "format": "prettier -w .",
-    "lint": "eslint src --ext .ts,.tsx",
-    "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "test": "vitest run",
-    "test:utils": "vitest run src/utils/__tests__/utils.spec.ts",
-    "test:finder": "pnpm vitest run scripts/find-utility-opportunities.test.mjs --config vitest.config.ts",
-    "test:finder:dir": "pnpm vitest run scripts/find-utility-opportunities.dir.test.mjs --config vitest.config.ts",
-    "test:finder:cli": "pnpm vitest run scripts/find-utility-opportunities.cli.test.mjs --config vitest.config.ts",
-    "test:finder:all": "pnpm vitest run scripts/find-utility-opportunities.*.test.mjs --config vitest.config.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "pnpm run build:types && pnpm run build:js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "@aibos/accounting-contracts": "workspace:*",

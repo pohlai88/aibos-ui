@@ -7,6 +7,19 @@
  * Production-grade utilities with deterministic rounding policies and proper type safety.
  */
 
+import { getCurrencyDecimalsStrict, type SupportedCurrency } from './accounting-utilities';
+import { createValidationError } from './error-utilities';
+
+// normalizeAccountCode moved here to avoid circular dependency
+
+/**
+ * Normalize account code by trimming whitespace and converting to uppercase.
+ * This ensures consistent storage format and avoids mixed-case issues.
+ */
+export function normalizeAccountCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
 export type Dict = Record<string, unknown>;
 
 export function isRecord(v: unknown): v is Dict {
@@ -14,17 +27,22 @@ export function isRecord(v: unknown): v is Dict {
 }
 
 export function hasKey<T extends object>(object: T, key: PropertyKey): key is keyof T {
-  return Object.prototype.hasOwnProperty.call(object, key);
+  return object != null && Object.prototype.hasOwnProperty.call(object, key);
 }
 
 /**
  * safeGet - simplified version that works with both typed and dynamic objects
  */
-export function safeGet<T extends object, K extends keyof T>(obj: T | unknown, key: K): T[K] | undefined;
-export function safeGet<T extends object, K extends keyof T, R>(obj: T | unknown, key: K, fallback: R): T[K] | R;
-export function safeGet(obj: unknown, key: PropertyKey, fallback?: unknown): unknown {
-  if (!isRecord(obj)) return fallback;
-  if (key in obj) return (obj as Record<PropertyKey, unknown>)[key];
+ 
+export function safeGet<T extends object, K extends keyof T>(object: T | unknown, key: K): T[K] | undefined;
+// eslint-disable-next-line no-redeclare
+export function safeGet<T extends object, K extends keyof T, R>(object: T | unknown, key: K, fallback: R): T[K] | R;
+// eslint-disable-next-line no-redeclare
+export function safeGet(object: unknown, key: PropertyKey, fallback?: unknown): unknown;
+// eslint-disable-next-line no-redeclare
+export function safeGet(object: unknown, key: PropertyKey, fallback?: unknown): unknown {
+  if (!isRecord(object)) return fallback;
+  if (hasKey(object, key)) return (object as Record<PropertyKey, unknown>)[key];
   return fallback;
 }
 
@@ -32,19 +50,34 @@ export function safeGet(obj: unknown, key: PropertyKey, fallback?: unknown): unk
  * safeGetNumber: convenience for numeric maps (e.g., FX rates)
  */
 export function safeGetNumber(
-  obj: Record<string, unknown> | unknown,
+  object: Record<string, unknown> | unknown,
   key: string,
   fallback = 0
 ): number {
-  const v = safeGet(obj as Record<string, unknown>, key, fallback);
+  const v = safeGet(object, key, fallback);
   return typeof v === 'number' ? v : fallback;
 }
 
-export const assert = (cond: unknown, message = 'Assertion failed'): asserts cond => {
-  if (!cond) throw new Error(message);
+export const assert: <T>(cond: T, message?: string) => asserts cond is NonNullable<T> = (cond: unknown, message = 'Assertion failed'): asserts cond => {
+  if (!cond) {
+    throw createValidationError(
+      'ASSERTION_FAILED',
+      message,
+      String(cond),
+      { operation: 'assert' }
+    );
+  }
 };
 
 // Additional accounting-specific utilities
+
+/**
+ * Get default decimal places for accounting operations
+ * Uses MYR as the default currency for consistency
+ */
+function getDefaultDecimals(): number {
+  return getCurrencyDecimalsStrict('MYR');
+}
 
 /**
  * Normalize -0 to +0 (for nicer display and equality checks).
@@ -58,9 +91,23 @@ function normalizeZero(n: number): number {
  * - Half-up: common in invoices/tax (5 rounds away from 0).
  * - Bankers (half-even): reduces cumulative bias in aggregates.
  */
-export function round2HalfUp(value: number, decimals = 2): number {
+/**
+ * Round to specified decimal places using half-up policy (Phase 2 utility integration)
+ * @param value - Number to round
+ * @param decimals - Number of decimal places (default: 2)
+ * @param currency - Currency code to determine decimals automatically
+ */
+export function round2HalfUp(value: number, decimals?: number, currency?: SupportedCurrency): number {
   if (!Number.isFinite(value)) return value;
-  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = 2;
+  
+  // Use Phase 2 utility to determine decimals if currency is provided
+  if (currency) {
+    decimals = getCurrencyDecimalsStrict(currency);
+  } else if (decimals === undefined) {
+    decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
+  }
+  
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = getDefaultDecimals();
   
   // Implement true half-up rounding (5 rounds away from 0)
   // Handle floating point precision issues by using a more robust approach
@@ -69,9 +116,24 @@ export function round2HalfUp(value: number, decimals = 2): number {
   return normalizeZero(scaled / factor);
 }
 
-export function round2Bankers(value: number, decimals = 2): number {
+/**
+ * Round to specified decimal places using bankers (half-even) policy (Phase 2 utility integration)
+ * @param value - Number to round
+ * @param decimals - Number of decimal places (default: 2)
+ * @param currency - Currency code to determine decimals automatically
+ */
+export function round2Bankers(value: number, decimals?: number, currency?: SupportedCurrency): number {
   if (!Number.isFinite(value)) return value;
-  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = 2;
+  
+  // Use Phase 2 utility to determine decimals if currency is provided
+  if (currency) {
+    decimals = getCurrencyDecimalsStrict(currency);
+  } else if (decimals === undefined) {
+    decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
+  }
+  
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = getDefaultDecimals();
+  
   // Round to decimals using half-even policy.
   // Scale to minor units, detect .5 ties, then round to nearest even.
   const factor = 10 ** decimals;
@@ -106,7 +168,8 @@ export const AccountType = {
   REVENUE: 'REVENUE',
   EXPENSE: 'EXPENSE',
 } as const;
-export type AccountType = (typeof ACCOUNT_TYPES)[number];
+// eslint-disable-next-line no-redeclare
+export type AccountType = (typeof AccountType)[keyof typeof AccountType];
 const ACCOUNT_TYPES_SET: ReadonlySet<string> = new Set(ACCOUNT_TYPES as readonly string[]);
 
 export function isValidAccountType(value: unknown): value is AccountType {
@@ -118,29 +181,53 @@ export function isValidAccountType(value: unknown): value is AccountType {
  */
 export function normalizeAccountType(value: unknown): AccountType | undefined {
   if (typeof value !== 'string') return undefined;
-  const upper = value.trim().toUpperCase();
+  const upper = normalizeAccountCode(value);
   return ACCOUNT_TYPES_SET.has(upper) ? (upper as AccountType) : undefined;
 }
 
 /**
- * Convert a decimal amount to minor units (integer) to avoid float drift.
+ * Convert a decimal amount to minor units (integer) to avoid float drift (Phase 2 utility integration)
+ * @param amount - Decimal amount to convert
+ * @param decimals - Number of decimal places (default: 2)
+ * @param currency - Currency code to determine decimals automatically
+ * @returns Minor units as integer
  * e.g. 12.34 -> 1234 (decimals=2)
  */
-export function toMinorUnits(amount: number, decimals = 2): number {
+export function toMinorUnits(amount: number, decimals?: number, currency?: SupportedCurrency): number {
   if (!Number.isFinite(amount)) return amount;
-  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = 2;
+  
+  // Use Phase 2 utility to determine decimals if currency is provided
+  if (currency) {
+    decimals = getCurrencyDecimalsStrict(currency);
+  } else if (decimals === undefined) {
+    decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
+  }
+  
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = getDefaultDecimals();
   const factor = 10 ** decimals;
   // Use half-up when converting to integer cents
   return Math.round(amount * factor);
 }
 
 /**
- * Convert minor units back to decimal amount.
+ * Convert minor units back to decimal amount (Phase 2 utility integration)
+ * @param minor - Minor units as integer
+ * @param decimals - Number of decimal places (default: 2)
+ * @param currency - Currency code to determine decimals automatically
+ * @returns Decimal amount
  * e.g. 1234 -> 12.34 (decimals=2)
  */
-export function fromMinorUnits(minor: number, decimals = 2): number {
+export function fromMinorUnits(minor: number, decimals?: number, currency?: SupportedCurrency): number {
   if (!Number.isFinite(minor)) return minor;
-  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = 2;
+  
+  // Use Phase 2 utility to determine decimals if currency is provided
+  if (currency) {
+    decimals = getCurrencyDecimalsStrict(currency);
+  } else if (decimals === undefined) {
+    decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
+  }
+  
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 8) decimals = getDefaultDecimals();
   const factor = 10 ** decimals;
   return normalizeZero(minor / factor);
 }

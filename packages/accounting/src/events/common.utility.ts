@@ -1,5 +1,7 @@
 // events/common.ts
 
+import { isNonEmpty } from '../utils';
+
 /** Assert aggregateId follows a tenant-scoped naming convention. */
 export function assertAggregateMatchesTenant(
   aggregateId: string,
@@ -7,10 +9,10 @@ export function assertAggregateMatchesTenant(
   options?: { prefix?: string },
 ): void {
   const prefix = options?.prefix ?? 'chart-of-accounts-';
-  if (typeof aggregateId !== 'string' || aggregateId.trim().length === 0) {
+  if (typeof aggregateId !== 'string' || !isNonEmpty(aggregateId)) {
     throw new TypeError('aggregateId must be a non-empty string');
   }
-  if (typeof tenantId !== 'string' || tenantId.trim().length === 0) {
+  if (typeof tenantId !== 'string' || !isNonEmpty(tenantId)) {
     throw new TypeError('tenantId must be a non-empty string');
   }
   const expected = `${prefix}${tenantId.trim()}`;

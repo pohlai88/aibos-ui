@@ -16,8 +16,8 @@ import { OutboxService } from './services/outbox.service';
 
 // Repositories
 import { PostgreSQLEventStore } from './infrastructure/repositories/event-store.repository';
-import { TypeORMAccountRepository } from './infrastructure/typeorm-account.repository';
-import { TypeORMJournalEntryRepository } from './infrastructure/typeorm-journal-entry.repository';
+import { TypeormAccountRepository } from './infrastructure/typeorm-account.repository';
+import { TypeormJournalEntryRepository } from './infrastructure/typeorm-journal-entry.repository';
 
 // Projections
 import { InvoiceProjectionManager } from './projections/invoice.projection';
@@ -54,11 +54,11 @@ import {
     // Repositories
     {
       provide: ACCOUNT_REPOSITORY,
-      useClass: TypeORMAccountRepository,
+      useClass: TypeormAccountRepository,
     },
     {
       provide: JOURNAL_ENTRY_REPOSITORY,
-      useClass: TypeORMJournalEntryRepository,
+      useClass: TypeormJournalEntryRepository,
     },
 
     // Projections

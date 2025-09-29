@@ -1,5 +1,10 @@
 // import type { JournalEntryLine } from '../domain/journal-entry-line'; // No longer needed
-import { omitUndefined } from '../utils';
+import { omitUndefined, roundAmount, toMinorUnits, isEmpty, isNonEmpty, hasItems } from '../utils';
+import { 
+  createValidationError, 
+  createBusinessError,
+  type ErrorContext 
+} from '../utils/error-utilities';
 
 export interface PostJournalEntryCommandProperties {
   readonly journalEntryId: string;
@@ -64,26 +69,38 @@ export class PostJournalEntryCommand {
   }
 
   private validate(): void {
+    const context: ErrorContext = {
+      operation: 'post-journal-entry-validation',
+      userId: this.userId,
+      tenantId: this.tenantId,
+      data: { journalEntryId: this.journalEntryId, entryCount: this.entries.length }
+    };
+
     if (!isNonEmpty(this.journalEntryId)) {
-      throw new Error('Journal entry ID is required');
+      throw createValidationError('journalEntryId', 'Journal entry ID is required', this.journalEntryId, context);
     }
 
-    if (!this.entries || this.entries.length === 0) {
-      throw new Error('Journal entry must have at least one line');
+    if (isEmpty(this.entries)) {
+      throw createValidationError('entries', 'Journal entry must have at least one line', this.entries, context);
     }
 
     if (this.entries.length < 2) {
-      throw new Error('Journal entry must have at least two lines (double-entry)');
+      throw createBusinessError(
+        'INSUFFICIENT_ENTRIES',
+        'Journal entry must have at least two lines (double-entry)',
+        'PostJournalEntryCommand',
+        context
+      );
     }
 
     // Reference and description are optional
 
     if (!isNonEmpty(this.tenantId)) {
-      throw new Error('Tenant ID is required');
+      throw createValidationError('tenantId', 'Tenant ID is required', this.tenantId, context);
     }
 
     if (!isNonEmpty(this.userId)) {
-      throw new Error('User ID is required');
+      throw createValidationError('userId', 'User ID is required', this.userId, context);
     }
 
     // Validate each line's shape and numeric constraints
@@ -93,54 +110,111 @@ export class PostJournalEntryCommand {
   }
 
   private validateDoubleEntry(): void {
+    const context: ErrorContext = {
+      operation: 'post-journal-entry-double-entry-validation',
+      userId: this.userId,
+      tenantId: this.tenantId,
+      data: { journalEntryId: this.journalEntryId }
+    };
+
     // Work in integer cents to avoid FP drift
     const debitCents = this.entries.reduce((sum, entry) => sum + toCents(entry.debitAmount), 0);
     const creditCents = this.entries.reduce((sum, entry) => sum + toCents(entry.creditAmount), 0);
 
     if (debitCents !== creditCents) {
-      const d = (debitCents / 100).toFixed(2);
-      const c = (creditCents / 100).toFixed(2);
-      const diff = (Math.abs(debitCents - creditCents) / 100).toFixed(2);
-      throw new Error(
+      const d = roundAmount(debitCents / 100, 2);
+      const c = roundAmount(creditCents / 100, 2);
+      const diff = roundAmount(Math.abs(debitCents - creditCents) / 100, 2);
+      throw createBusinessError(
+        'UNBALANCED_ENTRY',
         `Journal entry is not balanced. Debit: ${d}, Credit: ${c}, Difference: ${diff}`,
+        'PostJournalEntryCommand',
+        context
       );
     }
 
     if (debitCents === 0 && creditCents === 0) {
-      throw new Error('Journal entry totals cannot both be zero');
+      throw createBusinessError(
+        'ZERO_TOTALS',
+        'Journal entry totals cannot both be zero',
+        'PostJournalEntryCommand',
+        context
+      );
     }
 
     // Ensure there is at least one debit and one credit line
     const hasDebit = this.entries.some((entry) => toCents(entry.debitAmount) > 0);
     const hasCredit = this.entries.some((entry) => toCents(entry.creditAmount) > 0);
     if (!hasDebit || !hasCredit) {
-      throw new Error('Journal entry must include at least one debit line and one credit line');
+      throw createBusinessError(
+        'MISSING_DEBIT_OR_CREDIT',
+        'Journal entry must include at least one debit line and one credit line',
+        'PostJournalEntryCommand',
+        context
+      );
     }
   }
 
   private validateLines(): void {
     for (const [index, entry] of this.entries.entries()) {
+      const lineContext: ErrorContext = {
+        operation: 'post-journal-entry-line-validation',
+        userId: this.userId,
+        tenantId: this.tenantId,
+        data: { journalEntryId: this.journalEntryId, lineIndex: index, entry }
+      };
+
       if (!isNonEmpty(entry.accountCode)) {
-        throw new Error(`Line ${index + 1}: Account code is required`);
+        throw createValidationError(
+          `entries[${index}].accountCode`,
+          'Account code is required',
+          entry.accountCode,
+          lineContext
+        );
       }
+
       // Exactly one side > 0 (one-sided rule)
       const d = toCents(entry.debitAmount);
       const c = toCents(entry.creditAmount);
       if (d < 0 || c < 0) {
-        throw new Error(`Line ${index + 1}: Amounts cannot be negative`);
+        throw createValidationError(
+          `entries[${index}].amounts`,
+          'Amounts cannot be negative',
+          { debitAmount: entry.debitAmount, creditAmount: entry.creditAmount },
+          lineContext
+        );
       }
+
       if (!isMaxTwoDecimals(entry.debitAmount) || !isMaxTwoDecimals(entry.creditAmount)) {
-        throw new Error(`Line ${index + 1}: Amounts must have at most two decimal places`);
+        throw createValidationError(
+          `entries[${index}].amounts`,
+          'Amounts must have at most two decimal places',
+          { debitAmount: entry.debitAmount, creditAmount: entry.creditAmount },
+          lineContext
+        );
       }
+
       const hasDebit = d > 0;
       const hasCredit = c > 0;
       if (hasDebit === hasCredit) {
-        throw new Error(`Line ${index + 1}: Provide either debit OR credit, not both or neither`);
+        throw createBusinessError(
+          'INVALID_ENTRY_SIDES',
+          `Line ${index + 1}: Provide either debit OR credit, not both or neither`,
+          'PostJournalEntryCommand',
+          lineContext
+        );
       }
     }
   }
 
   private validateAccountCodes(): void {
+    const context: ErrorContext = {
+      operation: 'post-journal-entry-account-codes-validation',
+      userId: this.userId,
+      tenantId: this.tenantId,
+      data: { journalEntryId: this.journalEntryId }
+    };
+
     const accountCodes = new Set<string>();
     const duplicateCodes: string[] = [];
 
@@ -151,10 +225,15 @@ export class PostJournalEntryCommand {
       accountCodes.add(entry.accountCode);
     }
 
-    if (duplicateCodes.length > 0) {
+    if (hasItems(duplicateCodes)) {
       // Policy note: Some ledgers allow duplicates for dimensional splits.
       // If that is desired, relax this guard.
-      throw new Error(`Duplicate account codes found: ${duplicateCodes.join(', ')}`);
+      throw createBusinessError(
+        'DUPLICATE_ACCOUNT_CODES',
+        `Duplicate account codes found: ${duplicateCodes.join(', ')}`,
+        'PostJournalEntryCommand',
+        context
+      );
     }
   }
 
@@ -174,13 +253,9 @@ export class PostJournalEntryCommand {
 }
 
 // ---- Local helpers ----
-function isNonEmpty(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0;
-}
-
 function toCents(value: number): number {
   if (!Number.isFinite(value)) return NaN as unknown as number; // Will trip validations above
-  return Math.round(value * 100);
+  return toMinorUnits(value, 2);
 }
 
 function isMaxTwoDecimals(value: number): boolean {

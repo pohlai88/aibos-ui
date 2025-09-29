@@ -12,7 +12,6 @@ export default [
     files: ['src/**/*.{ts,tsx}'],
     rules: {
       // UI-Business specific non-formatting rules only
-      'unicorn/no-null': 'off', // Allow null for React components (empty renders)
       'security/detect-object-injection': 'error', // Stricter for UI package
       
       // Enterprise-appropriate complexity thresholds for UI-Business

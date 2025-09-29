@@ -6,6 +6,18 @@
  */
 
 import { z } from 'zod';
+import { validateAccountType } from '../utils/validation-utilities';
+
+// Custom account type validator using Phase 2 utility
+const AccountTypeValidator = z.string().refine(
+  (type) => {
+    const result = validateAccountType(type);
+    return result.isValid;
+  },
+  {
+    message: 'Account type must be one of: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE',
+  }
+);
 
 // ============================================================================
 // Chart of Accounts Template Schema
@@ -29,7 +41,7 @@ export const ChartOfAccountsTemplateSchema = z.object({
       z.object({
         code: z.string().min(1).max(20),
         name: z.string().min(1).max(100),
-        type: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE']),
+        type: AccountTypeValidator,
         parentCode: z.string().optional(),
         specialAccountType: z.string().optional(),
         postingAllowed: z.boolean().default(true),

@@ -17,9 +17,7 @@ const config: DataSourceOptions = {
   username: process.env.DATABASE_USERNAME ?? 'postgres',
   password: process.env.DATABASE_PASSWORD ?? 'password',
   database: process.env.DATABASE_NAME ?? 'accounting',
-  // eslint-disable-next-line unicorn/prefer-module
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  // eslint-disable-next-line unicorn/prefer-module
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
   logging: ['error'],

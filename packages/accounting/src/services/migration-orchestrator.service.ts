@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { hasItems } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
 
 export interface MigrationStep {
   id: string;
@@ -171,14 +173,6 @@ export class MigrationOrchestrator {
     this.logger.debug('Migration readiness verification completed');
   }
 
-  private async enableDualWrites(): Promise<void> {
-    this.logger.debug('Enabling dual-write mode');
-
-    // Enable dual-write mode for zero-downtime migration
-    // await this.eventEmitter.emitAsync('migration.dual_write_enabled', {
-    //   timestamp: new Date(),
-    // });
-  }
 
   private async executeMigrationSteps(
     steps: MigrationStep[],
@@ -242,7 +236,12 @@ export class MigrationOrchestrator {
         await this.executeCleanupStep(step);
         break;
       default:
-        throw new Error(`Unknown migration step type: ${step.type}`);
+        throw createBusinessError(
+          'UNKNOWN_MIGRATION_STEP_TYPE',
+          `Unknown migration step type: ${step.type}`,
+          step.type,
+          { operation: 'execute-migration-step' }
+        );
     }
   }
 
@@ -293,25 +292,7 @@ export class MigrationOrchestrator {
     return { ok, deltas };
   }
 
-  private async cutoverToNewSchema(): Promise<void> {
-    this.logger.debug('Cutting over to new schema');
 
-    // Cut-over to new schema
-    // await this.eventEmitter.emitAsync('migration.cutover', {
-    //   timestamp: new Date(),
-    // });
-  }
-
-  private async scheduleCleanup(version: string): Promise<void> {
-    this.logger.debug(`Scheduling cleanup for version ${version}`);
-
-    // Schedule cleanup of old data after retention period
-    // await this.eventEmitter.emitAsync('migration.cleanup_scheduled', {
-    //   version,
-    //   retentionDays: 30,
-    //   timestamp: new Date(),
-    // });
-  }
 
   private async rollbackMigration(
     version: string,
@@ -326,7 +307,7 @@ export class MigrationOrchestrator {
     }
 
     // Execute rollback steps in reverse order
-    const rollbackSteps = steps.filter((step) => step.rollbackSteps.length > 0).reverse();
+    const rollbackSteps = steps.filter((step) => hasItems(step.rollbackSteps)).reverse();
 
     for (const step of rollbackSteps) {
       await this.executeRollbackStep(step);

@@ -1,38 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
-  "references": [{ "path": "../../packages/utils" }],
   "compilerOptions": {
     "composite": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "types": ["node"],
-    "skipLibCheck": true,
+    "outDir": "./dist",
     "declaration": true,
-    "outDir": "dist",
-    "baseUrl": ".",
-    "exactOptionalPropertyTypes": false,
-    "paths": {
-      "@aibos/ui/*": ["src/*"],
-      "@aibos/utils/*": ["../../packages/utils/dist/src/*"],
-      "@utils": ["src/utils/index.ts"],
-      "@utils/*": ["src/utils/*"],
-      "@icons/*": ["src/icons/*"],
-      "@components/*": ["src/components/*"],
-      "@primitives/*": ["src/primitives/*"],
-      "@radix/*": ["src/radix/*"],
-      "@hooks/*": ["src/hooks/*"],
-      "@tokens": ["src/tokens/index.ts"],
-      "@tokens/*": ["src/tokens/*"],
-      "@performance": ["src/performance/index.ts"],
-      "@performance/*": ["src/performance/*"],
-      "@test/*": ["src/test/*"],
-      "@scripts/*": ["src/scripts/*"],
-      "@examples/*": ["src/examples/*"],
-      "@types": ["src/types/index.ts"],
-      "@types/*": ["src/types/*"]
-    }
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "types/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

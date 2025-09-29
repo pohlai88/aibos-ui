@@ -52,6 +52,10 @@
     "syncpack:check": "syncpack list-mismatches",
     "syncpack:fix": "syncpack fix-mismatches",
     "syncpack:lint": "syncpack lint-semver-ranges",
+    "test": "pnpm -r --filter \"@aibos/*\" test",
+    "test:repo": "vitest run packages/accounting/src/**/__tests__/*.spec.ts",
+    "test:repo:watch": "vitest watch packages/accounting/src/**/__tests__/*.spec.ts",
+    "test:watch": "pnpm -r --filter \"@aibos/*\" test:watch",
     "test:coverage": "pnpm -r test --coverage",
     "test:e2e": "npx playwright test",
     "test:e2e:headed": "npx playwright test --headed",
@@ -101,7 +105,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-security": "^3.0.1",
     "eslint-plugin-sonarjs": "^3.0.5",
-    "eslint-plugin-unicorn": "^61.0.2",
     "fast-glob": "^3.3.3",
     "jsonc-eslint-parser": "^2.4.1",
     "jsonc-parser": "^3.2.1",
@@ -119,7 +122,12 @@
     "turbo": "^2.5.8",
     "typescript": "5.9.2",
     "vitest": "^2.1.9",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20",
+    "sqlite3": "^5.1.7",
+    "better-sqlite3": "^9.4.3",
+    "drizzle-orm": "^0.33.0"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

@@ -1,6 +1,11 @@
 import { type DomainEvent } from '@aibos/eventsourcing';
 import { randomUUID } from 'node:crypto';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty, isEmpty } from '../utils';
+import { createValidationError } from '../utils/error-utilities';
+
+// Constants for error messages
+const AGGREGATE_ID_REQUIRED_MESSAGE = 'AccountCompanionLinksSetEvent: aggregateId is required and must be a non-empty string';
+const VALIDATE_ACCOUNT_COMPANION_LINKS_SET_EVENT_OPERATION = 'validate-account-companion-links-set-event';
 
 /**
  * Companion link semantics:
@@ -80,19 +85,30 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
     if (
       !meta.aggregateId ||
       typeof meta.aggregateId !== 'string' ||
-      meta.aggregateId.trim().length === 0
+      !isNonEmpty(meta.aggregateId)
     ) {
-      throw new Error(
-        'AccountCompanionLinksSetEvent: aggregateId is required and must be a non-empty string',
+      throw createValidationError(
+        'AGGREGATE_ID_REQUIRED',
+        AGGREGATE_ID_REQUIRED_MESSAGE,
+        meta.aggregateId,
+        { operation: VALIDATE_ACCOUNT_COMPANION_LINKS_SET_EVENT_OPERATION }
       );
     }
-    if (!meta.tenantId || typeof meta.tenantId !== 'string' || meta.tenantId.trim().length === 0) {
-      throw new Error(
+    if (!meta.tenantId || typeof meta.tenantId !== 'string' || !isNonEmpty(meta.tenantId)) {
+      throw createValidationError(
+        'TENANT_ID_REQUIRED',
         'AccountCompanionLinksSetEvent: tenantId is required and must be a non-empty string',
+        meta.tenantId,
+        { operation: VALIDATE_ACCOUNT_COMPANION_LINKS_SET_EVENT_OPERATION }
       );
     }
     if (!Number.isInteger(meta.version) || meta.version < 1) {
-      throw new Error('AccountCompanionLinksSetEvent: version must be a positive integer');
+      throw createValidationError(
+        'VERSION_MUST_BE_POSITIVE_INTEGER',
+        'AccountCompanionLinksSetEvent: version must be a positive integer',
+        meta.version.toString(),
+        { operation: VALIDATE_ACCOUNT_COMPANION_LINKS_SET_EVENT_OPERATION }
+      );
     }
 
     return new AccountCompanionLinksSetEvent(
@@ -121,7 +137,7 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
 
   /** True when nothing would change (all optional fields are undefined). */
   public isNoop(): boolean {
-    return this.changedFields().length === 0;
+    return isEmpty(this.changedFields());
   }
 
   /** Deserialize from stored data */
@@ -204,20 +220,33 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
   private validate(): void {
     // Prevent no-op events from being created
     if (this.isNoop()) {
-      throw new Error('AccountCompanionLinksSetEvent: Event would cause no changes');
+      throw createValidationError(
+        'NO_EFFECTIVE_CHANGE',
+        'AccountCompanionLinksSetEvent: Event would cause no changes',
+        'companionLinks',
+        { operation: 'validate-companion-links-change' }
+      );
     }
 
     // accountCode must be non-empty
-    if (!this.accountCode || this.accountCode.trim().length === 0) {
-      throw new Error('AccountCompanionLinksSetEvent: accountCode is required (non-empty).');
+    if (!isNonEmpty(this.accountCode)) {
+      throw createValidationError(
+        'ACCOUNT_CODE_REQUIRED',
+        'AccountCompanionLinksSetEvent: accountCode is required (non-empty).',
+        this.accountCode,
+        { operation: VALIDATE_ACCOUNT_COMPANION_LINKS_SET_EVENT_OPERATION }
+      );
     }
 
     // Helper: ensure any provided string code is non-empty after trim
     const ensureCodeOrNull = (label: string, v: NullableCode): void => {
       if (v === undefined || v === null) return;
-      if (typeof v !== 'string' || v.trim().length === 0) {
-        throw new Error(
+      if (typeof v !== 'string' || !isNonEmpty(v)) {
+        throw createValidationError(
+          'INVALID_COMPANION_CODE',
           `AccountCompanionLinksSetEvent: ${label} must be a non-empty string, null, or undefined.`,
+          String(v),
+          { operation: 'validate-companion-code' }
         );
       }
     };
@@ -233,7 +262,12 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
     ].filter((v): v is string => typeof v === 'string');
     const distinct = new Set(provided);
     if (provided.length !== distinct.size) {
-      throw new Error('AccountCompanionLinksSetEvent: provided companion codes must be distinct.');
+      throw createValidationError(
+        'DUPLICATE_COMPANION_CODES',
+        'AccountCompanionLinksSetEvent: provided companion codes must be distinct.',
+        'companionCodes',
+        { operation: 'validate-companion-links-uniqueness' }
+      );
     }
 
     // Optional: guard against linking a code to itself (same as primary)
@@ -244,24 +278,21 @@ export class AccountCompanionLinksSetEvent implements DomainEvent {
       againstPrimary(this.depreciationExpenseCode) ||
       againstPrimary(this.allowanceAccountCode)
     ) {
-      throw new Error(
+      throw createValidationError(
+        'COMPANION_CODE_EQUALS_PRIMARY',
         'AccountCompanionLinksSetEvent: companion code cannot equal the primary accountCode.',
+        this.accountCode,
+        { operation: 'validate-companion-links-uniqueness' }
       );
     }
   }
 
   /** Helper methods for deserialization */
-  private static expectString(v: unknown, label: string): string {
-    if (typeof v !== 'string' || v.trim().length === 0) {
-      throw new Error(`AccountCompanionLinksSetEvent: ${label} must be a non-empty string`);
-    }
-    return v.trim();
-  }
 }
 
 // Helper functions
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0) {
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return v.trim();
@@ -275,16 +306,19 @@ function expectNumber(v: unknown, label: string): number {
 }
 
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }
 
 function optionalNullableCode(v: unknown): NullableCode {
   if (v === null || v === undefined) return v;
   if (typeof v === 'string') {
     const trimmed = v.trim();
-    return trimmed.length === 0 ? null : trimmed;
+    return !isNonEmpty(trimmed) ? null : trimmed;
   }
-  throw new Error(
+  throw createValidationError(
+    'INVALID_COMPANION_CODE_TYPE',
     'AccountCompanionLinksSetEvent: companion code must be string, null, or undefined',
+    String(v),
+    { operation: 'validate-companion-code-type' }
   );
 }

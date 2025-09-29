@@ -8,6 +8,7 @@
 import { Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { InvoiceService } from '../services/invoice.service';
+import { isEmpty } from '../utils';
 
 // Constants for error messages
 const TENANT_ID_REQUIRED = 'Tenant ID is required';
@@ -74,7 +75,7 @@ export class InvoiceController {
       if (!userId) return void this.badRequest(res, USER_ID_REQUIRED);
       if (!invoiceId) return void this.badRequest(res, INVOICE_ID_REQUIRED);
       if (!customerId) return void this.badRequest(res, CUSTOMER_ID_REQUIRED);
-      if (!Array.isArray(lineItems) || lineItems.length === 0) {
+      if (!Array.isArray(lineItems) || isEmpty(lineItems)) {
         return void this.badRequest(res, LINE_ITEMS_REQUIRED);
       }
       // Basic line validation (amounts non-negative)

@@ -1,6 +1,7 @@
 import type { DomainEvent as _DomainEvent } from '@aibos/eventsourcing';
 
 import { AccountType } from '../domain/account.domain';
+import { toMinorUnits, isEmpty } from '../utils';
 import {
   type AccountBalanceUpdatedEvent,
   type AccountStateUpdatedEvent,
@@ -59,7 +60,7 @@ export class GeneralLedgerProjection {
         accountName: currentBalance?.accountName ?? `Account ${accountCode}`, // Fallback name
         accountType: currentBalance?.accountType ?? AccountType.ASSET, // Fallback type
         balance: (currentBalance?.balance ?? 0) + netAmount,
-        balanceCents: (currentBalance?.balanceCents ?? 0n) + BigInt(Math.round(netAmount * 100)),
+        balanceCents: (currentBalance?.balanceCents ?? 0n) + BigInt(toMinorUnits(netAmount, 2)),
         currencyCode: currencyCode ?? 'MYR', // Default to Malaysian Ringgit
         asOfDate: occurredAt,
         lastUpdated: new Date(),
@@ -90,7 +91,7 @@ export class GeneralLedgerProjection {
       accountName: currentBalance?.accountName ?? `Account ${accountCode}`,
       accountType: currentBalance?.accountType ?? AccountType.ASSET,
       balance,
-      balanceCents: BigInt(Math.round(balance * 100)),
+      balanceCents: BigInt(toMinorUnits(balance, 2)),
       currencyCode: currentBalance?.currencyCode ?? 'MYR',
       asOfDate: occurredAt,
       lastUpdated: new Date(),
@@ -270,7 +271,7 @@ export class GeneralLedgerProjection {
       totalAccounts: balances.length,
       issuesFound: issues.length,
       issues,
-      isHealthy: issues.length === 0,
+      isHealthy: isEmpty(issues),
     };
   }
 

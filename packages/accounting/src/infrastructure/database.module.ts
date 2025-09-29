@@ -20,9 +20,7 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
           username: config.get<string>('DATABASE_USERNAME'),
           password: config.get<string>('DATABASE_PASSWORD'),
           database: config.get<string>('DATABASE_NAME'),
-          // eslint-disable-next-line unicorn/prefer-module
           entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-          // eslint-disable-next-line unicorn/prefer-module
           migrations: [__dirname + '/migrations/*{.ts,.js}'],
           synchronize: false,
           logging:

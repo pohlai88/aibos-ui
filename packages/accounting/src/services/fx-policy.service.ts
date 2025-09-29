@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { addMonthsToDate } from '../utils';
 
 export interface ThreeRateModel {
   spot: ExchangeRate;
@@ -164,8 +165,7 @@ export class FXPolicyService {
 
     try {
       // Implementation to get forward rate
-      const forwardDate = new Date(date);
-      forwardDate.setMonth(forwardDate.getMonth() + 1); // 1 month forward
+      const forwardDate = addMonthsToDate(date, 1); // 1 month forward
 
       // const fxApiUrl = 'https://api.exchangerate-api.com/v4/latest';
       // const fxApiKey = '';
@@ -201,7 +201,7 @@ export class FXPolicyService {
       return {
         currency,
         rate: 1, // Fallback rate
-        date: new Date(date.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days forward
+        date: addMonthsToDate(date, 1), // 30 days forward (approximated as 1 month)
         source: 'INTERNAL',
         reliability: 'LOW',
       };

@@ -9,6 +9,13 @@ import {
   GetJournalEntriesQuerySchema,
   RealTimeBalancesRequestSchema,
 } from '../validation/ui.schema.js';
+import { 
+  createValidationError,
+  createBusinessError,
+  formatErrorForUser,
+  type ErrorContext 
+} from '../utils/error-utilities';
+import { PerformanceTimer } from '../utils/performance-utilities';
 
 // Validation schemas for API requests (using comprehensive UI schemas)
 const CreateAccountSchema = CreateAccountRequestSchema;
@@ -137,24 +144,69 @@ const TaxFormSchema = z.object({
 // Validation middleware factory
 export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
+    const timer = new PerformanceTimer('validation-middleware');
+    
     try {
       const validatedData = schema.parse(req.body);
       req.body = validatedData;
+      
+      // Record performance metrics
+      timer.getMetrics();
+      // Could add to a profiler here if needed
+      
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
+        const context: ErrorContext = {
+          operation: 'api-validation-error',
+          requestId: req.headers['x-request-id'] as string,
+          data: { 
+            method: req.method, 
+            url: req.url,
+            validationErrors: error.errors
+          }
+        };
+
+        // Create structured validation error
+        const validationError = createValidationError(
+          'request-body',
+          'Request validation failed',
+          req.body,
+          context
+        );
+
         res.status(400).json({
           success: false,
-          message: 'Validation failed',
+          message: formatErrorForUser(validationError),
           errors: error.errors.map((error_) => ({
             field: error_.path.join('.'),
             message: error_.message,
             code: error_.code,
           })),
+          requestId: context.requestId,
         });
         return;
       }
-      next(error);
+      
+      // Handle other errors with structured error handling
+      const context: ErrorContext = {
+        operation: 'api-validation-unexpected-error',
+        requestId: req.headers['x-request-id'] as string,
+        data: { 
+          method: req.method, 
+          url: req.url,
+          errorType: error?.constructor?.name
+        }
+      };
+
+      const businessError = createBusinessError(
+        'VALIDATION_MIDDLEWARE_ERROR',
+        'Unexpected validation error',
+        'ValidationMiddleware',
+        context
+      );
+
+      next(businessError);
     }
   };
 }
@@ -186,24 +238,66 @@ const CommonQuerySchema = z
 
 export function createQueryValidationMiddleware<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
+    const timer = new PerformanceTimer('query-validation-middleware');
+    
     try {
       const parsed = schema.parse(req.query);
       req.query = parsed as unknown as Request['query'];
+      
+      // Record performance metrics
+      timer.getMetrics();
+      
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
+        const context: ErrorContext = {
+          operation: 'query-validation-error',
+          requestId: req.headers['x-request-id'] as string,
+          data: { 
+            method: req.method, 
+            url: req.url,
+            validationErrors: error.errors
+          }
+        };
+
+        const validationError = createValidationError(
+          'query-parameters',
+          'Query validation failed',
+          req.query,
+          context
+        );
+
         res.status(400).json({
           success: false,
-          message: 'Query validation failed',
+          message: formatErrorForUser(validationError),
           errors: error.errors.map((e) => ({
             field: e.path.join('.'),
             message: e.message,
             code: e.code,
           })),
+          requestId: context.requestId,
         });
         return;
       }
-      next(error as Error);
+      
+      const context: ErrorContext = {
+        operation: 'query-validation-unexpected-error',
+        requestId: req.headers['x-request-id'] as string,
+        data: { 
+          method: req.method, 
+          url: req.url,
+          errorType: error?.constructor?.name
+        }
+      };
+
+      const businessError = createBusinessError(
+        'QUERY_VALIDATION_MIDDLEWARE_ERROR',
+        'Unexpected query validation error',
+        'QueryValidationMiddleware',
+        context
+      );
+
+      next(businessError);
     }
   };
 }
@@ -232,10 +326,10 @@ export const validateTaxForm = createValidationMiddleware(TaxFormSchema);
 
 // UI-specific validation middlewares (using comprehensive schemas)
 export const validateUIAccountsQuery = createQueryValidationMiddleware(
-  GetAccountsQuerySchema as unknown,
+  GetAccountsQuerySchema as z.ZodSchema<unknown>,
 );
 export const validateUIJournalEntriesQuery = createQueryValidationMiddleware(
-  GetJournalEntriesQuerySchema as unknown,
+  GetJournalEntriesQuerySchema as z.ZodSchema<unknown>,
 );
 export const validateUIRealTimeBalances = createValidationMiddleware(RealTimeBalancesRequestSchema);
 
@@ -244,30 +338,77 @@ export const validateQueryParameters = createQueryValidationMiddleware(CommonQue
 
 // Error handling middleware
 export function errorHandler(error: Error, _req: Request, res: Response, next: NextFunction): void {
-  console.error('Accounting API Error:', error);
+  const timer = new PerformanceTimer('error-handler');
+  
+  const context: ErrorContext = {
+    operation: 'api-error-handler',
+    requestId: _req.headers['x-request-id'] as string,
+    data: { 
+      method: _req.method, 
+      url: _req.url,
+      errorType: error?.constructor?.name,
+      errorMessage: error.message
+    }
+  };
 
+  // Use structured error formatting
+  const userMessage = formatErrorForUser(error);
+  
   if (res.headersSent) {
     return next(error);
   }
 
-  res.status(500).json({
+  // Determine appropriate status code based on error type
+  let statusCode = 500;
+  if (error.name === 'ValidationError') {
+    statusCode = 400;
+  } else if (error.name === 'BusinessRuleError') {
+    statusCode = 422;
+  } else if (error.name === 'AuthenticationError') {
+    statusCode = 401;
+  } else if (error.name === 'AuthorizationError') {
+    statusCode = 403;
+  }
+
+  res.status(statusCode).json({
     success: false,
-    message: 'Internal server error',
+    message: userMessage,
     error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
+    requestId: context.requestId,
+    timestamp: new Date().toISOString(),
   });
+
+  // Record performance metrics
+  timer.getMetrics();
 }
 
 // Request logging middleware
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
+  const timer = new PerformanceTimer('request-logger');
   const start = Date.now();
   const { method, url, ip } = req;
   const userAgent = req.get('User-Agent') || 'Unknown';
+  const requestId = req.headers['x-request-id'] as string;
 
   res.on('finish', () => {
     const duration = Date.now() - start;
     const { statusCode } = res;
+    
+    // Enhanced logging with structured data
+    const logData = {
+      timestamp: new Date().toISOString(),
+      method,
+      url,
+      statusCode,
+      duration,
+      ip,
+      userAgent,
+      requestId,
+      performance: timer.getMetrics()
+    };
+
     console.log(
-      `${new Date().toISOString()} - ${method} ${url} - ${statusCode} - ${duration}ms - ${ip} - ${userAgent}`,
+      `${logData.timestamp} - ${method} ${url} - ${statusCode} - ${duration}ms - ${ip} - ${userAgent} - ${requestId}`,
     );
   });
 

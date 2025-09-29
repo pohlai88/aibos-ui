@@ -7,6 +7,7 @@
  */
 
 // safeGet import removed as it's not used
+import { hasKey, hasItems, isEmpty } from '../utils';
 import type {
   StandardsComplianceReport,
   StandardsValidationResult,
@@ -74,7 +75,7 @@ export class StandardsComplianceService {
     accounts: TenantCoaAccount[],
   ): Promise<StandardsComplianceReport> {
     const totalAccounts = accounts.length;
-    const compliantAccounts = accounts.filter((account) => account.standardLinks.length > 0).length;
+    const compliantAccounts = accounts.filter((account) => hasItems(account.standardLinks)).length;
     const compliancePercentage = totalAccounts > 0 ? (compliantAccounts / totalAccounts) * 100 : 0;
 
     // Group by standard
@@ -82,7 +83,7 @@ export class StandardsComplianceService {
 
     // Find unmapped accounts
     const unmappedAccounts = accounts
-      .filter((account) => account.standardLinks.length === 0)
+      .filter((account) => isEmpty(account.standardLinks))
       .map((account) => ({
         accountCode: account.accountCode,
         accountName: account.accountName,
@@ -120,7 +121,7 @@ export class StandardsComplianceService {
     }> = [];
 
     // Check if account has any standard links
-    if (account.standardLinks.length === 0) {
+    if (isEmpty(account.standardLinks)) {
       warnings.push(`Account ${account.accountCode} has no standards references`);
 
       // Suggest standards based on account type and name
@@ -149,14 +150,14 @@ export class StandardsComplianceService {
 
     // Check for outdated standards references
     const outdatedReferences = this.findOutdatedReferences(account.standardLinks);
-    if (outdatedReferences.length > 0) {
+    if (hasItems(outdatedReferences)) {
       warnings.push(
         `Account ${account.accountCode} has outdated standards references: ${outdatedReferences.join(', ')}`,
       );
     }
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
       suggestions,
@@ -235,8 +236,8 @@ export class StandardsComplianceService {
     }> = [];
 
     // Check for accounts without standards
-    const unmappedAccounts = accounts.filter((account) => account.standardLinks.length === 0);
-    if (unmappedAccounts.length > 0) {
+    const unmappedAccounts = accounts.filter((account) => isEmpty(account.standardLinks));
+    if (hasItems(unmappedAccounts)) {
       recommendations.push({
         type: 'warning',
         message: `${unmappedAccounts.length} accounts have no standards references`,
@@ -269,7 +270,7 @@ export class StandardsComplianceService {
       account.standardLinks.some((link) => link.sectionCode.includes('MFRS')),
     );
 
-    if (mfrsAccounts.length > 0) {
+    if (hasItems(mfrsAccounts)) {
       recommendations.push({
         type: 'info',
         message: `${mfrsAccounts.length} accounts have MFRS references. Consider adding IFRS crosswalk for international compliance.`,
@@ -447,7 +448,7 @@ export class StandardsComplianceService {
 
       for (const link of account.standardLinks) {
         const standard = this.extractStandardFromSectionCode(link.sectionCode);
-        if (standard && Object.prototype.hasOwnProperty.call(mfrsToIfrsMap, standard)) {
+        if (standard && hasKey(mfrsToIfrsMap, standard)) {
           const mappedStandards = Object.getOwnPropertyDescriptor(mfrsToIfrsMap, standard)?.value;
           if (Array.isArray(mappedStandards)) {
             ifrsSuggestions.push(...mappedStandards);
@@ -455,7 +456,7 @@ export class StandardsComplianceService {
         }
       }
 
-      if (ifrsSuggestions.length > 0) {
+      if (hasItems(ifrsSuggestions)) {
         crosswalkMap.set(account.accountCode, ifrsSuggestions);
       }
     }

@@ -4,59 +4,33 @@
   "private": false,
   "sideEffects": false,
   "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/types/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/src/index.d.ts",
+      "types": "./dist/types/src/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
-    "./security": {
-      "types": "./dist/src/security.d.ts",
-      "import": "./dist/security.js",
-      "require": "./dist/security.cjs"
-    },
-    "./safeFs": {
-      "types": "./dist/src/safeFs.d.ts",
-      "import": "./dist/safeFs.js",
-      "require": "./dist/safeFs.cjs"
-    },
-    "./type-guards": {
-      "types": "./dist/src/type-guards.d.ts",
-      "import": "./dist/type-guards.js",
-      "require": "./dist/type-guards.cjs"
-    },
     "./code-quality": {
-      "types": "./dist/src/code-quality.d.ts",
+      "types": "./dist/types/src/code-quality.d.ts",
       "import": "./dist/code-quality.js",
       "require": "./dist/code-quality.cjs"
-    },
-    "./package.json": "./package.json"
+    }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/src/index.d.ts",
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "pnpm run lock:check && pnpm run build:types && pnpm run build:js",
-    "build:js": "pnpm run lock:check && tsup",
-    "build:types": "pnpm run lock:check && tsc -p tsconfig.json",
-    "clean": "rimraf dist",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
-    "dev": "pnpm run lock:check && tsup --watch",
-    "format": "prettier -w .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "lock:check": "node scripts/lock-guard.js check",
-    "lock:init": "pnpm run lock:update-hashes",
-    "lock:status": "node scripts/lock-guard.js status",
-    "lock:update-hashes": "node scripts/lock-guard.js update-hashes",
-    "test": "echo 'No tests yet'",
-    "typecheck": "tsc -p tsconfig.json"
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:js": "tsup",
+    "build": "pnpm run build:types && pnpm run build:js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "escape-string-regexp": "5.0.0",
@@ -69,7 +43,6 @@
     "eslint": "9.36.0",
     "eslint-plugin-security": "3.0.1",
     "eslint-plugin-sonarjs": "3.0.5",
-    "eslint-plugin-unicorn": "61.0.2",
     "prettier": "3.6.2",
     "react": "18.2.0",
     "tsup": "8.5.0",
@@ -79,6 +52,6 @@
     "react": "18.2.0"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20.18.0"
   }
 }

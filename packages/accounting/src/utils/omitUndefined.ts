@@ -4,16 +4,18 @@
  * The return type excludes `undefined` from property types to play nicely
  * with `exactOptionalPropertyTypes`.
  */
-export function omitUndefined<T extends object>(obj: T): {
+import { hasKey, toPairs } from './index';
+export function omitUndefined<T extends object>(object: T): {
   [K in keyof T as undefined extends T[K] ? K : K]: Exclude<T[K], undefined>
 } {
   const out: Record<string, unknown> = {};
-  for (const k in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, k)) {
-      const v = (obj as Record<string, unknown>)[k];
+  for (const k in object) {
+    if (hasKey(object, k)) {
+      const v = (object as Record<string, unknown>)[k];
       if (v !== undefined) out[k] = v;
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return out as any;
 }
 
@@ -27,7 +29,7 @@ export function omitUndefinedDeep<T>(value: T): T {
   }
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    for (const [k, v] of toPairs(value as Record<string, unknown>)) {
       if (v !== undefined) out[k] = omitUndefinedDeep(v);
     }
     return out as unknown as T;
@@ -76,5 +78,5 @@ export function buildConditionalObject<T extends object, K extends keyof T>(
  * Safely spreads an object, omitting undefined values and narrowing types.
  */
 export function safeSpread<T extends Record<string, unknown>>(object: Partial<T>): Partial<T> {
-  return omitUndefined(object as T) as Partial<T>;
+  return omitUndefined(object as T) as unknown as Partial<T>;
 }

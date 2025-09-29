@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "dist/types",
+    "stripInternal": true,
+    "skipLibCheck": true,
+    "rootDir": "src"
+  },
+  "include": ["src/index.ts"],
+  "exclude": [
+    "src/utils/**/*",
+    "src/infrastructure/**/*",
+    "src/projections/**/*",
+    "src/services/**/*",
+    "src/commands/**/*",
+    "src/events/**/*",
+    "src/api/**/*",
+    "src/validation/**/*",
+    "**/*.test.*",
+    "**/__tests__/**"
+  ]
+}

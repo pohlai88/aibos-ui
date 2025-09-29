@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 
 import { CreateAccountCommand } from '../commands/create-account.command';
 import { PostJournalEntryCommand } from '../commands/post-journal-entry.command';
+import { round2, isEmpty, toPairs } from '../utils';
 // import { JournalEntryLine } from '../../domain/journal-entry-line'; // No longer needed
 
 // Constants for error messages
@@ -35,7 +36,6 @@ const badRequest = (res: Response, message: string) =>
 
 const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
 const parseISO = (v: string) => new Date(v);
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export class AccountingController {
   constructor(private readonly accountingService: AccountingService) {}
@@ -107,7 +107,7 @@ export class AccountingController {
       } = req.body;
 
       // Lightweight guards (heavy validation should live in middleware)
-      if (!Array.isArray(entries) || entries.length === 0) {
+      if (!Array.isArray(entries) || isEmpty(entries)) {
         return void badRequest(res, 'entries array is required and cannot be empty');
       }
       const normalized = entries.map((e: JournalEntryLineData) => ({
@@ -119,7 +119,7 @@ export class AccountingController {
       }));
       // Non-negative and not both sides populated per line
       for (let index = 0; index < normalized.length; index++) {
-        const line = normalized[index];
+        const line = normalized.at(index);
         if (!line) continue; // Skip undefined entries
         if (line.debitAmount < 0 || line.creditAmount < 0) {
           return void badRequest(res, `Line ${index + 1}: amounts cannot be negative`);
@@ -474,7 +474,7 @@ export class AccountingController {
       const reconciliationReport = await this.accountingService.reconcileTrialBalance(
         tenantId,
         period,
-        expectedBalances ? new Map(Object.entries(expectedBalances)) : undefined,
+        expectedBalances ? new Map(toPairs(expectedBalances) as [string, number][]) : undefined,
       );
 
       respond(res, 200, {

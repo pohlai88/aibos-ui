@@ -5,6 +5,13 @@ import { JournalEntryPostedEvent } from '../events/journal-entry-posted.event';
 import { JournalEntryLine } from './journal-entry-line';
 import { JournalEntryStatus, JournalEntryStatusValidator } from './journal-entry-status.domain';
 import { AggregateRoot } from '@aibos/eventsourcing';
+import { isNonEmpty } from '../utils';
+import { validateJournalEntry, validateAmount, type JournalEntryInput, type JournalLineInput } from '../utils/validation-utilities';
+import { 
+  createBusinessError,
+  createValidationError,
+  type ErrorContext 
+} from '../utils/error-utilities';
 
 export class JournalEntry extends AggregateRoot {
   private entries: JournalEntryLine[] = [];
@@ -25,8 +32,20 @@ export class JournalEntry extends AggregateRoot {
   }
 
   public approve(): void {
+    const context: ErrorContext = {
+      operation: 'approve-journal-entry',
+      userId: this._userId,
+      tenantId: this._tenantId,
+      data: { journalEntryId: this._journalEntryId, currentStatus: this.status }
+    };
+
     if (this.status !== JournalEntryStatus.DRAFT) {
-      throw new Error(`Cannot approve journal entry in ${this.status} status`);
+      throw createBusinessError(
+        'INVALID_APPROVAL_STATUS',
+        `Cannot approve journal entry in ${this.status} status`,
+        'JournalEntry',
+        context
+      );
     }
     this.status = JournalEntryStatus.APPROVED;
   }
@@ -64,12 +83,29 @@ export class JournalEntry extends AggregateRoot {
   }
 
   public reverse(reason: string, reversedBy: string): void {
+    const context: ErrorContext = {
+      operation: 'reverse-journal-entry',
+      userId: reversedBy,
+      tenantId: this._tenantId,
+      data: { journalEntryId: this._journalEntryId, currentStatus: this.status, reason }
+    };
+
     if (!JournalEntryStatusValidator.canReverse(this.status)) {
-      throw new Error(`Cannot reverse journal entry in ${this.status} status`);
+      throw createBusinessError(
+        'INVALID_REVERSAL_STATUS',
+        `Cannot reverse journal entry in ${this.status} status`,
+        'JournalEntry',
+        context
+      );
     }
 
-    if (!reason || reason.trim().length === 0) {
-      throw new Error('Reversal reason is required');
+    if (!isNonEmpty(reason)) {
+      throw createValidationError(
+        'reason',
+        'Reversal reason is required',
+        reason,
+        context
+      );
     }
 
     this.status = JournalEntryStatus.REVERSED;
@@ -148,8 +184,20 @@ export class JournalEntry extends AggregateRoot {
   }
 
   private validatePosting(command: PostJournalEntryCommand): void {
+    const context: ErrorContext = {
+      operation: 'validate-posting',
+      userId: this._userId,
+      tenantId: this._tenantId,
+      data: { journalEntryId: this._journalEntryId, currentStatus: this.status }
+    };
+
     if (!JournalEntryStatusValidator.canPost(this.status)) {
-      throw new Error(`Cannot post journal entry in ${this.status} status`);
+      throw createBusinessError(
+        'INVALID_POSTING_STATUS',
+        `Cannot post journal entry in ${this.status} status`,
+        'JournalEntry',
+        context
+      );
     }
 
     // Additional business validations
@@ -157,26 +205,83 @@ export class JournalEntry extends AggregateRoot {
   }
 
   private validateBusinessRules(command: PostJournalEntryCommand): void {
-    // Validate minimum and maximum number of entries
-    if (command.entries.length < 2) {
-      throw new Error('Journal entry must have at least two lines');
+    // Convert command to JournalEntryInput format for Phase 2 utility validation
+    const journalEntryInput: JournalEntryInput = {
+      date: command.postingDate?.toISOString() || new Date().toISOString(),
+      description: command.description || 'Journal Entry',
+      entries: command.entries.map(entry => {
+        const line: JournalLineInput = {
+          account: entry.accountCode,
+          currency: entry.currency || command.baseCurrency || 'MYR'
+        };
+        if (entry.debitAmount > 0) {
+          line.debit = entry.debitAmount;
+        }
+        if (entry.creditAmount > 0) {
+          line.credit = entry.creditAmount;
+        }
+        return line;
+      }),
+      currency: command.baseCurrency || 'MYR'
+    };
+
+    // Use Phase 2 utility for comprehensive validation
+    const validationResult = validateJournalEntry(journalEntryInput, { strict: true });
+    
+    if (!validationResult.isValid) {
+      const context: ErrorContext = {
+        operation: 'validate-business-rules',
+        userId: this._userId,
+        tenantId: this._tenantId,
+        data: { journalEntryId: this._journalEntryId, validationErrors: validationResult.errors }
+      };
+
+      const errorMessages = validationResult.errors.join(', ');
+      throw createBusinessError(
+        'JOURNAL_ENTRY_VALIDATION_FAILED',
+        `Journal entry validation failed: ${errorMessages}`,
+        'JournalEntry',
+        context
+      );
     }
 
-    if (command.entries.length > 100) {
-      throw new Error('Journal entry cannot have more than 100 lines');
-    }
-
-    // Validate amounts are reasonable (business rule)
+    // Additional business-specific validations
     const maxAmount = 1_000_000; // $1M limit per entry
     for (const entry of command.entries) {
-      if (entry.debitAmount > maxAmount || entry.creditAmount > maxAmount) {
-        throw new Error(`Entry amount cannot exceed ${maxAmount.toLocaleString()}`);
+      // Use Phase 2 utility for amount validation
+      const amountValidation = validateAmount(entry.debitAmount || entry.creditAmount || 0, 0, maxAmount);
+      if (!amountValidation.isValid) {
+        const context: ErrorContext = {
+          operation: 'validate-entry-amount',
+          userId: this._userId,
+          tenantId: this._tenantId,
+          data: { journalEntryId: this._journalEntryId, entry, amountErrors: amountValidation.errors }
+        };
+
+        throw createBusinessError(
+          'ENTRY_AMOUNT_VALIDATION_FAILED',
+          `Entry amount validation failed: ${amountValidation.errors.join(', ')}`,
+          'JournalEntry',
+          context
+        );
       }
     }
 
     // Validate reference format (business rule) - only if reference is provided
     if (command.reference && !/^[A-Z0-9-]{3,20}$/.test(command.reference)) {
-      throw new Error('Reference must be 3-20 alphanumeric characters with hyphens');
+      const context: ErrorContext = {
+        operation: 'validate-reference-format',
+        userId: this._userId,
+        tenantId: this._tenantId,
+        data: { journalEntryId: this._journalEntryId, reference: command.reference }
+      };
+
+      throw createValidationError(
+        'reference',
+        'Reference must be 3-20 alphanumeric characters with hyphens',
+        command.reference,
+        context
+      );
     }
   }
 

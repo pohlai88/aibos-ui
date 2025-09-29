@@ -7,6 +7,5 @@
     "declarationMap": true,
     "emitDeclarationOnly": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tsup.config.ts"],
-  "exclude": ["src/**/*.d.ts", "src/**/*.d.ts.map"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

@@ -19,7 +19,7 @@ beforeAll(() => {
     join(tmpRoot, 'demo.ts'),
     `
       // Manual Rounding
-      const a = 12.345; const b = Math.round(a * 100) / 100;
+      const a = 12.345; const b = round2(a);
       // Manual Currency Constants
       const SUP = ["USD","EUR","JPY","GBP","CAD"];
     `,

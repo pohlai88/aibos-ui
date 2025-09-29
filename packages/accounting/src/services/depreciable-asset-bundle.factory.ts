@@ -2,6 +2,11 @@ import { CreateAccountCommand } from '../commands/create-account.command';
 import { type Account, AccountType, SpecialAccountType } from '../domain/account.domain';
 import { type ChartOfAccounts } from '../domain/chart-of-accounts.domain';
 import { omitUndefined } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
+
+// Constants for error messages
+const ASSET_NOT_DEPRECIABLE_MESSAGE = 'Asset {assetCode} is not configured as a depreciable asset (missing companion links)';
+const VALIDATE_DEPRECIABLE_ASSET_OPERATION = 'validate-depreciable-asset';
 
 export interface DepreciableAssetBundleInput {
   asset: { code: string; name: string; parentCode?: string };
@@ -91,15 +96,23 @@ export class DepreciableAssetBundleFactory {
   } {
     const asset = coa.getAccount(assetCode);
     if (!asset) {
-      throw new Error(`Asset account ${assetCode} not found`);
+      throw createBusinessError(
+        'INVALID_DEPRECIABLE_ASSET_BUNDLE',
+        `Asset account ${assetCode} not found`,
+        assetCode,
+        { operation: 'validate-asset-account' }
+      );
     }
 
     if (
       !asset.companionLinks?.accumulatedDepreciationCode ||
       !asset.companionLinks?.depreciationExpenseCode
     ) {
-      throw new Error(
-        `Asset ${assetCode} is not configured as a depreciable asset (missing companion links)`,
+      throw createBusinessError(
+        'ASSET_NOT_DEPRECIABLE',
+        ASSET_NOT_DEPRECIABLE_MESSAGE.replace('{assetCode}', assetCode),
+        assetCode,
+        { operation: VALIDATE_DEPRECIABLE_ASSET_OPERATION }
       );
     }
 
@@ -109,14 +122,20 @@ export class DepreciableAssetBundleFactory {
     const depreciationExpense = coa.getAccount(asset.companionLinks.depreciationExpenseCode);
 
     if (!accumulatedDepreciation) {
-      throw new Error(
+      throw createBusinessError(
+        'ACCUMULATED_DEPRECIATION_ACCOUNT_NOT_FOUND',
         `Accumulated Depreciation account ${asset.companionLinks.accumulatedDepreciationCode} not found`,
+        asset.companionLinks.accumulatedDepreciationCode,
+        { operation: VALIDATE_DEPRECIABLE_ASSET_OPERATION }
       );
     }
 
     if (!depreciationExpense) {
-      throw new Error(
+      throw createBusinessError(
+        'DEPRECIATION_EXPENSE_ACCOUNT_NOT_FOUND',
         `Depreciation Expense account ${asset.companionLinks.depreciationExpenseCode} not found`,
+        asset.companionLinks.depreciationExpenseCode,
+        { operation: VALIDATE_DEPRECIABLE_ASSET_OPERATION }
       );
     }
 
@@ -124,14 +143,20 @@ export class DepreciableAssetBundleFactory {
     if (
       accumulatedDepreciation.specialAccountType !== SpecialAccountType.ACCUMULATED_DEPRECIATION
     ) {
-      throw new Error(
+      throw createBusinessError(
+        'INVALID_ACCUMULATED_DEPRECIATION_TYPE',
         `Account ${accumulatedDepreciation.accountCode} is not an Accumulated Depreciation account`,
+        accumulatedDepreciation.accountCode,
+        { operation: VALIDATE_DEPRECIABLE_ASSET_OPERATION }
       );
     }
 
     if (depreciationExpense.specialAccountType !== SpecialAccountType.DEPRECIATION_EXPENSE) {
-      throw new Error(
+      throw createBusinessError(
+        'INVALID_DEPRECIATION_EXPENSE_TYPE',
         `Account ${depreciationExpense.accountCode} is not a Depreciation Expense account`,
+        depreciationExpense.accountCode,
+        { operation: VALIDATE_DEPRECIABLE_ASSET_OPERATION }
       );
     }
 
@@ -160,7 +185,12 @@ export class DepreciableAssetBundleFactory {
     const bundle = this.validateDepreciableAssetBundle(coa, assetCode);
 
     if (depreciationAmount <= 0) {
-      throw new Error('Depreciation amount must be positive');
+      throw createBusinessError(
+        'INVALID_DEPRECIABLE_ASSET_BUNDLE',
+        'Depreciation amount must be positive',
+        depreciationAmount.toString(),
+        { operation: 'validate-depreciation-amount' }
+      );
     }
 
     return {

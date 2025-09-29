@@ -7,6 +7,7 @@
 
 import type { Request, Response } from 'express';
 import type { StandardsComplianceService } from '../services/standards-compliance.service.js';
+import { hasItems } from '../utils';
 
 // Constants for error messages
 const TENANT_ID_REQUIRED = 'Tenant ID is required';
@@ -247,7 +248,7 @@ export class ComplianceController {
 
       // Basic validation based on report generation success
       const isValid =
-        complianceReport.status !== 'DRAFT' || Object.keys(complianceReport.data).length > 0;
+        complianceReport.status !== 'DRAFT' || hasItems(Object.keys(complianceReport.data));
 
       this.respond(res, 200, {
         success: true,

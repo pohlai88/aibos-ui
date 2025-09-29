@@ -7,7 +7,7 @@
   "scripts": {
     "build": "next build",
     "clean": "rimraf .next",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
+    "dep:check": "if exist src depcruise --validate --config ../../.dependency-cruiser.js --output-type text src || echo 'No src directory found, skipping dependency check'",
     "dev": "next dev",
     "format": "prettier -w .",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
@@ -20,7 +20,6 @@
     "@aibos/accounting": "workspace:*",
     "@aibos/accounting-contracts": "workspace:*",
     "@aibos/accounting-web": "workspace:*",
-    "@aibos/contracts": "workspace:*",
     "@aibos/ui": "workspace:*",
     "@aibos/utils": "workspace:*",
     "@headlessui/react": "1.7.0",

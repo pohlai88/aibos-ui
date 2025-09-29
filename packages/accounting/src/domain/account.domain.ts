@@ -1,5 +1,10 @@
 // DomainEvent import removed as it's not used in this file
-import { omitUndefined, ACCOUNT_TYPES, AccountType, assert } from '../utils';
+import { omitUndefined, ACCOUNT_TYPES, AccountType, assert, round2, isNonEmpty } from '../utils';
+import { 
+  createBusinessError, 
+  createValidationError,
+  type ErrorContext 
+} from '../utils/error-utilities';
 
 // Re-export the centralized AccountType from utilities
 export { ACCOUNT_TYPES, AccountType };
@@ -144,34 +149,74 @@ export class Account {
   }
 
   public validateBalance(): void {
+    const context: ErrorContext = {
+      operation: 'account-balance-validation',
+      data: { accountCode: this.accountCode, accountType: this.accountType, balance: this.balance }
+    };
+
     if (this.isDebitAccount() && this.balance < 0) {
-      throw new Error(`Debit account ${this.accountCode} cannot have negative balance`);
+      throw createBusinessError(
+        'NEGATIVE_DEBIT_BALANCE',
+        `Debit account ${this.accountCode} cannot have negative balance`,
+        'Account',
+        context
+      );
     }
 
     if (this.isCreditAccount() && this.balance > 0) {
-      throw new Error(`Credit account ${this.accountCode} cannot have positive balance`);
+      throw createBusinessError(
+        'POSITIVE_CREDIT_BALANCE',
+        `Credit account ${this.accountCode} cannot have positive balance`,
+        'Account',
+        context
+      );
     }
   }
 
   private validateSpecials(): void {
+    const context: ErrorContext = {
+      operation: 'account-special-validation',
+      data: { accountCode: this.accountCode, specialAccountType: this.specialAccountType, accountType: this.accountType }
+    };
+
     // Polarity expectations for common specials
     if (this.specialAccountType === SpecialAccountType.ACCUMULATED_DEPRECIATION) {
       if (this.accountType !== AccountType.ASSET) {
-        throw new Error('Accumulated Depreciation must be of base type Asset (contra-asset).');
+        throw createBusinessError(
+          'INVALID_ACCUMULATED_DEPRECIATION_TYPE',
+          'Accumulated Depreciation must be of base type Asset (contra-asset).',
+          'Account',
+          context
+        );
       }
       // Normally carries a credit balance (contra-asset)
       if (this.balance > 0) {
-        throw new Error('Accumulated Depreciation should not carry a positive (debit) balance.');
+        throw createBusinessError(
+          'INVALID_ACCUMULATED_DEPRECIATION_BALANCE',
+          'Accumulated Depreciation should not carry a positive (debit) balance.',
+          'Account',
+          context
+        );
       }
     }
     if (this.specialAccountType === SpecialAccountType.DEPRECIATION_EXPENSE) {
       if (this.accountType !== AccountType.EXPENSE) {
-        throw new Error('Depreciation Expense must be an Expense account.');
+        throw createBusinessError(
+          'INVALID_DEPRECIATION_EXPENSE_TYPE',
+          'Depreciation Expense must be an Expense account.',
+          'Account',
+          context
+        );
       }
     }
     if (this.specialAccountType === SpecialAccountType.CLEARING && !this.postingAllowed) {
       // Clearing accounts are usually posted to, then cleared
-      throw new Error('Clearing accounts should allow postings.');
+      throw createBusinessError(
+        'CLEARING_ACCOUNT_POSTING_DISABLED',
+        'Clearing accounts should allow postings.',
+        'Account',
+        context
+      );
     }
   }
 
@@ -183,11 +228,26 @@ export class Account {
     // Note: In a real implementation, this would create a new Account instance
     // since the properties are readonly. For now, we'll throw an error to indicate
     // that account updates should be handled through domain events.
-    throw new Error('Account updates must be handled through domain events');
+    const context: ErrorContext = {
+      operation: 'account-update-attempt',
+      data: { accountCode: this.accountCode, tenantId: this.tenantId }
+    };
+    
+    throw createBusinessError(
+      'IMMUTABLE_ACCOUNT_UPDATE',
+      'Account updates must be handled through domain events',
+      'Account',
+      context
+    );
   }
 
   // ---- Validation & helpers -------------------------------------------------
   private validate(): void {
+    const context: ErrorContext = {
+      operation: 'account-validation',
+      data: { accountCode: this.accountCode, tenantId: this.tenantId }
+    };
+
     // Basic presence
     assert(isNonEmpty(this.accountCode), 'Account code is required');
     assert(isNonEmpty(this.accountName), 'Account name is required');
@@ -197,7 +257,12 @@ export class Account {
     assert(accountCodePattern.test(this.accountCode), 'Account code must be 3-20 alphanumeric characters');
     // Parent cannot equal self
     if (this.parentAccountCode && this.parentAccountCode === this.accountCode) {
-      throw new Error('Parent account code cannot equal account code');
+      throw createBusinessError(
+        'PARENT_SELF_REFERENCE',
+        'Parent account code cannot equal account code',
+        'Account',
+        context
+      );
     }
     // Dates sanity
     if (!(this.createdAt instanceof Date) || isNaN(this.createdAt.valueOf())) {
@@ -207,14 +272,24 @@ export class Account {
       throw new TypeError('updatedAt must be a valid Date');
     }
     if (this.updatedAt.valueOf() < this.createdAt.valueOf()) {
-      throw new Error('updatedAt cannot be earlier than createdAt');
+      throw createValidationError(
+        'updatedAt',
+        'updatedAt cannot be earlier than createdAt',
+        this.updatedAt,
+        context
+      );
     }
     // Balance must be finite and <= 2 decimals
     if (!Number.isFinite(this.balance)) {
       throw new TypeError('Balance must be a finite number');
     }
     if (!isMaxTwoDecimals(this.balance)) {
-      throw new Error('Balance must have at most two decimal places');
+      throw createValidationError(
+        'balance',
+        'Balance must have at most two decimal places',
+        this.balance,
+        context
+      );
     }
     // Polarity rules
     this.validateBalance();
@@ -241,12 +316,6 @@ export class Account {
 }
 
 // ---- Local pure helpers -----------------------------------------------------
-function isNonEmpty(v: unknown): v is string {
-  return typeof v === 'string' && v.length > 0;
-}
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 function isMaxTwoDecimals(n: number): boolean {
   return Math.round(n * 100) === n * 100;
 }

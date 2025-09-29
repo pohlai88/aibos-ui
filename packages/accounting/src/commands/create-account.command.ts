@@ -1,5 +1,10 @@
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
-import { omitUndefined } from '../utils';
+import { omitUndefined, hasKey, isNonEmpty } from '../utils';
+import { 
+  createValidationError, 
+  createBusinessError,
+  type ErrorContext 
+} from '../utils/error-utilities';
 
 export interface CreateAccountCommandProperties {
   readonly accountCode: string;
@@ -64,34 +69,51 @@ export class CreateAccountCommand {
   }
 
   public validate(): void {
+    const context: ErrorContext = {
+      operation: 'create-account-validation',
+      userId: this.userId,
+      tenantId: this.tenantId,
+      data: { accountCode: this.accountCode, accountType: this.accountType }
+    };
+
     if (!isNonEmpty(this.accountCode)) {
-      throw new Error('Account code is required');
+      throw createValidationError('accountCode', 'Account code is required', this.accountCode, context);
     }
 
     if (!isNonEmpty(this.accountName)) {
-      throw new Error('Account name is required');
+      throw createValidationError('accountName', 'Account name is required', this.accountName, context);
     }
 
     if (!isValidAccountType(this.accountType)) {
-      throw new Error('Invalid account type');
+      throw createValidationError('accountType', 'Invalid account type', this.accountType, context);
     }
 
     if (!isNonEmpty(this.tenantId)) {
-      throw new Error('Tenant ID is required');
+      throw createValidationError('tenantId', 'Tenant ID is required', this.tenantId, context);
     }
 
     if (!isNonEmpty(this.userId)) {
-      throw new Error('User ID is required');
+      throw createValidationError('userId', 'User ID is required', this.userId, context);
     }
 
     // Validate account code format (alphanumeric, 4-10 characters)
     if (!/^[A-Z0-9]{4,10}$/.test(this.accountCode)) {
-      throw new Error('Account code must be 4-10 alphanumeric characters');
+      throw createValidationError(
+        'accountCode', 
+        'Account code must be 4-10 alphanumeric characters', 
+        this.accountCode, 
+        context
+      );
     }
 
     // Defensive: parent cannot equal self (avoid trivial cycles)
     if (this.parentAccountCode && this.parentAccountCode === this.accountCode) {
-      throw new Error('Parent account code cannot be the same as account code');
+      throw createBusinessError(
+        'PARENT_SELF_REFERENCE',
+        'Parent account code cannot be the same as account code',
+        'CreateAccountCommand',
+        context
+      );
     }
 
     // Basic sanity for companions (if partially provided)
@@ -100,8 +122,11 @@ export class CreateAccountCommand {
       const hasAccumulatorDep = !!links.accumulatedDepreciationCode;
       const hasDepExp = !!links.depreciationExpenseCode;
       if (hasAccumulatorDep !== hasDepExp) {
-        throw new Error(
+        throw createBusinessError(
+          'INCOMPLETE_COMPANION_LINKS',
           'Both accumulatedDepreciationCode and depreciationExpenseCode must be provided together',
+          'CreateAccountCommand',
+          context
         );
       }
     }
@@ -109,14 +134,11 @@ export class CreateAccountCommand {
 }
 
 // ---- Local helpers (kept minimal to avoid drift) ----
-function isNonEmpty(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0;
-}
 
 function isValidAccountType(value: unknown): value is AccountType {
   // Works for both string and numeric enums
   return (
-    Object.prototype.hasOwnProperty.call(AccountType, value as PropertyKey) ||
+    hasKey(AccountType, value as PropertyKey) ||
     Object.values(AccountType as unknown as Record<string, unknown>).includes(value as never)
   );
 }

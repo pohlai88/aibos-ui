@@ -63,7 +63,7 @@ export class OutboxProcessor {
     this.isRunning = false;
     if (this.intervalId) {
       clearInterval(this.intervalId);
-      this.intervalId = undefined;
+      delete this.intervalId;
     }
   }
 

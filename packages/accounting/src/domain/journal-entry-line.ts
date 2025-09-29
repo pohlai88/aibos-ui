@@ -1,5 +1,10 @@
 import { Money } from './Money';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty } from '../utils';
+import { createValidationError } from '../utils/error-utilities';
+
+// Constants for error messages
+const ACCOUNT_CODE_REQUIRED_MESSAGE = 'Account code is required (non-empty string).';
+const VALIDATE_JOURNAL_ENTRY_LINE_OPERATION = 'validate-journal-entry-line';
 
 export interface JournalEntryLineProperties {
   readonly accountCode: string;
@@ -45,20 +50,40 @@ export class JournalEntryLine {
   }
 
   private validate(): void {
-    if (!this.accountCode || this.accountCode.trim().length === 0) {
-      throw new Error('Account code is required (non-empty string).');
+    if (!isNonEmpty(this.accountCode)) {
+      throw createValidationError(
+        'ACCOUNT_CODE_REQUIRED',
+        ACCOUNT_CODE_REQUIRED_MESSAGE,
+        this.accountCode,
+        { operation: VALIDATE_JOURNAL_ENTRY_LINE_OPERATION }
+      );
     }
 
-    if (!this.description || this.description.trim().length === 0) {
-      throw new Error('Description is required (non-empty string).');
+    if (!isNonEmpty(this.description)) {
+      throw createValidationError(
+        'DESCRIPTION_REQUIRED',
+        'Description is required (non-empty string).',
+        this.description,
+        { operation: VALIDATE_JOURNAL_ENTRY_LINE_OPERATION }
+      );
     }
 
     if (this.debitAmount < 0) {
-      throw new Error(`Debit amount cannot be negative: ${this.debitAmount}`);
+      throw createValidationError(
+        'NEGATIVE_DEBIT_AMOUNT',
+        `Debit amount cannot be negative: ${this.debitAmount}`,
+        this.debitAmount.toString(),
+        { operation: VALIDATE_JOURNAL_ENTRY_LINE_OPERATION }
+      );
     }
 
     if (this.creditAmount < 0) {
-      throw new Error(`Credit amount cannot be negative: ${this.creditAmount}`);
+      throw createValidationError(
+        'NEGATIVE_CREDIT_AMOUNT',
+        `Credit amount cannot be negative: ${this.creditAmount}`,
+        this.creditAmount.toString(),
+        { operation: VALIDATE_JOURNAL_ENTRY_LINE_OPERATION }
+      );
     }
 
     // Exactly one side must be positive (XOR). Zero values allowed only on the opposite side.
@@ -66,8 +91,11 @@ export class JournalEntryLine {
     const hasCredit = this.creditAmount > 0;
     if (hasDebit === hasCredit) {
       // both true or both false
-      throw new Error(
+      throw createValidationError(
+        'INVALID_DEBIT_CREDIT_BALANCE',
         `Exactly one of debit or credit must be > 0 (got debit=${this.debitAmount}, credit=${this.creditAmount}).`,
+        `${this.debitAmount},${this.creditAmount}`,
+        { operation: VALIDATE_JOURNAL_ENTRY_LINE_OPERATION }
       );
     }
 

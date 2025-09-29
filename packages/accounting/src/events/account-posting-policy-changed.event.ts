@@ -1,7 +1,8 @@
 import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { randomUUID } from 'node:crypto';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isNonEmpty } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
 
 export class AccountPostingPolicyChangedEvent implements DomainEvent {
   public static readonly TYPE = 'AccountPostingPolicyChanged' as const;
@@ -198,15 +199,15 @@ export class AccountPostingPolicyChangedEvent implements DomainEvent {
     if (!Number.isInteger(this.version) || this.version < 1) {
       throw new TypeError('version must be a positive integer');
     }
-    if (typeof this.aggregateId !== 'string' || this.aggregateId.trim().length === 0) {
+    if (typeof this.aggregateId !== 'string' || !isNonEmpty(this.aggregateId)) {
       throw new TypeError('aggregateId must be a non-empty string');
     }
-    if (typeof this.tenantId !== 'string' || this.tenantId.trim().length === 0) {
+    if (typeof this.tenantId !== 'string' || !isNonEmpty(this.tenantId)) {
       throw new TypeError('tenantId must be a non-empty string');
     }
 
     // accountCode must be non-empty and well-formed
-    if (typeof this.accountCode !== 'string' || this.accountCode.trim().length === 0) {
+    if (typeof this.accountCode !== 'string' || !isNonEmpty(this.accountCode)) {
       throw new TypeError(
         'AccountPostingPolicyChangedEvent: accountCode must be a non-empty string.',
       );
@@ -229,14 +230,19 @@ export class AccountPostingPolicyChangedEvent implements DomainEvent {
     // Note: We can't check against previous state here, but we can validate business rules
     // For example, if there are certain accounts that should never change posting policy
     if (this.accountCode.startsWith('SYSTEM-')) {
-      throw new Error('Cannot change posting policy for system accounts');
+      throw createBusinessError(
+        'SYSTEM_ACCOUNT_POLICY_CHANGE_FORBIDDEN',
+        'Cannot change posting policy for system accounts',
+        this.accountCode,
+        { operation: 'validate-posting-policy-change' }
+      );
     }
   }
 }
 
 // ---------- helpers ----------
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0) {
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return v.trim();
@@ -257,5 +263,5 @@ function expectBoolean(v: unknown, label: string): boolean {
 }
 
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }

@@ -9,9 +9,11 @@
 
 import type { Request, Response } from 'express';
 import type { UIIntegrationService } from '../services/ui-integration.service.js';
+import { isEmpty, roundAmount } from '../utils';
 
 const TENANT_ID_HEADER = 'x-tenant-id';
 const USER_ID_HEADER = 'x-user-id';
+const INVALID_DATE_FORMAT_MESSAGE = 'Invalid date or period format';
 
 export class UIControllerExpress {
   constructor(private readonly uiIntegrationService: UIIntegrationService) {}
@@ -29,8 +31,8 @@ export class UIControllerExpress {
     });
   }
   private requireContext(req: Request, res: Response): { tenantId: string; userId: string } | null {
-    const tenantId = req.headers[TENANT_ID_HEADER] as string;
-    const userId = req.headers[USER_ID_HEADER] as string;
+    const tenantId = req.headers[TENANT_ID_HEADER as keyof typeof req.headers] as string;
+    const userId = req.headers[USER_ID_HEADER as keyof typeof req.headers] as string;
     if (!tenantId) {
       this.fail(res, 400, 'Tenant ID is required');
       return null;
@@ -57,6 +59,11 @@ export class UIControllerExpress {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? undefined : d;
   }
+  private parseAccountingPeriod(v?: string): 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | undefined {
+    if (!v) return undefined;
+    const validPeriods = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
+    return validPeriods.includes(v) ? v as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' : undefined;
+  }
   private ensureLinesValid(
     res: Response,
     entries: Array<{
@@ -67,7 +74,7 @@ export class UIControllerExpress {
       description: string;
     }>,
   ): boolean {
-    if (!Array.isArray(entries) || entries.length === 0) {
+    if (!Array.isArray(entries) || isEmpty(entries)) {
       this.fail(res, 400, 'entries is required and cannot be empty');
       return false;
     }
@@ -100,7 +107,7 @@ export class UIControllerExpress {
       cred += c;
     }
     // UI balance check is cheap; service does the authoritative validation anyway
-    if (Math.round((deb - cred) * 100) / 100 !== 0) {
+    if (roundAmount(deb - cred) !== 0) {
       this.fail(res, 400, `Unbalanced journal: debits ${deb} != credits ${cred}`);
       return false;
     }
@@ -344,7 +351,7 @@ export class UIControllerExpress {
       if (!context) return;
 
       const { accountCodes } = req.body;
-      if (!Array.isArray(accountCodes) || accountCodes.length === 0) {
+      if (!Array.isArray(accountCodes) || isEmpty(accountCodes)) {
         this.fail(res, 400, 'accountCodes must be a non-empty string array');
         return;
       }
@@ -385,6 +392,416 @@ export class UIControllerExpress {
       });
     } catch (error) {
       this.fail(res, 500, 'Failed to get accounting context', error);
+    }
+  }
+
+  // ============================================================================
+  // KPI ANALYTICS ENDPOINTS
+  // ============================================================================
+
+  /**
+   * Get composite KPI analysis for dashboard
+   * POST /api/v1/accounting/ui/kpi/composite
+   */
+  async getCompositeKPI(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        period, 
+        startDate, 
+        endDate, 
+        timezone, 
+        currentMap, 
+        priorMap,
+        fiscalYearStart,
+        fiscalQuarterMode,
+        trendWindow 
+      } = req.body;
+
+      // Validate required fields
+      if (!period) {
+        this.fail(res, 400, 'period is required');
+        return;
+      }
+      if (!startDate) {
+        this.fail(res, 400, 'startDate is required');
+        return;
+      }
+      if (!endDate) {
+        this.fail(res, 400, 'endDate is required');
+        return;
+      }
+      if (!timezone) {
+        this.fail(res, 400, 'timezone is required');
+        return;
+      }
+      if (!currentMap || typeof currentMap !== 'object') {
+        this.fail(res, 400, 'currentMap is required and must be an object');
+        return;
+      }
+
+      // Parse and validate dates
+      const start = this.parseDateISO(startDate);
+      const end = this.parseDateISO(endDate);
+      if (!start) {
+        this.fail(res, 400, 'startDate must be a valid ISO date');
+        return;
+      }
+      if (!end) {
+        this.fail(res, 400, 'endDate must be a valid ISO date');
+        return;
+      }
+      if (start >= end) {
+        this.fail(res, 400, 'startDate must be before endDate');
+        return;
+      }
+
+      // Validate period
+      const parsedPeriod = this.parseAccountingPeriod(period);
+      if (!parsedPeriod) {
+        this.fail(res, 400, 'period must be one of: daily, weekly, monthly, quarterly, yearly');
+        return;
+      }
+
+      // Parse optional fiscal year start
+      const fiscalStart = fiscalYearStart ? this.parseDateISO(fiscalYearStart) : undefined;
+      if (fiscalYearStart && !fiscalStart) {
+        this.fail(res, 400, 'fiscalYearStart must be a valid ISO date');
+        return;
+      }
+
+      // Import the KPI functions from date utilities
+      const { buildKPIComposite } = await import('../utils/date-utilities.js');
+      
+      const kpiConfig = {
+        period: parsedPeriod,
+        start,
+        end,
+        timezone,
+        currentMap,
+        ...(priorMap && { priorMap }),
+        ...(fiscalStart && { fiscalYearStart: fiscalStart }),
+        ...(fiscalQuarterMode !== undefined && { fiscalQuarterMode: Boolean(fiscalQuarterMode) }),
+        ...(trendWindow !== undefined && { trendWindow: Number(trendWindow) }),
+        fillWith: 0,
+        round: roundAmount, // Round to 2 decimal places
+      };
+
+      const result = buildKPIComposite(kpiConfig);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Composite KPI analysis completed successfully',
+        data: result,
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to generate composite KPI analysis', error);
+    }
+  }
+
+  /**
+   * Get YoY comparison analysis
+   * POST /api/v1/accounting/ui/kpi/year-over-year
+   */
+  async getYearOverYearAnalysis(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        period, 
+        startDate, 
+        endDate, 
+        timezone, 
+        currentMap, 
+        priorMap,
+        fiscalYearStart,
+        fiscalQuarterMode 
+      } = req.body;
+
+      // Validate required fields
+      if (!period || !startDate || !endDate || !timezone || !currentMap || !priorMap) {
+        this.fail(res, 400, 'period, startDate, endDate, timezone, currentMap, and priorMap are required');
+        return;
+      }
+
+      const start = this.parseDateISO(startDate);
+      const end = this.parseDateISO(endDate);
+      const parsedPeriod = this.parseAccountingPeriod(period);
+      const fiscalStart = fiscalYearStart ? this.parseDateISO(fiscalYearStart) : undefined;
+
+      if (!start || !end || !parsedPeriod) {
+        this.fail(res, 400, INVALID_DATE_FORMAT_MESSAGE);
+        return;
+      }
+
+      const { buildYoY } = await import('../utils/date-utilities.js');
+      
+      const yoyConfig = {
+        period: parsedPeriod,
+        start,
+        end,
+        timezone,
+        currentMap,
+        priorMap,
+        ...(fiscalStart && { fiscalYearStart: fiscalStart }),
+        ...(fiscalQuarterMode !== undefined && { fiscalQuarterMode: Boolean(fiscalQuarterMode) }),
+        fillWith: 0,
+        round: roundAmount,
+      };
+
+      const result = buildYoY(yoyConfig);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Year-over-year analysis completed successfully',
+        data: result,
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to generate year-over-year analysis', error);
+    }
+  }
+
+  /**
+   * Get YoY-to-date analysis
+   * POST /api/v1/accounting/ui/kpi/year-to-date
+   */
+  async getYearToDateAnalysis(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        period, 
+        anchorDate, 
+        timezone, 
+        currentMap, 
+        priorMap,
+        fiscalYearStart,
+        fiscalQuarterMode 
+      } = req.body;
+
+      // Validate required fields
+      if (!period || !anchorDate || !timezone || !currentMap || !priorMap) {
+        this.fail(res, 400, 'period, anchorDate, timezone, currentMap, and priorMap are required');
+        return;
+      }
+
+      const anchor = this.parseDateISO(anchorDate);
+      const parsedPeriod = this.parseAccountingPeriod(period);
+      const fiscalStart = fiscalYearStart ? this.parseDateISO(fiscalYearStart) : undefined;
+
+      if (!anchor || !parsedPeriod) {
+        this.fail(res, 400, INVALID_DATE_FORMAT_MESSAGE);
+        return;
+      }
+
+      const { buildYoYToDate } = await import('../utils/date-utilities.js');
+      
+      const ytdConfig = {
+        period: parsedPeriod,
+        anchor,
+        timezone,
+        currentMap,
+        priorMap,
+        ...(fiscalStart && { fiscalYearStart: fiscalStart }),
+        ...(fiscalQuarterMode !== undefined && { fiscalQuarterMode: Boolean(fiscalQuarterMode) }),
+        fillWith: 0,
+        round: roundAmount,
+      };
+
+      const result = buildYoYToDate(ytdConfig);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Year-to-date analysis completed successfully',
+        data: result,
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to generate year-to-date analysis', error);
+    }
+  }
+
+  /**
+   * Get period-over-period analysis (MoM/QoQ)
+   * POST /api/v1/accounting/ui/kpi/period-over-period
+   */
+  async getPeriodOverPeriodAnalysis(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        period, 
+        startDate, 
+        endDate, 
+        timezone, 
+        valuesByKey,
+        fiscalYearStart,
+        fiscalQuarterMode 
+      } = req.body;
+
+      // Validate required fields
+      if (!period || !startDate || !endDate || !timezone || !valuesByKey) {
+        this.fail(res, 400, 'period, startDate, endDate, timezone, and valuesByKey are required');
+        return;
+      }
+
+      const start = this.parseDateISO(startDate);
+      const end = this.parseDateISO(endDate);
+      const parsedPeriod = this.parseAccountingPeriod(period);
+      const fiscalStart = fiscalYearStart ? this.parseDateISO(fiscalYearStart) : undefined;
+
+      if (!start || !end || !parsedPeriod) {
+        this.fail(res, 400, INVALID_DATE_FORMAT_MESSAGE);
+        return;
+      }
+
+      const { buildPeriodOverPeriod } = await import('../utils/date-utilities.js');
+      
+      const popConfig = {
+        period: parsedPeriod,
+        start,
+        end,
+        timezone,
+        valuesByKey,
+        ...(fiscalStart && { fiscalYearStart: fiscalStart }),
+        ...(fiscalQuarterMode !== undefined && { fiscalQuarterMode: Boolean(fiscalQuarterMode) }),
+        fillWith: 0,
+        round: roundAmount,
+      };
+
+      const result = buildPeriodOverPeriod(popConfig);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Period-over-period analysis completed successfully',
+        data: result,
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to generate period-over-period analysis', error);
+    }
+  }
+
+  /**
+   * Get seasonality analysis
+   * POST /api/v1/accounting/ui/kpi/seasonality
+   */
+  async getSeasonalityAnalysis(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        period, 
+        startDate, 
+        endDate, 
+        timezone, 
+        valuesByKey,
+        method,
+        includeCurrentInBaseline 
+      } = req.body;
+
+      // Validate required fields
+      if (!period || !startDate || !endDate || !timezone || !valuesByKey) {
+        this.fail(res, 400, 'period, startDate, endDate, timezone, and valuesByKey are required');
+        return;
+      }
+
+      // Validate period (only monthly or weekly allowed)
+      if (period !== 'monthly' && period !== 'weekly') {
+        this.fail(res, 400, 'period must be either "monthly" or "weekly" for seasonality analysis');
+        return;
+      }
+
+      const start = this.parseDateISO(startDate);
+      const end = this.parseDateISO(endDate);
+
+      if (!start || !end) {
+        this.fail(res, 400, 'Invalid date format');
+        return;
+      }
+
+      // Validate method
+      const validMethods = ['mean', 'median'];
+      const analysisMethod = method && validMethods.includes(method) ? method : 'median';
+
+      const { buildSeasonalityIndex } = await import('../utils/date-utilities.js');
+      
+      const seasonalityConfig = {
+        period: period as 'monthly' | 'weekly',
+        start,
+        end,
+        timezone,
+        valuesByKey,
+        method: analysisMethod as 'mean' | 'median',
+        includeCurrentInBaseline: Boolean(includeCurrentInBaseline),
+        isoWeek: true, // Default to ISO weeks for weekly analysis
+      };
+
+      const result = buildSeasonalityIndex(seasonalityConfig);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Seasonality analysis completed successfully',
+        data: result,
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to generate seasonality analysis', error);
+    }
+  }
+
+  /**
+   * Get trend classification for a series
+   * POST /api/v1/accounting/ui/kpi/trend-classification
+   */
+  async getTrendClassification(req: Request, res: Response): Promise<void> {
+    try {
+      const context = this.requireContext(req, res);
+      if (!context) return;
+
+      const { 
+        values, 
+        window, 
+        epsAbs, 
+        epsPct 
+      } = req.body;
+
+      // Validate required fields
+      if (!Array.isArray(values) || isEmpty(values)) {
+        this.fail(res, 400, 'values must be a non-empty number array');
+        return;
+      }
+
+      // Validate values are numbers
+      if (!values.every(v => typeof v === 'number' && Number.isFinite(v))) {
+        this.fail(res, 400, 'All values must be finite numbers');
+        return;
+      }
+
+      const { classifySeriesTrend } = await import('../utils/date-utilities.js');
+      
+      const options = {
+        ...(window !== undefined && { window: Number(window) }),
+        ...(epsAbs !== undefined && { epsAbs: Number(epsAbs) }),
+        ...(epsPct !== undefined && { epsPct: Number(epsPct) }),
+      };
+
+      const trend = classifySeriesTrend(values, options);
+
+      this.respond(res, 200, {
+        success: true,
+        message: 'Trend classification completed successfully',
+        data: {
+          trend,
+          values,
+          options,
+        },
+      });
+    } catch (error) {
+      this.fail(res, 500, 'Failed to classify trend', error);
     }
   }
 }

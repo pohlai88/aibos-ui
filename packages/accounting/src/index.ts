@@ -1,119 +1,145 @@
-// Core Module
-export * from './accounting.module';
+// Public API for @aibos/accounting
+// This file exports only stable, well-typed APIs to prevent leaking internal implementation details
 
-// Domain Models
-export * from './domain/account.domain';
-export * from './domain/chart-of-accounts.domain';
-export * from './domain/journal-entry';
-export * from './domain/journal-entry-line';
-export * from './domain/journal-entry-status.domain';
-export * from './domain/Money';
-export * from './utils';
-export * from './domain/repositories.interface';
-export * from './domain/invoice.domain';
+// Basic type definitions that don't depend on problematic imports
+export type AccountType = 
+  | 'ASSET'
+  | 'LIABILITY' 
+  | 'EQUITY'
+  | 'REVENUE'
+  | 'EXPENSE';
 
-// Commands
-export * from './commands/create-account.command';
-export * from './commands/post-journal-entry.command';
-export * from './commands/issue-invoice.command';
+export type JournalEntryStatus = 
+  | 'DRAFT'
+  | 'POSTED'
+  | 'CANCELLED';
 
-// Services
-export * from './services/accounting.service';
-export * from './services/invoice.service';
-export * from './services/invoice-event-handler.service';
-export * from './services/ui-integration.service';
+// Basic domain types
+export interface Account {
+  accountCode: string;
+  accountName: string;
+  accountType: AccountType;
+  parentAccountCode?: string;
+  tenantId: string;
+  balance: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-// AI Services - Phase 2 Scaffold (not yet implemented)
-export * from './services/ai-assistant.service';
-export * from './services/predictive-analytics.service';
-export * from './services/natural-language.service';
-export * from './services/intelligent-validation.service';
+export interface JournalEntry {
+  id: string;
+  tenantId: string;
+  entryNumber: string;
+  description: string;
+  postingDate: Date;
+  status: JournalEntryStatus;
+  totalDebit: number;
+  totalCredit: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-// Projections
-export * from './projections/invoice.projection';
-export * from './projections/general-ledger.projection';
+export interface JournalEntryLine {
+  id: string;
+  journalEntryId: string;
+  accountCode: string;
+  description: string;
+  debitAmount: number;
+  creditAmount: number;
+  createdAt: Date;
+}
 
-// API
-export * from './api/accounting-api-module';
-export * from './api/accounting-controller';
-export * from './api/invoice-controller';
+export interface Money {
+  amount: number;
+  currency: string;
+}
 
-// API Schemas
+// Repository interfaces
+export interface AccountRepository {
+  findById(id: string): Promise<Account | null>;
+  findByCode(code: string): Promise<Account | null>;
+  save(account: Account): Promise<Account>;
+  delete(id: string): Promise<void>;
+}
+
+export interface JournalEntryRepository {
+  findById(id: string): Promise<JournalEntry | null>;
+  save(entry: JournalEntry): Promise<JournalEntry>;
+  findByDateRange(startDate: Date, endDate: Date): Promise<JournalEntry[]>;
+}
+
+// Basic utility types
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+export interface AccountingPeriod {
+  startDate: Date;
+  endDate: Date;
+  periodName: string;
+}
+
+// API request/response types
+export interface CreateAccountRequest {
+  accountCode: string;
+  accountName: string;
+  accountType: AccountType;
+  parentAccountCode?: string;
+}
+
+export interface AccountResponse {
+  id: string;
+  accountCode: string;
+  accountName: string;
+  accountType: AccountType;
+  balance: number;
+  isActive: boolean;
+}
+
+export interface CreateJournalEntryRequest {
+  description: string;
+  postingDate: string;
+  lines: {
+    accountCode: string;
+    description: string;
+    debitAmount?: number;
+    creditAmount?: number;
+  }[];
+}
+
+export interface JournalEntryResponse {
+  id: string;
+  entryNumber: string;
+  description: string;
+  postingDate: string;
+  status: JournalEntryStatus;
+  totalDebit: number;
+  totalCredit: number;
+}
+
+// Error response type
+export interface ErrorResponse {
+  error: string;
+  message: string;
+  statusCode: number;
+}
+
+// Success response type
+export interface SuccessResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+// Validation exports (facade-safe)
 export {
-  CreateAccountRequestSchema,
-  UpdateAccountRequestSchema,
-  JournalEntryLineSchema,
-  CreateJournalEntryRequestSchema,
-  PostJournalEntryRequestSchema,
-  SetCompanionLinksRequestSchema,
-  AccountQuerySchema,
-  JournalEntryQuerySchema,
-  AccountResponseSchema,
-  JournalEntryResponseSchema,
-  ErrorResponseSchema,
-  SuccessResponseSchema,
-} from './validation/api.schema';
-export type {
-  CreateAccountRequest,
-  UpdateAccountRequest,
-  CreateJournalEntryRequest,
-  PostJournalEntryRequest,
-  SetCompanionLinksRequest,
-  AccountQuery,
-  JournalEntryQuery,
-  AccountResponse,
-  JournalEntryResponse,
-  ErrorResponse,
-  SuccessResponse,
-} from './validation/api.schema';
-export { JournalEntryLine as JournalEntryLineClass } from './domain/journal-entry-line';
-export * from './validation/import.schema';
-export * from './validation/ui.schema';
-
-// Accounting Events
-export * from './events/account-created.event';
-export * from './events/account-updated.event';
-export * from './events/journal-entry-posted.event';
-export * from './events/account-parent-changed.event';
-export * from './events/account-posting-policy-changed.event';
-export * from './events/account-companion-links-set.event';
-
-// Accounting Commands
-export * from './commands/create-account.command';
-export * from './commands/post-journal-entry.command';
-
-// Accounting Services
-export * from './services/depreciable-asset-bundle.factory';
-export * from './services/group-coa.factory';
-export * from './services/intercompany-validator.utility';
-export * from './services/template-registry.utility';
-export * from './services/template-importer.utility';
-export * from './services/standards-compliance.service';
-export * from './services/accounting-period.service';
-export * from './services/tax-compliance.service';
-export * from './services/multi-currency.service';
-export * from './services/trial-balance.service';
-export * from './services/financial-reporting.service';
-export * from './services/accounting.service';
-export * from './services/error-handling.service';
-export * from './services/financial-analytics.service';
-export * from './services/fx-policy.service';
-export * from './services/period-close.service';
-export * from './services/migration-orchestrator.service';
-export * from './services/ui-integration.service';
-
-// Accounting Projections
-export * from './projections/general-ledger.projection';
-
-// Resilience Infrastructure
-export * from './infrastructure/resilience-manager.infrastructure';
-
-// Accounting API
-export * from './api/accounting-api-module.js';
-export * from './api/accounting-controller.js';
-export * from './api/accounting-routes.js';
-export * from './api/validation.middleware.js';
-export * from './api/ui-controller-express.js';
-
-// Standards Compliance
-export * from './types/standards';
+  ValidationPipeline,
+  CommandValidator,
+  AccountValidator,
+  JournalEntryValidator,
+  InvoiceValidator,
+  compose
+} from './utils/validation-pipeline-utilities';
+export { validationError } from './utils/api-response-utilities';

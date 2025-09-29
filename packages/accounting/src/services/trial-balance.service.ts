@@ -8,6 +8,8 @@ import type {
 export type { TrialBalanceData, GLIntegrityReport };
 
 import { AccountType } from '../domain/account.domain';
+import { roundAmount, isEmpty, hasItems } from '../utils';
+import { createValidationError } from '../utils/error-utilities';
 
 /**
  * Trial balance validation result
@@ -73,7 +75,12 @@ export class TrialBalanceService {
     // Validate the generated trial balance
     const validation = this.validateTrialBalance(trialBalance);
     if (!validation.isValid) {
-      throw new Error(`Trial balance validation failed: ${validation.errors.join(', ')}`);
+      throw createValidationError(
+        'TRIAL_BALANCE_VALIDATION_FAILED',
+        `Trial balance validation failed: ${validation.errors.join(', ')}`,
+        'trialBalance',
+        { operation: 'validate-trial-balance' }
+      );
     }
 
     return trialBalance;
@@ -92,8 +99,8 @@ export class TrialBalanceService {
 
     if (!isBalanced) {
       errors.push(
-        `Trial balance is not balanced. Debits: ${trialBalance.totalDebits.toFixed(2)}, ` +
-          `Credits: ${trialBalance.totalCredits.toFixed(2)}, Difference: ${difference.toFixed(2)}`,
+        `Trial balance is not balanced. Debits: ${roundAmount(trialBalance.totalDebits, 2)}, ` +
+          `Credits: ${roundAmount(trialBalance.totalCredits, 2)}, Difference: ${roundAmount(difference, 2)}`,
       );
     }
 
@@ -109,7 +116,7 @@ export class TrialBalanceService {
       (accumulator) => accumulator.debitBalance === 0 && accumulator.creditBalance === 0,
     );
 
-    if (zeroBalanceAccounts.length > 0) {
+    if (hasItems(zeroBalanceAccounts)) {
       warnings.push(`${zeroBalanceAccounts.length} accounts have zero balances`);
     }
 
@@ -121,7 +128,7 @@ export class TrialBalanceService {
         accumulator.creditBalance > largeBalanceThreshold,
     );
 
-    if (largeBalances.length > 0) {
+    if (hasItems(largeBalances)) {
       warnings.push(
         `${largeBalances.length} accounts have unusually large balances (>${largeBalanceThreshold.toLocaleString()})`,
       );
@@ -131,7 +138,7 @@ export class TrialBalanceService {
     this.validateAccountTypeConsistency(trialBalance, errors, warnings);
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
       totalDebits: trialBalance.totalDebits,
@@ -180,7 +187,7 @@ export class TrialBalanceService {
         totalVariances: variances.length,
         variances,
         recommendations,
-        isReconciled: variances.length === 0,
+        isReconciled: isEmpty(variances),
       };
     }
 
@@ -216,7 +223,7 @@ export class TrialBalanceService {
       totalVariances: variances.length,
       variances,
       recommendations,
-      isReconciled: variances.length === 0,
+      isReconciled: isEmpty(variances),
     };
   }
 
@@ -332,19 +339,19 @@ export class TrialBalanceService {
     const criticalVariances = variances.filter((v) => v.severity === 'CRITICAL');
     const highVariances = variances.filter((v) => v.severity === 'HIGH');
 
-    if (criticalVariances.length > 0) {
+    if (hasItems(criticalVariances)) {
       recommendations.push(
         `Immediate attention required: ${criticalVariances.length} critical variances found`,
       );
     }
 
-    if (highVariances.length > 0) {
+    if (hasItems(highVariances)) {
       recommendations.push(
         `High priority review: ${highVariances.length} high-severity variances found`,
       );
     }
 
-    if (variances.length > 0) {
+    if (hasItems(variances)) {
       recommendations.push('Review journal entries for the affected accounts');
       recommendations.push('Verify account balances against source documents');
       recommendations.push('Consider implementing automated balance validation rules');

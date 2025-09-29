@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isEmpty, toPairs } from '../utils';
 
 // ============================================================================
 // RESILIENCE INTERFACES
@@ -457,7 +457,7 @@ export class ResilienceManager {
     const issues: string[] = [];
 
     // Check for open circuit breakers
-    for (const [name, circuitBreakerMetrics] of Object.entries(metrics.circuitBreakers)) {
+    for (const [name, circuitBreakerMetrics] of toPairs(metrics.circuitBreakers)) {
       if (circuitBreakerMetrics.circuitBreakerState === CircuitBreakerState.OPEN) {
         issues.push(`Circuit breaker '${name}' is OPEN`);
       }
@@ -481,7 +481,7 @@ export class ResilienceManager {
     }
 
     return {
-      healthy: issues.length === 0,
+      healthy: isEmpty(issues),
       issues,
       metrics,
     };

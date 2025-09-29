@@ -71,7 +71,7 @@ export class OutboxEvent {
    */
   resetForRetry(): void {
     this.status = OutboxEventStatus.PENDING;
-    this.errorMessage = undefined;
+    delete this.errorMessage;
   }
 }
 

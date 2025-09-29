@@ -1,4 +1,4 @@
-import { safeGet, assert } from '../utils';
+import { safeGet, assert, isEmpty } from '../utils';
 /**
  * Money value object using minor units (cents) with bigint precision.
  * No floating point drift; suitable for accounting.
@@ -29,9 +29,9 @@ export class Money {
     if (!m) {
       throw new TypeError(`Invalid amount string (expect digits with optional 2 dp): ${amount}`);
     }
-    const sign = /* TODO: allow-list */ safeGet(m, 1, [] as const) ? -1n : 1n;
-    const whole = BigInt(/* TODO: allow-list */ safeGet(m, 2, [] as const)!);
-    const fracString = /* TODO: allow-list */ (safeGet(m, 3, [] as const) ?? '').padEnd(2, '0'); // "5" -> "50", "" -> "00"
+    const sign = /* TODO: allow-list */ safeGet(m, 1, '' as const) ? -1n : 1n;
+    const whole = BigInt(/* TODO: allow-list */ safeGet(m, 2, '0' as const)!);
+    const fracString = /* TODO: allow-list */ (safeGet(m, 3, '' as const) ?? '').padEnd(2, '0'); // "5" -> "50", "" -> "00"
     const frac = BigInt(fracString || '0');
     return new Money(sign * (whole * 100n + frac));
   }
@@ -166,7 +166,7 @@ export class Money {
    * Sums of parts equal the original amount.
    */
   allocate(ratios: number[]): Money[] {
-    if (!Array.isArray(ratios) || ratios.length === 0) {
+    if (!Array.isArray(ratios) || isEmpty(ratios)) {
       throw new TypeError('ratios must be a non-empty array');
     }
     if (ratios.some((r) => !Number.isFinite(r) || r < 0)) {
@@ -196,10 +196,10 @@ export class Money {
       if (remainder === 0n) break;
       // Safe array access with bounds checking
 
-      const currentResult = /* TODO: allow-list */ safeGet(result, i, [] as const);
-      if (currentResult) {
-        /* TODO: allow-list */ safeGet(result, i, [] as const) = Money.fromCents(
-          Number(currentResult.cents + (remainder > 0 ? 1n : -1n)),
+      const currentResult = /* TODO: allow-list */ safeGet(result, i, {} as const);
+      if (currentResult && typeof currentResult === 'object' && 'cents' in currentResult) {
+        result[i] = Money.fromCents(
+          Number((currentResult as { cents: bigint }).cents + (remainder > 0 ? 1n : -1n)),
         );
       }
       remainder += remainder > 0 ? -1n : 1n;

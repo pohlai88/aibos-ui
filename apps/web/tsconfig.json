@@ -16,6 +16,7 @@
     "emitDeclarationOnly": false,
     "target": "ES2017",
     "strict": false,
+    "exactOptionalPropertyTypes": false,
     "module": "esnext",
     "moduleResolution": "bundler",
     "isolatedModules": true,

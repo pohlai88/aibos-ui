@@ -4,35 +4,28 @@
   "private": false,
   "sideEffects": false,
   "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/types/src/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/src/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
+    }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/types/src/index.d.ts",
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "pnpm run build:types && pnpm run build:js",
-    "build:js": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
-    "clean": "rimraf dist",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
-    "dev": "tsup --watch",
-    "format": "prettier -w .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "echo 'No tests yet'",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build:js": "tsup",
+    "build": "pnpm run build:types && pnpm run build:js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "zod": "3.23.8"
@@ -44,6 +37,6 @@
     "typescript": "5.9.2"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20.18.0"
   }
 }

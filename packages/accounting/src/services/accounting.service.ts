@@ -1,8 +1,23 @@
 import type { JournalEntryRepository } from '../domain/repositories.interface';
-import { safeGet } from '../utils';
-import { omitUndefined } from '../utils';
+import { safeGet, omitUndefined, isEmpty, hasItems } from '../utils';
 import type { AccountRepository } from '../domain/repositories.interface';
 import type { EventStore } from '../domain/repositories.interface';
+import { 
+  createBusinessError, 
+  createValidationError,
+  ErrorContext 
+} from '../utils/error-utilities';
+// Async utilities available for future use
+// import { 
+//   delay,
+//   timeout,
+//   parallel,
+//   sequential 
+// } from '../utils/async-utilities';
+import { 
+  PerformanceTimer,
+  createProfiler 
+} from '../utils/performance-utilities';
 
 import { type CreateAccountCommand } from '../commands/create-account.command';
 import { PostJournalEntryCommand } from '../commands/post-journal-entry.command';
@@ -31,6 +46,11 @@ export class AccountingService {
     failureThreshold: 5,
     recoveryTimeout: 30000,
     monitoringPeriod: 60000,
+  });
+  private readonly profiler = createProfiler({
+    sampleRate: 0.1, // Sample 10% of operations
+    maxSamples: 1000,
+    includeMemory: true
   });
 
   constructor(
@@ -86,21 +106,45 @@ export class AccountingService {
   }
 
   async postJournalEntry(command: PostJournalEntryCommand, idempotencyKey?: string): Promise<void> {
+    const timer = new PerformanceTimer('post-journal-entry');
+    
     return this.circuitBreaker.execute(async () => {
       this.logger.log(
         `Posting journal entry: ${command.journalEntryId} for tenant: ${command.tenantId}`,
       );
+
+      const context: ErrorContext = {
+        operation: 'post-journal-entry',
+        userId: command.userId,
+        tenantId: command.tenantId,
+        data: { journalEntryId: command.journalEntryId }
+      };
 
       // Validate accounts exist
       await this.validateAccountsExist(command.entries, command.tenantId);
 
       // Validate currency presence & sane values
       for (const [index, entry] of command.entries.entries()) {
+        const entryContext: ErrorContext = {
+          ...context,
+          data: { ...context.data, entryIndex: index, entry }
+        };
+
         if (!entry.currency || typeof entry.currency !== 'string') {
-          throw new Error(`Entry[${index}] missing currency`);
+          throw createValidationError(
+            `entries[${index}].currency`,
+            'Currency is required',
+            entry.currency,
+            entryContext
+          );
         }
         if ((entry.debitAmount ?? 0) < 0 || (entry.creditAmount ?? 0) < 0) {
-          throw new Error(`Entry[${index}] amounts cannot be negative`);
+          throw createValidationError(
+            `entries[${index}].amounts`,
+            'Amounts cannot be negative',
+            { debitAmount: entry.debitAmount, creditAmount: entry.creditAmount },
+            entryContext
+          );
         }
       }
 
@@ -111,7 +155,12 @@ export class AccountingService {
         0,
       );
       if (Math.round((sumDebit - sumCredit) * 100) !== 0) {
-        throw new Error('Journal not balanced in original amounts (sum debits != sum credits)');
+        throw createBusinessError(
+          'UNBALANCED_JOURNAL_ENTRY',
+          'Journal not balanced in original amounts (sum debits != sum credits)',
+          'AccountingService',
+          context
+        );
       }
 
       // Determine base ledger currency
@@ -234,6 +283,10 @@ export class AccountingService {
       );
 
       this.logger.log(`Journal entry posted successfully: ${enrichedCommand.journalEntryId}`);
+      
+      // Record performance metrics
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     });
   }
 
@@ -241,7 +294,7 @@ export class AccountingService {
     const streamId = `chart-of-accounts-${tenantId}`;
     const events = await this.eventStore.getEvents(streamId, undefined, tenantId);
 
-    if (events.length === 0) {
+    if (isEmpty(events)) {
       // Create new chart of accounts if no events exist
       return new ChartOfAccounts(streamId, tenantId, 'system');
     }
@@ -262,12 +315,23 @@ export class AccountingService {
     }>,
     tenantId: string,
   ): Promise<void> {
+    const context: ErrorContext = {
+      operation: 'validate-accounts-exist',
+      tenantId,
+      data: { accountCodes: entries.map(e => e.accountCode) }
+    };
+
     const accountCodes = Array.from(new Set(entries.map((entry) => entry.accountCode)));
     const foundAccounts = await this.accountRepository.findAllByCodes(accountCodes, tenantId);
     const foundSet = new Set(foundAccounts.map((account) => account.accountCode));
     const missingAccounts = accountCodes.filter((code) => !foundSet.has(code));
-    if (missingAccounts.length > 0) {
-      throw new Error(`Accounts not found: ${missingAccounts.join(', ')}`);
+    if (hasItems(missingAccounts)) {
+      throw createBusinessError(
+        'ACCOUNTS_NOT_FOUND',
+        `Accounts not found: ${missingAccounts.join(', ')}`,
+        'AccountingService',
+        context
+      );
     }
   }
 
@@ -292,20 +356,39 @@ export class AccountingService {
     reversedBy: string,
     tenantId: string,
   ): Promise<void> {
+    const timer = new PerformanceTimer('reverse-journal-entry');
+    
     this.logger.log(`Reversing journal entry: ${journalEntryId}`);
+
+    const context: ErrorContext = {
+      operation: 'reverse-journal-entry',
+      userId: reversedBy,
+      tenantId,
+      data: { journalEntryId, reason }
+    };
 
     // Get the original journal entry from the repository
     const originalEntry = await this.journalEntryRepository.findById(journalEntryId, tenantId);
     if (!originalEntry) {
-      throw new Error(`Journal entry ${journalEntryId} not found`);
+      throw createBusinessError(
+        'JOURNAL_ENTRY_NOT_FOUND',
+        `Journal entry ${journalEntryId} not found`,
+        'AccountingService',
+        context
+      );
     }
 
-    if (originalEntry.status !== 'POSTED') {
-      throw new Error(`Cannot reverse journal entry in ${originalEntry.status} status`);
+    if ((originalEntry as any).status !== 'POSTED') {
+      throw createBusinessError(
+        'INVALID_REVERSAL_STATUS',
+        `Cannot reverse journal entry in ${(originalEntry as any).status} status`,
+        'AccountingService',
+        context
+      );
     }
 
     // Create a reversal journal entry with opposite amounts
-    const reversalEntries = originalEntry.entries.map((entry) => ({
+    const reversalEntries = (originalEntry as any).entries.map((entry: any) => ({
       accountCode: entry.accountCode,
       debitAmount: entry.creditAmount, // Swap debit/credit
       creditAmount: entry.debitAmount,
@@ -316,8 +399,8 @@ export class AccountingService {
     const reversalCommand = new PostJournalEntryCommand({
       journalEntryId: `REV-${journalEntryId}`,
       entries: reversalEntries,
-      reference: `REV-${originalEntry.reference || journalEntryId}`,
-      description: `Reversal: ${originalEntry.description || ''} - ${reason}`,
+      reference: `REV-${(originalEntry as any).reference || journalEntryId}`,
+      description: `Reversal: ${(originalEntry as any).description || ''} - ${reason}`,
       userId: reversedBy,
       postingDate: new Date(),
       baseCurrency: 'MYR',
@@ -328,11 +411,13 @@ export class AccountingService {
     await this.postJournalEntry(reversalCommand);
 
     // Update the original entry status to REVERSED
-    const reversedEntry = {
-      ...originalEntry,
-      status: 'REVERSED' as const,
-    };
+    const reversedEntry = originalEntry;
+    (reversedEntry as any).status = 'REVERSED';
     await this.journalEntryRepository.save(reversedEntry);
+    
+    // Record performance metrics
+    const metrics = timer.getMetrics();
+    this.profiler.record(metrics);
   }
 
   async getTrialBalance(

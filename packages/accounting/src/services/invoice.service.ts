@@ -7,7 +7,9 @@
 
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { omitUndefined } from '../utils';
+import { omitUndefined, hasItems, isEmpty } from '../utils';
+import { createBusinessError, createValidationError, ErrorContext } from '../utils/error-utilities';
+import { PerformanceProfiler, createProfiler, PerformanceTimer } from '../utils/performance-utilities';
 
 import { Invoice } from '../domain/invoice.domain';
 import { IssueInvoiceCommand } from '../commands/issue-invoice.command';
@@ -23,6 +25,7 @@ import type { EventStore } from '../domain/repositories.interface';
 @Injectable()
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
+  private readonly profiler: PerformanceProfiler;
 
   constructor(
     @Inject(EVENT_STORE)
@@ -35,92 +38,138 @@ export class InvoiceService {
     private readonly config: ConfigService,
     @Inject(InvoiceEventHandlerService)
     private readonly eventHandler: InvoiceEventHandlerService,
-  ) {}
+  ) {
+    this.profiler = createProfiler();
+  }
 
   /**
    * Issue an invoice and automatically create journal entry for revenue recognition
    */
   async issueInvoice(command: IssueInvoiceCommand, idempotencyKey?: string): Promise<void> {
-    this.logger.log(
-      `Issuing invoice: ${command.invoiceNumber} for customer: ${command.customerId}`,
-    );
+    const timer = new PerformanceTimer('issueInvoice');
+    const context: ErrorContext = {
+      operation: 'issueInvoice',
+      tenantId: command.tenantId,
+      invoiceId: command.invoiceId,
+      customerId: command.customerId,
+      invoiceNumber: command.invoiceNumber,
+      userId: command.userId,
+    };
 
-    // Create invoice aggregate
-    const invoice = new Invoice(
-      command.invoiceId,
-      command.tenantId,
-      command.customerId,
-      command.invoiceNumber,
-      command.lineItems,
-      command.issueDate,
-      command.paymentTerms,
-      command.notes,
-    );
+    try {
+      this.logger.log(
+        `Issuing invoice: ${command.invoiceNumber} for customer: ${command.customerId}`,
+      );
 
-    // Issue the invoice (this generates InvoiceIssuedEvent)
-    invoice.issue(command.userId);
+      // Create invoice aggregate
+      const invoice = new Invoice(
+        command.invoiceId,
+        command.tenantId,
+        command.customerId,
+        command.invoiceNumber,
+        command.lineItems,
+        command.issueDate,
+        command.paymentTerms,
+        command.notes,
+      );
 
-    // Store the invoice events
-    const events = invoice.getUncommittedEvents();
-    await this.eventStore.append(
-      `invoice-${command.invoiceId}`,
-      events as unknown as Parameters<typeof this.eventStore.append>[1],
-      invoice.getVersion() - events.length,
-      command.tenantId,
-      idempotencyKey,
-    );
+      // Issue the invoice (this generates InvoiceIssuedEvent)
+      invoice.issue(command.userId);
 
-    invoice.markEventsAsCommitted();
+      // Store the invoice events
+      const events = invoice.getUncommittedEvents();
+      await this.eventStore.append(
+        `invoice-${command.invoiceId}`,
+        events as unknown as Parameters<typeof this.eventStore.append>[1],
+        invoice.getVersion() - events.length,
+        command.tenantId,
+        idempotencyKey,
+      );
 
-    // Publish events via outbox
-    await this.outboxService.publishEvents(
-      events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
-      command.tenantId,
-    );
+      invoice.markEventsAsCommitted();
 
-    // Process events for projections
-    for (const event of events) {
-      await this.eventHandler.handleInvoiceIssued(event as unknown);
+      // Publish events via outbox
+      await this.outboxService.publishEvents(
+        events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
+        command.tenantId,
+      );
+
+      // Process events for projections
+      for (const event of events) {
+        await this.eventHandler.handleInvoiceIssued(event as unknown);
+      }
+
+      // Automatically create journal entry for revenue recognition
+      await this._createRevenueJournalEntry(command, invoice);
+
+      this.logger.log(`Invoice issued successfully: ${command.invoiceNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to issue invoice: ${command.invoiceNumber}`, error);
+      throw createBusinessError(
+        'invoice-issue-failed',
+        `Failed to issue invoice: ${command.invoiceNumber}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
-
-    // Automatically create journal entry for revenue recognition
-    await this._createRevenueJournalEntry(command, invoice);
-
-    this.logger.log(`Invoice issued successfully: ${command.invoiceNumber}`);
   }
 
   /**
    * Mark invoice as sent to customer
    */
   async markInvoiceAsSent(invoiceId: string, tenantId: string, sentBy: string): Promise<void> {
-    this.logger.log(`Marking invoice as sent: ${invoiceId}`);
-
-    // Load invoice from events
-    const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
-
-    invoice.markAsSent(sentBy);
-
-    const events = invoice.getUncommittedEvents();
-    await this.eventStore.append(
-      `invoice-${invoiceId}`,
-      events as unknown as Parameters<typeof this.eventStore.append>[1],
-      invoice.getVersion() - events.length,
+    const timer = new PerformanceTimer('markInvoiceAsSent');
+    const context: ErrorContext = {
+      operation: 'markInvoiceAsSent',
       tenantId,
-    );
+      invoiceId,
+      sentBy,
+    };
 
-    invoice.markEventsAsCommitted();
+    try {
+      this.logger.log(`Marking invoice as sent: ${invoiceId}`);
 
-    await this.outboxService.publishEvents(
-      events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
-      tenantId,
-    );
+      // Load invoice from events
+      const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
 
-    // Process events for projections
-    for (const event of events) {
-      await this.eventHandler.handleInvoiceSent(event as unknown);
+      invoice.markAsSent(sentBy);
+
+      const events = invoice.getUncommittedEvents();
+      await this.eventStore.append(
+        `invoice-${invoiceId}`,
+        events as unknown as Parameters<typeof this.eventStore.append>[1],
+        invoice.getVersion() - events.length,
+        tenantId,
+      );
+
+      invoice.markEventsAsCommitted();
+
+      await this.outboxService.publishEvents(
+        events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
+        tenantId,
+      );
+
+      // Process events for projections
+      for (const event of events) {
+        await this.eventHandler.handleInvoiceSent(event as unknown);
+      }
+
+      this.logger.log(`Invoice marked as sent: ${invoiceId}`);
+    } catch (error) {
+      this.logger.error(`Failed to mark invoice as sent: ${invoiceId}`, error);
+      throw createBusinessError(
+        'invoice-mark-sent-failed',
+        `Failed to mark invoice as sent: ${invoiceId}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
-
-    this.logger.log(`Invoice marked as sent: ${invoiceId}`);
   }
 
   /**
@@ -133,37 +182,60 @@ export class InvoiceService {
     paidBy: string,
     paymentDate: Date,
   ): Promise<void> {
-    this.logger.log(`Marking invoice as paid: ${invoiceId}`);
-
-    // Load invoice from events
-    const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
-
-    invoice.markAsPaid(paidAmount, paidBy, paymentDate);
-
-    const events = invoice.getUncommittedEvents();
-    await this.eventStore.append(
-      `invoice-${invoiceId}`,
-      events as unknown as Parameters<typeof this.eventStore.append>[1],
-      invoice.getVersion() - events.length,
+    const timer = new PerformanceTimer('markInvoiceAsPaid');
+    const context: ErrorContext = {
+      operation: 'markInvoiceAsPaid',
       tenantId,
-    );
+      invoiceId,
+      paidBy,
+      paidAmount,
+      paymentDate,
+    };
 
-    invoice.markEventsAsCommitted();
+    try {
+      this.logger.log(`Marking invoice as paid: ${invoiceId}`);
 
-    await this.outboxService.publishEvents(
-      events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
-      tenantId,
-    );
+      // Load invoice from events
+      const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
 
-    // Process events for projections
-    for (const event of events) {
-      await this.eventHandler.handleInvoicePaid(event as unknown);
+      invoice.markAsPaid(paidAmount, paidBy, paymentDate);
+
+      const events = invoice.getUncommittedEvents();
+      await this.eventStore.append(
+        `invoice-${invoiceId}`,
+        events as unknown as Parameters<typeof this.eventStore.append>[1],
+        invoice.getVersion() - events.length,
+        tenantId,
+      );
+
+      invoice.markEventsAsCommitted();
+
+      await this.outboxService.publishEvents(
+        events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
+        tenantId,
+      );
+
+      // Process events for projections
+      for (const event of events) {
+        await this.eventHandler.handleInvoicePaid(event as unknown);
+      }
+
+      // Create journal entry for payment received
+      await this._createPaymentJournalEntry(invoice, paidAmount, paymentDate, paidBy);
+
+      this.logger.log(`Invoice marked as paid: ${invoiceId}`);
+    } catch (error) {
+      this.logger.error(`Failed to mark invoice as paid: ${invoiceId}`, error);
+      throw createBusinessError(
+        'invoice-mark-paid-failed',
+        `Failed to mark invoice as paid: ${invoiceId}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
-
-    // Create journal entry for payment received
-    await this._createPaymentJournalEntry(invoice, paidAmount, paymentDate, paidBy);
-
-    this.logger.log(`Invoice marked as paid: ${invoiceId}`);
   }
 
   /**
@@ -175,74 +247,115 @@ export class InvoiceService {
     reason: string,
     cancelledBy: string,
   ): Promise<void> {
-    this.logger.log(`Cancelling invoice: ${invoiceId}`);
-
-    // Load invoice from events
-    const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
-
-    invoice.cancel(cancelledBy, reason);
-
-    const events = invoice.getUncommittedEvents();
-    await this.eventStore.append(
-      `invoice-${invoiceId}`,
-      events as unknown as Parameters<typeof this.eventStore.append>[1],
-      invoice.getVersion() - events.length,
+    const timer = new PerformanceTimer('cancelInvoice');
+    const context: ErrorContext = {
+      operation: 'cancelInvoice',
       tenantId,
-    );
+      invoiceId,
+      cancelledBy,
+      reason,
+    };
 
-    invoice.markEventsAsCommitted();
+    try {
+      this.logger.log(`Cancelling invoice: ${invoiceId}`);
 
-    await this.outboxService.publishEvents(
-      events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
-      tenantId,
-    );
+      // Load invoice from events
+      const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
 
-    // Process events for projections
-    for (const event of events) {
-      await this.eventHandler.handleInvoiceCancelled(event as unknown);
+      invoice.cancel(cancelledBy, reason);
+
+      const events = invoice.getUncommittedEvents();
+      await this.eventStore.append(
+        `invoice-${invoiceId}`,
+        events as unknown as Parameters<typeof this.eventStore.append>[1],
+        invoice.getVersion() - events.length,
+        tenantId,
+      );
+
+      invoice.markEventsAsCommitted();
+
+      await this.outboxService.publishEvents(
+        events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
+        tenantId,
+      );
+
+      // Process events for projections
+      for (const event of events) {
+        await this.eventHandler.handleInvoiceCancelled(event as unknown);
+      }
+
+      this.logger.log(`Invoice cancelled: ${invoiceId}`);
+    } catch (error) {
+      this.logger.error(`Failed to cancel invoice: ${invoiceId}`, error);
+      throw createBusinessError(
+        'invoice-cancel-failed',
+        `Failed to cancel invoice: ${invoiceId}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
-
-    this.logger.log(`Invoice cancelled: ${invoiceId}`);
   }
 
   /**
    * Check for overdue invoices and update their status
    */
   async checkOverdueInvoices(tenantId: string): Promise<string[]> {
-    this.logger.log(`Checking overdue invoices for tenant: ${tenantId}`);
+    const timer = new PerformanceTimer('checkOverdueInvoices');
+    const context: ErrorContext = {
+      operation: 'checkOverdueInvoices',
+      tenantId,
+    };
 
-    // This would typically query a projection or read model
-    // For now, we'll return an empty array as we need to implement the projection
-    const overdueInvoiceIds: string[] = [];
+    try {
+      this.logger.log(`Checking overdue invoices for tenant: ${tenantId}`);
 
-    for (const invoiceId of overdueInvoiceIds) {
-      const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
-      invoice.checkOverdueStatus();
+      // This would typically query a projection or read model
+      // For now, we'll return an empty array as we need to implement the projection
+      const overdueInvoiceIds: string[] = [];
 
-      const events = invoice.getUncommittedEvents();
-      if (events.length > 0) {
-        await this.eventStore.append(
-          `invoice-${invoiceId}`,
-          events as unknown as Parameters<typeof this.eventStore.append>[1],
-          invoice.getVersion() - events.length,
-          tenantId,
-        );
+      for (const invoiceId of overdueInvoiceIds) {
+        const invoice = await this._loadInvoiceFromEvents(invoiceId, tenantId);
+        invoice.checkOverdueStatus();
 
-        invoice.markEventsAsCommitted();
+        const events = invoice.getUncommittedEvents();
+        if (hasItems(events)) {
+          await this.eventStore.append(
+            `invoice-${invoiceId}`,
+            events as unknown as Parameters<typeof this.eventStore.append>[1],
+            invoice.getVersion() - events.length,
+            tenantId,
+          );
 
-        await this.outboxService.publishEvents(
-          events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
-          tenantId,
-        );
+          invoice.markEventsAsCommitted();
 
-        // Process events for projections
-        for (const event of events) {
-          await this.eventHandler.handleInvoiceOverdue(event as unknown);
+          await this.outboxService.publishEvents(
+            events as unknown as Parameters<typeof this.outboxService.publishEvents>[0],
+            tenantId,
+          );
+
+          // Process events for projections
+          for (const event of events) {
+            await this.eventHandler.handleInvoiceOverdue(event as unknown);
+          }
         }
       }
-    }
 
-    return overdueInvoiceIds;
+      return overdueInvoiceIds;
+    } catch (error) {
+      this.logger.error(`Failed to check overdue invoices for tenant: ${tenantId}`, error);
+      throw createBusinessError(
+        'check-overdue-invoices-failed',
+        `Failed to check overdue invoices for tenant: ${tenantId}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+    }
   }
 
   /**
@@ -344,20 +457,37 @@ export class InvoiceService {
    * Load invoice aggregate from events (event sourcing replay)
    */
   private async _loadInvoiceFromEvents(invoiceId: string, tenantId: string): Promise<Invoice> {
+    const timer = new PerformanceTimer('_loadInvoiceFromEvents');
+    const context: ErrorContext = {
+      operation: '_loadInvoiceFromEvents',
+      tenantId,
+      invoiceId,
+    };
+
     try {
       this.logger.log(`Loading invoice from events: ${invoiceId}`);
 
       // Get all events for this invoice stream
       const events = await this.eventStore.getEvents(`invoice-${invoiceId}`, undefined, tenantId);
 
-      if (events.length === 0) {
-        throw new Error(`No events found for invoice: ${invoiceId}`);
+      if (isEmpty(events)) {
+        throw createValidationError(
+          'events',
+          `No events found for invoice: ${invoiceId}`,
+          events,
+          context
+        );
       }
 
       // Find the InvoiceIssued event to get initial data
       const issuedEvent = events.find((e) => e.eventType === 'InvoiceIssued') as unknown;
       if (!issuedEvent) {
-        throw new Error(`InvoiceIssued event not found for invoice: ${invoiceId}`);
+        throw createValidationError(
+          'issuedEvent',
+          `InvoiceIssued event not found for invoice: ${invoiceId}`,
+          issuedEvent,
+          context
+        );
       }
 
       // Create invoice from issued event data
@@ -399,9 +529,17 @@ export class InvoiceService {
 
       this.logger.log(`Invoice loaded successfully from events: ${invoiceId}`);
       return invoice;
-    } catch (error: unknown) {
+    } catch (error) {
       this.logger.error(`Failed to load invoice from events: ${invoiceId}`, error);
-      throw error;
+      throw createBusinessError(
+        'load-invoice-from-events-failed',
+        `Failed to load invoice from events: ${invoiceId}`,
+        'invoice',
+        context
+      );
+    } finally {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
     }
   }
 }

@@ -24,7 +24,7 @@ async function importWithFlags(flags = []) {
 }
 
 // simple source that triggers "Manual Rounding"
-const SRC = `const x = 12.345; const y = Math.round(x * 100) / 100;`;
+const SRC = `const x = 12.345; const y = round2(x);`;
 
 beforeAll(() => {
   tmpRoot = mkdtempSync(join(tmpdir(), 'opp-dir-'));

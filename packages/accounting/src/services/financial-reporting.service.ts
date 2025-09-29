@@ -1,6 +1,7 @@
 import type { GeneralLedgerProjection } from '../projections/general-ledger.projection';
 
 import { AccountType } from '../domain/account.domain';
+import { addMonthsToDate, getEndOfMonth } from '../utils';
 
 /**
  * Profit and Loss Statement
@@ -322,9 +323,7 @@ export class FinancialReportingService {
 
     // Get balance sheet for beginning and end of period
     const periodStart = new Date(period + '-01'); // Assuming period format like "2024-01"
-    const periodEnd = new Date(periodStart);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
-    periodEnd.setDate(periodEnd.getDate() - 1);
+    const periodEnd = getEndOfMonth(addMonthsToDate(periodStart, 1));
 
     const beginningBalanceSheet = await this.generateBalanceSheet(
       tenantId,
@@ -390,7 +389,6 @@ export class FinancialReportingService {
     currencyCode: string = 'MYR',
   ): Promise<FinancialRatios> {
     const balanceSheet = await this.generateBalanceSheet(tenantId, asOfDate, currencyCode);
-    const _balances = this.glProjection.getAllAccountBalances(tenantId);
 
     // Get specific account balances for ratio calculations
     const currentAssets = balanceSheet.assets.currentAssets.reduce(

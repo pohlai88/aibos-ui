@@ -1,5 +1,4 @@
-import type { Account } from '@aibos/accounting/domain/accounting-entities';
-import type { AccountRepository } from '@aibos/accounting/domain/repositories.interface';
+import type { Account, AccountRepository } from '@aibos/accounting';
 
 export class InMemoryAccountRepository implements AccountRepository {
   private accounts: Map<string, Account> = new Map();
@@ -43,8 +42,8 @@ export class InMemoryAccountRepository implements AccountRepository {
     const key = `${tenantId}:${accountCode}`;
     const account = this.accounts.get(key);
     if (account) {
-      account.balance += amount;
-      this.accounts.set(key, account);
+      const updatedAccount = account.updateBalance(amount);
+      this.accounts.set(key, updatedAccount);
     }
   }
 }

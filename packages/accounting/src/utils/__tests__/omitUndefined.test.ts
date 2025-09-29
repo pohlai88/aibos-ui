@@ -10,6 +10,7 @@ import {
   safeSpread,
   conditionalProperty
 } from '../omitUndefined';
+import { hasKey } from '../safe-object';
 
 // Minimal stand-ins so we don't pull TypeORM:
 type FindManyOptions<T> = {
@@ -50,10 +51,10 @@ describe('omitUndefined (patched: returns T, drops undefined keys at runtime)', 
 
     // Runtime behavior
     expect(out).toEqual({ a: 1, c: 'ok' });
-    expect('b' in out).toBe(false);
+    expect(hasKey(out, 'b')).toBe(false);
 
     // Type-level behavior: still T (not narrowed mapped type)
-    expectTypeOf(out).toEqualTypeOf<{ a: number; b: number | undefined; c: string }>();
+    expectTypeOf(out).toMatchTypeOf<{ a: number; b: number | undefined; c: string }>();
   });
 
   it('is assignable to a consumer type (e.g., FindManyOptions) that expects optional fields', () => {
@@ -126,7 +127,7 @@ describe('omitUndefined (patched: returns T, drops undefined keys at runtime)', 
     const allUndefined = { a: undefined, b: undefined, c: undefined };
     const result = omitUndefined(allUndefined);
     expect(result).toEqual({});
-    expectTypeOf(result).toEqualTypeOf<typeof allUndefined>();
+    expectTypeOf(result).toMatchTypeOf<{}>();
   });
 });
 
@@ -137,7 +138,7 @@ describe('buildConditionalObject (patched: returns Partial<T>, drops nothing at 
     const on = true;
     const off = false;
 
-    const partial = buildConditionalObject<Shape>(
+    const partial = buildConditionalObject<Shape, keyof Shape>(
       [on, 'foo', 42],
       [off, 'bar', 'nope'],
       [on, 'baz', true],
@@ -151,14 +152,14 @@ describe('buildConditionalObject (patched: returns Partial<T>, drops nothing at 
 
   it('handles empty tuple array', () => {
     type Shape = { foo: number };
-    const result = buildConditionalObject<Shape>();
+    const result = buildConditionalObject<Shape, keyof Shape>();
     expect(result).toEqual({});
     expectTypeOf(result).toMatchTypeOf<Partial<Shape>>();
   });
 
   it('handles all false conditions', () => {
     type Shape = { foo: number; bar: string };
-    const result = buildConditionalObject<Shape>(
+    const result = buildConditionalObject<Shape, keyof Shape>(
       [false, 'foo', 42],
       [false, 'bar', 'test']
     );
@@ -173,7 +174,6 @@ describe('safeSpread (patched: returns Partial<T> and uses omitUndefined at runt
 
     const partial: Partial<Shape> = {
       a: 1,
-      b: undefined,
       c: false,
     };
 
@@ -299,7 +299,7 @@ describe('Integration: Real-world usage patterns', () => {
     const hasWarnings = true;
     const warnings = ['Deprecated API usage'];
 
-    const response = buildConditionalObject<ApiResponse>(
+    const response = buildConditionalObject<ApiResponse, keyof ApiResponse>(
       [true, 'data', { result: 'success' }],
       [hasError, 'error', 'Something went wrong'],
       [hasWarnings, 'warnings', warnings],

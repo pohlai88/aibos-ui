@@ -2,6 +2,7 @@ import type { DomainEvent } from '@aibos/eventsourcing';
 
 import { AccountType } from '../domain/account.domain';
 import { randomUUID } from 'node:crypto';
+import { isNonEmpty } from '../utils';
 
 export class AccountCreatedEvent implements DomainEvent {
   public static readonly TYPE = 'AccountCreated' as const;
@@ -245,7 +246,7 @@ export class AccountCreatedEvent implements DomainEvent {
 
 // ---------- helpers ----------
 function expectString(v: unknown, label: string): string {
-  if (typeof v !== 'string' || v.trim().length === 0) {
+  if (typeof v !== 'string' || !isNonEmpty(v)) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return v.trim();
@@ -257,5 +258,5 @@ function expectNumber(v: unknown, label: string): number {
   return v;
 }
 function optionalString(v: unknown): string | undefined {
-  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  return isNonEmpty(v) ? v.trim() : undefined;
 }

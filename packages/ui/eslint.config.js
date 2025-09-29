@@ -12,60 +12,7 @@ export default [
     files: ['src/**/*.{ts,tsx}'],
     rules: {
       // UI-specific non-formatting rules only
-      'unicorn/no-null': 'off', // Allow null for React components (empty renders)
       'security/detect-object-injection': 'error', // Stricter for UI package
-      
-      // React-specific abbreviations
-      'unicorn/prevent-abbreviations': [
-        'warn',
-        {
-          allowList: {
-            // React-specific abbreviations
-            Props: true,
-            Ref: true,
-            refs: true,
-            prop: true,
-            props: true,
-            ComponentProps: true,
-            ComponentRef: true,
-            ReactRef: true,
-            StyleProps: true,
-            AriaProps: true,
-            ComponentPropsWithoutRef: true,
-            // Common abbreviations
-            e: true,
-            err: true,
-            ref: true,
-            ctx: true,
-            dir: true,
-            rel: true,
-            env: true,
-            req: true,
-            res: true,
-            args: true,
-            Args: true,
-            arg: true,
-            db: true,
-            id: true,
-            params: true,
-            api: true,
-            pkg: true,
-            src: true,
-            ts: true,
-            tx: true,
-            ulid: true,
-            uuid: true,
-            i18n: true,
-            erp: true,
-            ui: true,
-            bff: true,
-            crm: true,
-            hrm: true,
-            scm: true,
-            wms: true,
-          },
-        },
-      ],
       
       // Enterprise-appropriate complexity thresholds for UI components
       'complexity': 'off',                    // Disabled as requested
@@ -102,6 +49,9 @@ export default [
         __filename: 'readonly',
         Buffer: 'readonly',
         global: 'readonly',
+        NodeJS: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
       },
     },
     rules: {

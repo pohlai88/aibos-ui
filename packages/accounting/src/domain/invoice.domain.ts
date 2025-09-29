@@ -7,7 +7,13 @@
 
 import { randomUUID } from 'node:crypto';
 import { type DomainEvent } from '@aibos/eventsourcing';
-import { omitUndefined } from '../utils';
+import { omitUndefined, isEmpty } from '../utils';
+import { createBusinessError, createValidationError, type ErrorContext } from '../utils/error-utilities';
+
+// Constants for error messages
+const INVALID_STATUS_MESSAGE = 'Cannot issue invoice in {status} status';
+const INVOICE_ENTITY = 'invoice';
+const INVALID_STATUS_ERROR_CODE = 'invalid-status';
 
 export enum InvoiceStatus {
   DRAFT = 'DRAFT',
@@ -96,12 +102,32 @@ export class Invoice {
    * Issue the invoice and emit InvoiceIssuedEvent
    */
   public issue(issuedBy: string): void {
+    const context: ErrorContext = {
+      operation: 'issue',
+      tenantId: this._tenantId,
+      invoiceId: this._invoiceId,
+      customerId: this._customerId,
+      invoiceNumber: this._invoiceNumber,
+      status: this._status,
+      issuedBy,
+    };
+
     if (this._status !== InvoiceStatus.DRAFT) {
-      throw new Error(`Cannot issue invoice in ${this._status} status`);
+      throw createBusinessError(
+        INVALID_STATUS_ERROR_CODE,
+        INVALID_STATUS_MESSAGE.replace('{status}', this._status),
+        INVOICE_ENTITY,
+        context
+      );
     }
 
-    if (this._lineItems.length === 0) {
-      throw new Error('Cannot issue invoice without line items');
+    if (isEmpty(this._lineItems)) {
+      throw createValidationError(
+        'lineItems',
+        'Cannot issue invoice without line items',
+        this._lineItems,
+        context
+      );
     }
 
     this._status = InvoiceStatus.ISSUED;
@@ -133,8 +159,23 @@ export class Invoice {
    * Mark invoice as sent to customer
    */
   public markAsSent(sentBy: string): void {
+    const context: ErrorContext = {
+      operation: 'markAsSent',
+      tenantId: this._tenantId,
+      invoiceId: this._invoiceId,
+      customerId: this._customerId,
+      invoiceNumber: this._invoiceNumber,
+      status: this._status,
+      sentBy,
+    };
+
     if (this._status !== InvoiceStatus.ISSUED) {
-      throw new Error(`Cannot send invoice in ${this._status} status`);
+      throw createBusinessError(
+        INVALID_STATUS_ERROR_CODE,
+        `Cannot send invoice in ${this._status} status`,
+        INVOICE_ENTITY,
+        context
+      );
     }
 
     this._status = InvoiceStatus.SENT;
@@ -156,13 +197,33 @@ export class Invoice {
    * Mark invoice as paid
    */
   public markAsPaid(paidAmount: number, paidBy: string, paymentDate: Date): void {
+    const context: ErrorContext = {
+      operation: 'markAsPaid',
+      tenantId: this._tenantId,
+      invoiceId: this._invoiceId,
+      customerId: this._customerId,
+      invoiceNumber: this._invoiceNumber,
+      status: this._status,
+      paidBy,
+      paidAmount,
+      paymentDate,
+    };
+
     if (this._status !== InvoiceStatus.SENT && this._status !== InvoiceStatus.OVERDUE) {
-      throw new Error(`Cannot mark as paid from ${this._status} status`);
+      throw createBusinessError(
+        INVALID_STATUS_ERROR_CODE,
+        `Cannot mark as paid from ${this._status} status`,
+        INVOICE_ENTITY,
+        context
+      );
     }
 
     if (paidAmount !== this._totals.totalAmount) {
-      throw new Error(
+      throw createValidationError(
+        'paidAmount',
         `Paid amount ${paidAmount} does not match invoice total ${this._totals.totalAmount}`,
+        paidAmount,
+        context
       );
     }
 
@@ -187,12 +248,33 @@ export class Invoice {
    * Cancel the invoice
    */
   public cancel(cancelledBy: string, reason: string): void {
+    const context: ErrorContext = {
+      operation: 'cancel',
+      tenantId: this._tenantId,
+      invoiceId: this._invoiceId,
+      customerId: this._customerId,
+      invoiceNumber: this._invoiceNumber,
+      status: this._status,
+      cancelledBy,
+      reason,
+    };
+
     if (this._status === InvoiceStatus.PAID) {
-      throw new Error('Cannot cancel a paid invoice');
+      throw createBusinessError(
+        INVALID_STATUS_ERROR_CODE,
+        'Cannot cancel a paid invoice',
+        INVOICE_ENTITY,
+        context
+      );
     }
 
     if (this._status === InvoiceStatus.CANCELLED) {
-      throw new Error('Invoice is already cancelled');
+      throw createBusinessError(
+        INVALID_STATUS_ERROR_CODE,
+        'Invoice is already cancelled',
+        INVOICE_ENTITY,
+        context
+      );
     }
 
     this._status = InvoiceStatus.CANCELLED;

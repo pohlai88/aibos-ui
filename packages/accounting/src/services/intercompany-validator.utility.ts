@@ -1,6 +1,7 @@
 import { PostJournalEntryCommand } from '../commands/post-journal-entry.command';
 import { AccountType, SpecialAccountType } from '../domain/account.domain';
 import { type ChartOfAccounts } from '../domain/chart-of-accounts.domain';
+import { isEmpty } from '../utils';
 // import { JournalEntryLine } from '../domain/journal-entry-line'; // No longer needed
 
 export interface IntercompanyJournalLine {
@@ -82,7 +83,7 @@ export class IntercompanyValidator {
     this.validateCurrencyConsistency(command, currency, errors);
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
     };
@@ -108,7 +109,7 @@ export class IntercompanyValidator {
       return true;
     });
 
-    if (counterpartyEntries.length === 0) {
+    if (isEmpty(counterpartyEntries)) {
       return { isValid: true, errors: [], warnings: [] };
     }
 
@@ -158,7 +159,7 @@ export class IntercompanyValidator {
     }
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
     };
@@ -275,7 +276,7 @@ export class IntercompanyValidator {
     }
 
     return {
-      isValid: errors.length === 0,
+      isValid: isEmpty(errors),
       errors,
       warnings,
     };

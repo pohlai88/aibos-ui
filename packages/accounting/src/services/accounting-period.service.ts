@@ -9,6 +9,17 @@
  * - SEA market compliance
  */
 
+import { Injectable, Logger } from '@nestjs/common';
+import { addMonthsToDate, getEndOfMonth, isEmpty } from '../utils';
+import { createBusinessError, createValidationError, ErrorContext } from '../utils/error-utilities';
+import { PerformanceProfiler, createProfiler, PerformanceTimer, Cache, createCache } from '../utils/performance-utilities';
+
+// Constants for error messages
+const PERIOD_CREATION_FAILED_MESSAGE = 'Failed to create accounting period: {error}';
+const ACCOUNTING_PERIOD_ENTITY = 'AccountingPeriod';
+const PERIOD_CREATION_FAILED_ERROR_CODE = 'period-creation-failed';
+const UNKNOWN_ERROR_MESSAGE = 'Unknown error';
+
 export type PeriodStatus = 'OPEN' | 'CLOSED' | 'LOCKED' | 'FINALIZED';
 
 export type FiscalYearEnd = 'DEC' | 'MAR' | 'JUN' | 'SEP';
@@ -48,11 +59,25 @@ export interface PeriodWorkflowOptions {
   requireApprovalForClosing: boolean;
 }
 
+@Injectable()
 export class AccountingPeriodService {
+  private readonly logger = new Logger(AccountingPeriodService.name);
+  private readonly profiler: PerformanceProfiler;
   private readonly periods: Map<string, AccountingPeriod> = new Map();
   private readonly workflowOptions: Map<string, PeriodWorkflowOptions> = new Map();
+  private readonly periodCache: Cache<AccountingPeriod>;
+  private readonly validationCache: Cache<PeriodValidationResult>;
 
   constructor() {
+    this.profiler = createProfiler();
+    this.periodCache = createCache<AccountingPeriod>({
+      maxSize: 500,
+      ttl: 300000, // 5 minutes
+    });
+    this.validationCache = createCache<PeriodValidationResult>({
+      maxSize: 1000,
+      ttl: 60000, // 1 minute
+    });
     this.initializeDefaultWorkflowOptions();
   }
 
@@ -66,40 +91,127 @@ export class AccountingPeriodService {
     jurisdiction: 'MY' | 'SG' | 'VN' | 'ID' | 'TH' | 'PH' = 'MY',
     reportingStandard: 'MFRS' | 'IFRS' | 'GAAP' | 'LOCAL' = 'MFRS',
   ): AccountingPeriod {
-    const periodId = this.generatePeriodId(fiscalYear, periodType, periodNumber);
-    const periodName = this.generatePeriodName(fiscalYear, periodType, periodNumber);
-    const { startDate, endDate } = this.calculatePeriodDates(
-      fiscalYear,
-      periodType,
-      periodNumber,
-      jurisdiction,
-    );
-
-    const period: AccountingPeriod = {
-      periodId,
-      periodName,
-      fiscalYear,
-      periodType,
-      status: 'OPEN',
-      startDate,
-      endDate,
-      allowAdjustments: true,
-      allowClosingEntries: false,
-      jurisdiction,
-      reportingStandard,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const timer = new PerformanceTimer();
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'createPeriod',
+      data: { fiscalYear, periodType, periodNumber, jurisdiction, reportingStandard },
     };
 
-    this.periods.set(periodId, period);
-    return period;
+    try {
+      // Validate input parameters
+      if (!fiscalYear || fiscalYear < 1900 || fiscalYear > 2100) {
+        throw createValidationError('fiscalYear', 'Fiscal year must be between 1900 and 2100', fiscalYear, errorContext);
+      }
+
+      if (!['MONTHLY', 'QUARTERLY', 'ANNUAL'].includes(periodType)) {
+        throw createValidationError('periodType', 'Invalid period type', periodType, errorContext);
+      }
+
+      if (periodType === 'MONTHLY' && (periodNumber < 1 || periodNumber > 12)) {
+        throw createValidationError('periodNumber', 'Monthly period number must be between 1 and 12', periodNumber, errorContext);
+      }
+
+      if (periodType === 'QUARTERLY' && (periodNumber < 1 || periodNumber > 4)) {
+        throw createValidationError('periodNumber', 'Quarterly period number must be between 1 and 4', periodNumber, errorContext);
+      }
+
+      if (periodType === 'ANNUAL' && periodNumber !== 1) {
+        throw createValidationError('periodNumber', 'Annual period number must be 1', periodNumber, errorContext);
+      }
+
+      const periodId = this.generatePeriodId(fiscalYear, periodType, periodNumber);
+      
+      // Check if period already exists
+      if (this.periods.has(periodId)) {
+        throw createBusinessError(
+          'period-already-exists',
+          `Period ${periodId} already exists`,
+          ACCOUNTING_PERIOD_ENTITY,
+          errorContext
+        );
+      }
+
+      const periodName = this.generatePeriodName(fiscalYear, periodType, periodNumber);
+      const { startDate, endDate } = this.calculatePeriodDates(
+        fiscalYear,
+        periodType,
+        periodNumber,
+        jurisdiction,
+      );
+
+      const period: AccountingPeriod = {
+        periodId,
+        periodName,
+        fiscalYear,
+        periodType,
+        status: 'OPEN',
+        startDate,
+        endDate,
+        allowAdjustments: true,
+        allowClosingEntries: false,
+        jurisdiction,
+        reportingStandard,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      this.periods.set(periodId, period);
+      this.periodCache.set(periodId, period);
+
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+
+      this.logger.log(`Created accounting period: ${periodId} (${periodName})`);
+      return period;
+    } catch (error) {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      
+      if (error instanceof Error && (error.name === 'ValidationError' || error.name === 'BusinessRuleError')) {
+        throw error;
+      }
+      
+      this.logger.error(`Failed to create period:`, error);
+      throw createBusinessError(
+        PERIOD_CREATION_FAILED_ERROR_CODE,
+        PERIOD_CREATION_FAILED_MESSAGE.replace('{error}', error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE),
+        ACCOUNTING_PERIOD_ENTITY,
+        errorContext
+      );
+    }
   }
 
   /**
    * Get accounting period by ID
    */
   getPeriod(periodId: string): AccountingPeriod | undefined {
-    return this.periods.get(periodId);
+    const timer = new PerformanceTimer();
+    
+    try {
+      // Check cache first
+      const cached = this.periodCache.get(periodId);
+      if (cached) {
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+        return cached;
+      }
+
+      // Get from memory store
+      const period = this.periods.get(periodId);
+      if (period) {
+        this.periodCache.set(periodId, period);
+      }
+
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      return period;
+    } catch (error) {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      this.logger.error(`Failed to get period ${periodId}:`, error);
+      return undefined;
+    }
   }
 
   /**
@@ -125,104 +237,205 @@ export class AccountingPeriodService {
     isAdjustingEntry: boolean = false,
     isClosingEntry: boolean = false,
   ): PeriodValidationResult {
-    const period = this.getPeriod(periodId);
-    if (!period) {
-      return {
-        isValid: false,
-        errors: [`Period ${periodId} not found`],
-        warnings: [],
-        canPost: false,
-        requiresAdjustingEntry: false,
-        requiresClosingEntry: false,
-      };
-    }
-
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    let canPost = true;
-    let requiresAdjustingEntry = false;
-    let requiresClosingEntry = false;
-
-    // Check period status
-    switch (period.status) {
-      case 'OPEN':
-        // Can post normally
-        break;
-      case 'CLOSED':
-        if (!isAdjustingEntry) {
-          errors.push(`Period ${periodId} is closed. Adjusting entries only.`);
-          requiresAdjustingEntry = true;
-          canPost = false;
-        } else if (!period.allowAdjustments) {
-          errors.push(`Period ${periodId} does not allow adjustments.`);
-          canPost = false;
-        }
-        break;
-      case 'LOCKED':
-        errors.push(`Period ${periodId} is locked and cannot accept any entries.`);
-        canPost = false;
-        break;
-      case 'FINALIZED':
-        errors.push(`Period ${periodId} is finalized and cannot accept any entries.`);
-        canPost = false;
-        break;
-    }
-
-    // Check closing entry requirements
-    if (isClosingEntry && !period.allowClosingEntries) {
-      errors.push(`Period ${periodId} does not allow closing entries.`);
-      canPost = false;
-    }
-
-    // Check workflow options
-    const workflowOptions = this.workflowOptions.get(period.jurisdiction);
-    if (workflowOptions) {
-      if (isAdjustingEntry && workflowOptions.requireApprovalForAdjustments) {
-        warnings.push('Adjusting entries require approval for this period.');
-      }
-      if (isClosingEntry && workflowOptions.requireApprovalForClosing) {
-        warnings.push('Closing entries require approval for this period.');
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-      canPost,
-      requiresAdjustingEntry,
-      requiresClosingEntry,
+    const timer = new PerformanceTimer();
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'validatePosting',
+      data: { periodId, isAdjustingEntry, isClosingEntry },
     };
+
+    try {
+      // Validate input
+      if (!periodId) {
+        throw createValidationError('periodId', 'Period ID is required', periodId, errorContext);
+      }
+
+      // Check cache first
+      const cacheKey = `${periodId}-${isAdjustingEntry}-${isClosingEntry}`;
+      const cached = this.validationCache.get(cacheKey);
+      if (cached) {
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+        return cached;
+      }
+
+      const period = this.getPeriod(periodId);
+      if (!period) {
+        const result: PeriodValidationResult = {
+          isValid: false,
+          errors: [`Period ${periodId} not found`],
+          warnings: [],
+          canPost: false,
+          requiresAdjustingEntry: false,
+          requiresClosingEntry: false,
+        };
+        this.validationCache.set(cacheKey, result);
+        const metrics = timer.getMetrics();
+        this.profiler.record(metrics);
+        return result;
+      }
+
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      let canPost = true;
+      let requiresAdjustingEntry = false;
+      let requiresClosingEntry = false;
+
+      // Check period status
+      switch (period.status) {
+        case 'OPEN':
+          // Can post normally
+          break;
+        case 'CLOSED':
+          if (!isAdjustingEntry) {
+            errors.push(`Period ${periodId} is closed. Adjusting entries only.`);
+            requiresAdjustingEntry = true;
+            canPost = false;
+          } else if (!period.allowAdjustments) {
+            errors.push(`Period ${periodId} does not allow adjustments.`);
+            canPost = false;
+          }
+          break;
+        case 'LOCKED':
+          errors.push(`Period ${periodId} is locked and cannot accept any entries.`);
+          canPost = false;
+          break;
+        case 'FINALIZED':
+          errors.push(`Period ${periodId} is finalized and cannot accept any entries.`);
+          canPost = false;
+          break;
+      }
+
+      // Check closing entry requirements
+      if (isClosingEntry && !period.allowClosingEntries) {
+        errors.push(`Period ${periodId} does not allow closing entries.`);
+        canPost = false;
+      }
+
+      // Check workflow options
+      const workflowOptions = this.workflowOptions.get(period.jurisdiction);
+      if (workflowOptions) {
+        if (isAdjustingEntry && workflowOptions.requireApprovalForAdjustments) {
+          warnings.push('Adjusting entries require approval for this period.');
+        }
+        if (isClosingEntry && workflowOptions.requireApprovalForClosing) {
+          warnings.push('Closing entries require approval for this period.');
+        }
+      }
+
+      const result: PeriodValidationResult = {
+        isValid: isEmpty(errors),
+        errors,
+        warnings,
+        canPost,
+        requiresAdjustingEntry,
+        requiresClosingEntry,
+      };
+
+      // Cache the result
+      this.validationCache.set(cacheKey, result);
+
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+
+      return result;
+    } catch (error) {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      
+      if (error instanceof Error && error.name === 'ValidationError') {
+        throw error;
+      }
+      
+      this.logger.error(`Failed to validate posting for period ${periodId}:`, error);
+      throw createBusinessError(
+        'posting-validation-failed',
+        `Failed to validate posting: ${error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE}`,
+        ACCOUNTING_PERIOD_ENTITY,
+        errorContext
+      );
+    }
   }
 
   /**
    * Update period status
    */
-  updatePeriodStatus(periodId: string, status: PeriodStatus, _updatedBy: string): AccountingPeriod {
-    const period = this.getPeriod(periodId);
-    if (!period) {
-      throw new Error(`Period ${periodId} not found`);
-    }
-
-    // Validate status transition
-    this.validateStatusTransition(period.status, status);
-
-    const updatedPeriod: AccountingPeriod = {
-      ...period,
-      status,
-      updatedAt: new Date(),
+  updatePeriodStatus(periodId: string, status: PeriodStatus, updatedBy: string): AccountingPeriod {
+    const timer = new PerformanceTimer();
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'updatePeriodStatus',
+      data: { periodId, status, updatedBy },
     };
 
-    // Set lock/finalize dates
-    if (status === 'LOCKED' && !period.lockDate) {
-      updatedPeriod.lockDate = new Date();
-    }
-    if (status === 'FINALIZED' && !period.finalizeDate) {
-      updatedPeriod.finalizeDate = new Date();
-    }
+    try {
+      // Validate input
+      if (!periodId) {
+        throw createValidationError('periodId', 'Period ID is required', periodId, errorContext);
+      }
 
-    this.periods.set(periodId, updatedPeriod);
-    return updatedPeriod;
+      if (!status) {
+        throw createValidationError('status', 'Status is required', status, errorContext);
+      }
+
+      if (!updatedBy) {
+        throw createValidationError('updatedBy', 'Updated by is required', updatedBy, errorContext);
+      }
+
+      const period = this.getPeriod(periodId);
+      if (!period) {
+        throw createBusinessError(
+          'period-not-found',
+          `Period ${periodId} not found`,
+          ACCOUNTING_PERIOD_ENTITY,
+          errorContext
+        );
+      }
+
+      // Validate status transition
+      this.validateStatusTransition(period.status, status);
+
+      const updatedPeriod: AccountingPeriod = {
+        ...period,
+        status,
+        updatedAt: new Date(),
+      };
+
+      // Set lock/finalize dates
+      if (status === 'LOCKED' && !period.lockDate) {
+        updatedPeriod.lockDate = new Date();
+      }
+      if (status === 'FINALIZED' && !period.finalizeDate) {
+        updatedPeriod.finalizeDate = new Date();
+      }
+
+      this.periods.set(periodId, updatedPeriod);
+      this.periodCache.set(periodId, updatedPeriod);
+      
+      // Clear validation cache for this period
+      this.clearValidationCacheForPeriod(periodId);
+
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+
+      this.logger.log(`Updated period ${periodId} status to ${status} by ${updatedBy}`);
+      return updatedPeriod;
+    } catch (error) {
+      const metrics = timer.getMetrics();
+      this.profiler.record(metrics);
+      
+      if (error instanceof Error && (error.name === 'ValidationError' || error.name === 'BusinessRuleError')) {
+        throw error;
+      }
+      
+      this.logger.error(`Failed to update period status for ${periodId}:`, error);
+      throw createBusinessError(
+        'period-status-update-failed',
+        `Failed to update period status: ${error instanceof Error ? error.message : UNKNOWN_ERROR_MESSAGE}`,
+        ACCOUNTING_PERIOD_ENTITY,
+        errorContext
+      );
+    }
   }
 
   /**
@@ -256,6 +469,12 @@ export class AccountingPeriodService {
     periodType: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
     periodNumber: number,
   ): string {
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'generatePeriodId',
+      data: { fiscalYear, periodType, periodNumber },
+    };
+
     switch (periodType) {
       case 'MONTHLY':
         return `${fiscalYear}-${periodNumber.toString().padStart(2, '0')}`;
@@ -264,7 +483,7 @@ export class AccountingPeriodService {
       case 'ANNUAL':
         return `${fiscalYear}`;
       default:
-        throw new Error(`Invalid period type: ${periodType}`);
+        throw createValidationError('periodType', `Invalid period type: ${periodType}`, periodType, errorContext);
     }
   }
 
@@ -276,6 +495,12 @@ export class AccountingPeriodService {
     periodType: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
     periodNumber: number,
   ): string {
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'generatePeriodName',
+      data: { fiscalYear, periodType, periodNumber },
+    };
+
     const monthNames = [
       'January',
       'February',
@@ -293,13 +518,16 @@ export class AccountingPeriodService {
 
     switch (periodType) {
       case 'MONTHLY':
+        if (periodNumber < 1 || periodNumber > 12) {
+          throw createValidationError('periodNumber', 'Monthly period number must be between 1 and 12', periodNumber, errorContext);
+        }
         return `${monthNames[periodNumber - 1]} ${fiscalYear}`;
       case 'QUARTERLY':
         return `Q${periodNumber} ${fiscalYear}`;
       case 'ANNUAL':
         return `FY ${fiscalYear}`;
       default:
-        throw new Error(`Invalid period type: ${periodType}`);
+        throw createValidationError('periodType', `Invalid period type: ${periodType}`, periodType, errorContext);
     }
   }
 
@@ -316,18 +544,13 @@ export class AccountingPeriodService {
 
     switch (periodType) {
       case 'MONTHLY': {
-        const startDate = new Date(fiscalYearStart);
-        startDate.setMonth(startDate.getMonth() + periodNumber - 1);
-        const endDate = new Date(startDate);
-        endDate.setMonth(endDate.getMonth() + 1);
-        endDate.setDate(0); // Last day of the month
+        const startDate = addMonthsToDate(fiscalYearStart, periodNumber - 1);
+        const endDate = getEndOfMonth(startDate);
         return { startDate, endDate };
       }
       case 'QUARTERLY': {
-        const startDate = new Date(fiscalYearStart);
-        startDate.setMonth(startDate.getMonth() + (periodNumber - 1) * 3);
-        const endDate = new Date(startDate);
-        endDate.setMonth(endDate.getMonth() + 3);
+        const startDate = addMonthsToDate(fiscalYearStart, (periodNumber - 1) * 3);
+        const endDate = addMonthsToDate(startDate, 3);
         endDate.setDate(0); // Last day of the quarter
         return { startDate, endDate };
       }
@@ -339,7 +562,12 @@ export class AccountingPeriodService {
         return { startDate, endDate };
       }
       default:
-        throw new Error(`Invalid period type: ${periodType}`);
+        throw createValidationError(
+          'INVALID_PERIOD_TYPE',
+          `Invalid period type: ${periodType}`,
+          periodType,
+          { operation: 'calculate-period-dates' }
+        );
     }
   }
 
@@ -351,7 +579,6 @@ export class AccountingPeriodService {
     _jurisdiction: 'MY' | 'SG' | 'VN' | 'ID' | 'TH' | 'PH',
   ): number {
     const year = date.getFullYear();
-    const _month = date.getMonth() + 1;
 
     // Most jurisdictions use calendar year (January to December)
     // Some use different fiscal years
@@ -390,9 +617,33 @@ export class AccountingPeriodService {
   }
 
   /**
+   * Clear validation cache for a specific period
+   */
+  private clearValidationCacheForPeriod(periodId: string): void {
+    // Since we can't iterate over cache keys directly, we'll use a pattern-based approach
+    // This is a simplified approach - in a real implementation, you might want to track cache keys
+    const patterns = [
+      `${periodId}-true-true`,
+      `${periodId}-true-false`,
+      `${periodId}-false-true`,
+      `${periodId}-false-false`,
+    ];
+    
+    patterns.forEach(key => {
+      this.validationCache.delete(key);
+    });
+  }
+
+  /**
    * Validate status transition
    */
   private validateStatusTransition(currentStatus: PeriodStatus, newStatus: PeriodStatus): void {
+    const errorContext: ErrorContext = {
+      tenantId: 'system',
+      operation: 'validateStatusTransition',
+      data: { currentStatus, newStatus },
+    };
+
     const validTransitions: Record<PeriodStatus, PeriodStatus[]> = {
       OPEN: ['CLOSED', 'LOCKED'],
       CLOSED: ['OPEN', 'LOCKED'],
@@ -416,11 +667,16 @@ export class AccountingPeriodService {
         allowedTransitions = validTransitions.FINALIZED;
         break;
       default:
-        throw new Error(`Invalid current status: ${currentStatus}`);
+        throw createValidationError('currentStatus', `Invalid current status: ${currentStatus}`, currentStatus, errorContext);
     }
 
     if (!allowedTransitions.includes(newStatus)) {
-      throw new Error(`Invalid status transition from ${currentStatus} to ${newStatus}`);
+      throw createBusinessError(
+        'invalid-status-transition',
+        `Invalid status transition from ${currentStatus} to ${newStatus}`,
+        ACCOUNTING_PERIOD_ENTITY,
+        errorContext
+      );
     }
   }
 

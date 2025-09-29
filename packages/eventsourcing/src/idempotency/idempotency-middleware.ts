@@ -159,8 +159,8 @@ export function createIdempotencyMiddleware(): IdempotencyMiddleware {
  */
 export function Idempotent(requestIdExtractor: (...args: unknown[]) => string) {
   return function (
-    target: unknown,
-    propertyName: string,
+    _target: unknown,
+    _propertyName: string,
     descriptor: PropertyDescriptor,
   ): PropertyDescriptor {
     const method = descriptor.value;
@@ -176,7 +176,7 @@ export function Idempotent(requestIdExtractor: (...args: unknown[]) => string) {
       }
 
       // Create new idempotency key
-      const _key = await middleware.createIdempotencyKey(requestId);
+      await middleware.createIdempotencyKey(requestId);
 
       try {
         // Execute the original method

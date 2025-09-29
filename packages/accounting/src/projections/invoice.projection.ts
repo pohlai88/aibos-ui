@@ -7,7 +7,7 @@
 
 import type { DomainEvent as _DomainEvent } from '@aibos/eventsourcing';
 import { InvoiceStatus, type PaymentTerms, type InvoiceTotals } from '../domain/invoice.domain';
-import { omitUndefined } from '../utils';
+import { omitUndefined, hasItems } from '../utils';
 
 /**
  * Invoice summary for read models
@@ -68,94 +68,99 @@ export class InvoiceProjectionManager {
    * Process invoice issued event
    */
   public async processInvoiceIssued(event: unknown): Promise<void> {
+    const e = event as any;
     const invoiceSummary: InvoiceSummary = {
-      invoiceId: event.invoiceId,
-      tenantId: event.tenantId,
-      customerId: event.customerId,
-      invoiceNumber: event.invoiceNumber,
+      invoiceId: e.invoiceId,
+      tenantId: e.tenantId,
+      customerId: e.customerId,
+      invoiceNumber: e.invoiceNumber,
       status: InvoiceStatus.ISSUED,
-      totals: event.totals,
-      issueDate: new Date(event.issueDate),
-      dueDate: new Date(event.dueDate),
-      paymentTerms: event.paymentTerms,
-      notes: event.notes,
-      createdAt: new Date(event.occurredAt),
-      updatedAt: new Date(event.occurredAt),
+      totals: e.totals,
+      issueDate: new Date(e.issueDate),
+      dueDate: new Date(e.dueDate),
+      paymentTerms: e.paymentTerms,
+      notes: e.notes,
+      createdAt: new Date(e.occurredAt),
+      updatedAt: new Date(e.occurredAt),
     };
 
-    this.invoices.set(event.invoiceId, invoiceSummary);
-    await this._updateCustomerBalance(event.tenantId, event.customerId);
-    await this._updateAccountsReceivable(event.tenantId);
+    this.invoices.set(e.invoiceId, invoiceSummary);
+    await this._updateCustomerBalance(e.tenantId, e.customerId);
+    await this._updateAccountsReceivable(e.tenantId);
   }
 
   /**
    * Process invoice sent event
    */
   public async processInvoiceSent(event: unknown): Promise<void> {
-    const invoice = this.invoices.get(event.aggregateId);
+    const e = event as any;
+    const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
     const updatedInvoice: InvoiceSummary = {
       ...invoice,
       status: InvoiceStatus.SENT,
-      updatedAt: new Date(event.occurredAt),
+      updatedAt: new Date(e.occurredAt),
     };
 
-    this.invoices.set(event.aggregateId, updatedInvoice);
+    this.invoices.set(e.aggregateId, updatedInvoice);
   }
 
   /**
    * Process invoice paid event
    */
   public async processInvoicePaid(event: unknown): Promise<void> {
-    const invoice = this.invoices.get(event.aggregateId);
+    const e = event as any;
+    const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
     const updatedInvoice: InvoiceSummary = {
       ...invoice,
       status: InvoiceStatus.PAID,
-      updatedAt: new Date(event.occurredAt),
+      updatedAt: new Date(e.occurredAt),
     };
 
-    this.invoices.set(event.aggregateId, updatedInvoice);
-    await this._updateCustomerBalance(event.tenantId, invoice.customerId);
-    await this._updateAccountsReceivable(event.tenantId);
+    this.invoices.set(e.aggregateId, updatedInvoice);
+    await this._updateCustomerBalance(e.tenantId, invoice.customerId);
+    await this._updateAccountsReceivable(e.tenantId);
   }
 
   /**
    * Process invoice cancelled event
    */
   public async processInvoiceCancelled(event: unknown): Promise<void> {
-    const invoice = this.invoices.get(event.aggregateId);
+    const e = event as any;
+    const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
     const updatedInvoice: InvoiceSummary = {
       ...invoice,
       status: InvoiceStatus.CANCELLED,
-      updatedAt: new Date(event.occurredAt),
+      updatedAt: new Date(e.occurredAt),
     };
 
-    this.invoices.set(event.aggregateId, updatedInvoice);
-    await this._updateCustomerBalance(event.tenantId, invoice.customerId);
-    await this._updateAccountsReceivable(event.tenantId);
+    this.invoices.set(e.aggregateId, updatedInvoice);
+    await this._updateCustomerBalance(e.tenantId, invoice.customerId);
+    await this._updateAccountsReceivable(e.tenantId);
   }
 
   /**
    * Process invoice overdue event
    */
   public async processInvoiceOverdue(event: unknown): Promise<void> {
-    const invoice = this.invoices.get(event.aggregateId);
+    const e = event as any;
+    const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
     const updatedInvoice: InvoiceSummary = {
       ...invoice,
       status: InvoiceStatus.OVERDUE,
-      updatedAt: new Date(event.occurredAt),
+      updatedAt: new Date(e.occurredAt),
     };
 
-    this.invoices.set(event.aggregateId, updatedInvoice);
-    await this._updateCustomerBalance(event.tenantId, invoice.customerId);
-    await this._updateAccountsReceivable(event.tenantId);
+    this.invoices.set(e.aggregateId, updatedInvoice);
+    await this._updateCustomerBalance(e.tenantId, invoice.customerId);
+    await this._updateAccountsReceivable(e.tenantId);
   }
 
   /**
@@ -220,11 +225,11 @@ export class InvoiceProjectionManager {
       .reduce((sum, invoice) => sum + invoice.totals.totalAmount, 0);
 
     const lastInvoiceDate =
-      customerInvoices.length > 0
-        ? new Date(Math.max(...customerInvoices.map((index) => index.issueDate.getTime())))
+      hasItems(customerInvoices)
+        ? new Date(Math.max(...customerInvoices.map((invoice) => invoice.issueDate.getTime())))
         : undefined;
 
-    const currency = customerInvoices.length > 0 ? customerInvoices[0].totals.currency : 'MYR';
+    const currency = hasItems(customerInvoices) ? customerInvoices[0].totals.currency : 'MYR';
 
     const balance: CustomerBalance = omitUndefined({
       customerId,
@@ -261,7 +266,7 @@ export class InvoiceProjectionManager {
       .reduce((sum, invoice) => sum + invoice.totals.totalAmount, 0);
 
     const customerIds = new Set(tenantInvoices.map((invoice) => invoice.customerId));
-    const currency = tenantInvoices.length > 0 ? tenantInvoices[0].totals.currency : 'MYR';
+    const currency = hasItems(tenantInvoices) ? tenantInvoices[0].totals.currency : 'MYR';
 
     // Calculate average days outstanding
     const now = new Date();

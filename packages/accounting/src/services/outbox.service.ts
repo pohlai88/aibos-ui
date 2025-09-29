@@ -6,6 +6,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { type Repository, type EntityManager } from 'typeorm';
+import { isEmpty } from '../utils';
 
 @Injectable()
 export class OutboxService {
@@ -81,7 +82,7 @@ export class OutboxService {
       `,
     );
 
-    if (pendingEvents.length === 0) {
+    if (isEmpty(pendingEvents)) {
       return;
     }
 

@@ -1,6 +1,7 @@
-import type { EventStore } from '@aibos/accounting/domain/repositories.interface';
+import type { EventStore } from '@aibos/accounting';
 import type { DomainEvent } from '@aibos/eventsourcing';
 import type { EntityManager } from 'typeorm';
+import { createBusinessError } from '../../utils/error-utilities';
 
 export class InMemoryEventStore implements EventStore {
   private events: Map<string, DomainEvent[]> = new Map();
@@ -21,8 +22,11 @@ export class InMemoryEventStore implements EventStore {
 
     // Check optimistic concurrency
     if (existingEvents.length !== expectedVersion) {
-      throw new Error(
+      throw createBusinessError(
+        'CONCURRENCY_CONFLICT',
         `Concurrency conflict. Expected version ${expectedVersion}, but current version is ${existingEvents.length}`,
+        expectedVersion.toString(),
+        { operation: 'append-events' }
       );
     }
 

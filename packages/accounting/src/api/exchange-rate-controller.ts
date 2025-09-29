@@ -7,6 +7,7 @@
 
 import type { Request, Response } from 'express';
 import type { ExchangeRateService } from '../services/exchange-rate.service.js';
+import { isEmpty } from '../utils';
 
 // Constants for error messages
 const FROM_CURRENCY_REQUIRED = 'fromCurrency is required';
@@ -87,7 +88,7 @@ export class ExchangeRateController {
       const tenantId = this.getTenantId(req);
 
       if (!tenantId) return void this.badRequest(res, TENANT_ID_REQUIRED);
-      if (!Array.isArray(currencyPairs) || currencyPairs.length === 0) {
+      if (!Array.isArray(currencyPairs) || isEmpty(currencyPairs)) {
         return void this.badRequest(res, 'currencyPairs must be a non-empty array');
       }
 

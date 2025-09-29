@@ -20,10 +20,6 @@ export default [
       'sonarjs/no-duplicate-string': 'warn',
       'sonarjs/no-unused-collection': 'warn',
       'sonarjs/cognitive-complexity': ['warn', 20],
-
-      // Unicorn rules - allow null for utility functions
-      'unicorn/no-null': 'warn',
-      'unicorn/prefer-module': 'off',
     },
   },
 ];

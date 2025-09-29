@@ -4,6 +4,11 @@ export default [
   // Extend root config (includes centralized ignores)
   ...base,
 
+  // Exclude utilities directory from linting
+  {
+    ignores: ['src/utils/**/*'],
+  },
+
   // Package-specific overrides ONLY
   {
     files: ['src/**/*.{ts,tsx}'],

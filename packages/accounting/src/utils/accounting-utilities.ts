@@ -31,6 +31,7 @@ export {
   isNonEmpty,
   isValidAccountType,
   normalizeAccountType,
+  normalizeAccountCode,
   toMinorUnits,
   fromMinorUnits,
   ACCOUNT_TYPES,
@@ -39,6 +40,18 @@ export {
   type Dict,
   assert,
 } from './safe-object';
+
+// Re-export collection utilities
+export {
+  isEmpty,
+  hasItems,
+} from './collection-utilities';
+
+// Import for internal use
+import { isEmpty } from './collection-utilities';
+import { normalizeAccountCode } from './safe-object';
+import { validateJournalEntry, validateAmount, type JournalEntryInput, type JournalLineInput } from './validation-utilities';
+import { createValidationError } from './error-utilities';
 
 // Re-export object shaping utilities
 export {
@@ -116,6 +129,31 @@ export const CURRENCY_DECIMALS = {
   PHP: 2,
 } satisfies Record<SupportedCurrency, number>;
 
+// -----------------------------------------------------------------------------
+// SSOT: Money helpers (public)  ✅
+// -----------------------------------------------------------------------------
+/** HALF-UP rounding to currency decimals, with EPSILON bump for FP stability */
+export function roundToCurrency(value: number, currency: SupportedCurrency): number {
+  const d = getCurrencyDecimalsStrict(currency);
+  const factor = 10 ** d;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+/** Convert major units → minor units (e.g., MYR 1.23 → 123) */
+export function toMinor(amount: number, currency: SupportedCurrency): number {
+  const d = getCurrencyDecimalsStrict(currency);
+  const factor = 10 ** d;
+  // Use SSOT rounding for safety before integerizing
+  return Math.round(roundToCurrency(amount, currency) * factor);
+}
+
+/** Convert minor units → major units (e.g., 123 → MYR 1.23) */
+export function fromMinor(minor: number, currency: SupportedCurrency): number {
+  const d = getCurrencyDecimalsStrict(currency);
+  const factor = 10 ** d;
+  return minor / factor;
+}
+
 /**
  * Validate currency code
  */
@@ -128,7 +166,12 @@ export function isValidCurrency(currency: string): currency is SupportedCurrency
  */
 export function getCurrencyDecimalsStrict(currency: string): number {
   const norm = normalizeCurrency(currency);
-  if (!norm) throw new Error(`Unsupported currency: ${currency}`);
+  if (!norm) throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        `Unsupported currency: ${currency}`,
+        currency,
+        { operation: 'normalize-currency' }
+      );
   return CURRENCY_DECIMALS[norm];
 }
 
@@ -144,7 +187,7 @@ export function getCurrencyDecimals(currency: string): number {
  * Normalize currency code to uppercase
  */
 export function normalizeCurrency(currency: string): SupportedCurrency | null {
-  const normalized = currency.trim().toUpperCase();
+  const normalized = normalizeAccountCode(currency);
   return isValidCurrency(normalized) ? normalized : null;
 }
 
@@ -264,7 +307,20 @@ export const ACCOUNT_CODE_PATTERNS = {
   HIERARCHICAL: /^[A-Z0-9]{1,4}\.[A-Z0-9]{1,4}$/,
   // Allows multi-segment hierarchical codes (e.g., 1000.10.001 or A1.B2.C3.D4)
   // Each segment 1–4 chars, uppercase letters or digits, requires at least 2 dots (3+ segments).
-  HIERARCHICAL_MULTI: /^[A-Z0-9]{1,4}(?:\.[A-Z0-9]{1,4}){2,}$/,
+  /**
+   * Hierarchical multi-segment account code (SAFE, BOUNDED)
+   * - Segments: 1–4 chars, A–Z or 0–9
+   * - Separator: dot "."
+   * - Min segments: 3 (i.e., 2 repetitions after the first)
+   * - Max segments: 9 (i.e., {2,8}) — practical upper bound to prevent ReDoS
+   * - Total length also bounded (<= 64) via lookahead
+   *
+   * Notes on safety:
+   * - The previous `{2,}` unbounded quantifier triggered unsafe-regex lint.
+   * - We add a length cap and an upper bound on repetitions to avoid excessive backtracking.
+   */
+  // eslint-disable-next-line security/detect-unsafe-regex
+  HIERARCHICAL_MULTI: /^(?=.{3,64}$)[A-Z0-9]{1,4}(?:\.[A-Z0-9]{1,4}){2}(?:\.[A-Z0-9]{1,4}){0,6}$/,
   NUMERIC: /^\d{3,10}$/,
 } as const;
 
@@ -275,17 +331,28 @@ export function isValidAccountCode(
   code: string,
   pattern: keyof typeof ACCOUNT_CODE_PATTERNS = 'STANDARD',
 ): boolean {
-  return ACCOUNT_CODE_PATTERNS[pattern].test(code.trim().toUpperCase());
+  return ACCOUNT_CODE_PATTERNS[pattern].test(normalizeAccountCode(code));
 }
 
 /**
- * Normalize account code (applies to validation)
- *
- * Note: Consider applying normalization at the source (validators/controllers)
- * to ensure consistent storage format and avoid mixed-case issues.
+ * Validate hierarchical account codes with explicit failure reasons.
+ * Normalizes input (trim + uppercase) before testing.
  */
-export function normalizeAccountCode(code: string): string {
-  return code.trim().toUpperCase();
+export function validateAccountCode(code: string): { valid: boolean; reason?: string } {
+  if (typeof code !== "string") return { valid: false, reason: "not_a_string" };
+  const normalized = code.trim().toUpperCase();
+  if (normalized.length < 3 || normalized.length > 64) {
+    return { valid: false, reason: "length_out_of_bounds" };
+  }
+  // Fast pre-check: only allow A–Z, 0–9 and dots
+  if (!/^[A-Z0-9.]+$/.test(normalized)) {
+    return { valid: false, reason: "invalid_characters" };
+  }
+  // Structure check against bounded pattern
+  if (!ACCOUNT_CODE_PATTERNS.HIERARCHICAL_MULTI.test(normalized)) {
+    return { valid: false, reason: "invalid_structure" };
+  }
+  return { valid: true };
 }
 
 /**
@@ -312,14 +379,29 @@ export function formatHierarchicalAccountCode(
   segments: string[],
   pattern: 'HIERARCHICAL' | 'HIERARCHICAL_MULTI' = 'HIERARCHICAL',
 ): string {
-  const cleaned = segments.map((s) => s.trim().toUpperCase());
-  if (cleaned.length === 0) throw new Error('No segments provided');
+  const cleaned = segments.map((s) => normalizeAccountCode(s));
+  if (isEmpty(cleaned)) throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'No segments provided',
+        segments,
+        { operation: 'normalize-account-code' }
+      );
   if (!cleaned.every((s) => /^[A-Z0-9]{1,4}$/.test(s))) {
-    throw new Error('Each segment must be 1–4 alphanumeric chars');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Each segment must be 1–4 alphanumeric chars',
+        segments,
+        { operation: 'normalize-account-code' }
+      );
   }
   const joined = cleaned.join('.');
   if (!isValidAccountCode(joined, pattern)) {
-    throw new Error(`Joined code "${joined}" does not match ${pattern}`);
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        `Joined code "${joined}" does not match ${pattern}`,
+        joined,
+        { operation: 'normalize-account-code' }
+      );
   }
   return joined;
 }
@@ -405,10 +487,34 @@ export function validateJournalEntryBalance(
         : 'number'
       : requestedStrategy;
 
-  if (entries.length < 2) {
-    errors.push('Journal entry must have at least two lines');
-  }
+  // Convert to Phase 2 utility format for basic validation
+  const journalEntryInput: JournalEntryInput = {
+    date: new Date().toISOString(),
+    description: 'Balance Validation',
+    entries: entries.map((entry, index) => {
+      const line: JournalLineInput = {
+        account: `TEMP-${index}`, // Temporary account for validation
+        currency: currency
+      };
+      if (entry.debitAmount > 0) {
+        line.debit = entry.debitAmount;
+      }
+      if (entry.creditAmount > 0) {
+        line.credit = entry.creditAmount;
+      }
+      return line;
+    }),
+    currency: currency
+  };
 
+  // Use Phase 2 utility for basic validation
+  const phase2Result = validateJournalEntry(journalEntryInput, { strict: true });
+  if (!phase2Result.isValid) {
+    errors.push(...phase2Result.errors);
+  }
+  warnings.push(...phase2Result.warnings);
+
+  // Additional business-specific validations
   if (entries.length > maxLines) {
     errors.push(`Journal entry cannot have more than ${maxLines} lines`);
   }
@@ -457,34 +563,31 @@ export function validateJournalEntryBalance(
   } else {
     if (totalDebitsMinor !== totalCreditsMinor) {
       errors.push(
-        `Journal entry is not balanced: debits ${(totalDebitsMinor / factor).toFixed(decimals)} != credits ${(totalCreditsMinor / factor).toFixed(decimals)}`,
+        `Journal entry is not balanced: debits ${roundToCurrency(totalDebitsMinor / factor, currency)} != credits ${roundToCurrency(totalCreditsMinor / factor, currency)}`,
       );
     }
   }
 
-  // Check for invalid entries
+  // Use Phase 2 utility for individual entry validation
   entries.forEach((entry, index) => {
-    if (entry.debitAmount < 0) {
-      errors.push(`Line ${index + 1}: Debit amount cannot be negative`);
+    const amount = entry.debitAmount || entry.creditAmount || 0;
+    const amountValidation = validateAmount(amount, 0, 1_000_000);
+    if (!amountValidation.isValid) {
+      errors.push(`Line ${index + 1}: ${amountValidation.errors.join(', ')}`);
     }
-    if (entry.creditAmount < 0) {
-      errors.push(`Line ${index + 1}: Credit amount cannot be negative`);
-    }
+    warnings.push(...amountValidation.warnings.map(w => `Line ${index + 1}: ${w}`));
+
+    // Additional business-specific validations
     if (entry.debitAmount > 0 && entry.creditAmount > 0) {
       errors.push(`Line ${index + 1}: Cannot have both debit and credit amounts`);
     }
     if (entry.debitAmount === 0 && entry.creditAmount === 0) {
       errors.push(`Line ${index + 1}: Must have either debit or credit amount`);
     }
-
-    // Business rule warnings (currency-agnostic)
-    if (entry.debitAmount > 1_000_000 || entry.creditAmount > 1_000_000) {
-      warnings.push(`Line ${index + 1}: Amount exceeds 1,000,000 - verify accuracy`);
-    }
   });
 
   return {
-    isValid: errors.length === 0,
+    isValid: isEmpty(errors),
     errors,
     warnings,
   };
@@ -516,7 +619,12 @@ export function calculateCompoundInterest(
   compoundingFrequency: number = 1,
 ): number {
   if (principal <= 0 || rate < 0 || periods <= 0 || compoundingFrequency <= 0) {
-    throw new Error('Invalid parameters for compound interest calculation');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Invalid parameters for compound interest calculation',
+        { principal, rate, periods, compoundingFrequency },
+        { operation: 'calculate-compound-interest' }
+      );
   }
 
   const effectiveRate = rate / compoundingFrequency;
@@ -530,7 +638,12 @@ export function calculateCompoundInterest(
  */
 export function calculatePresentValue(futureValue: number, rate: number, periods: number): number {
   if (futureValue <= 0 || rate < 0 || periods <= 0) {
-    throw new Error('Invalid parameters for present value calculation');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Invalid parameters for present value calculation',
+        { futureValue, rate, periods },
+        { operation: 'calculate-present-value' }
+      );
   }
 
   return futureValue / Math.pow(1 + rate, periods);
@@ -545,7 +658,12 @@ export function calculateStraightLineDepreciation(
   usefulLife: number,
 ): number {
   if (cost <= 0 || salvageValue < 0 || usefulLife <= 0) {
-    throw new Error('Invalid parameters for depreciation calculation');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Invalid parameters for depreciation calculation',
+        { cost, salvageValue, usefulLife },
+        { operation: 'calculate-depreciation' }
+      );
   }
 
   return (cost - salvageValue) / usefulLife;
@@ -560,7 +678,12 @@ export function calculateDecliningBalanceDepreciation(
   accumulatedDepreciation: number = 0,
 ): number {
   if (cost <= 0 || rate <= 0 || rate > 1 || accumulatedDepreciation < 0) {
-    throw new Error('Invalid parameters for declining balance depreciation');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Invalid parameters for declining balance depreciation',
+        { cost, rate, accumulatedDepreciation },
+        { operation: 'calculate-declining-balance-depreciation' }
+      );
   }
 
   const bookValue = cost - accumulatedDepreciation;
@@ -590,11 +713,21 @@ export function calculateTax(
   currency: string = 'MYR',
 ): TaxCalculation {
   if (taxableAmount < 0) {
-    throw new Error('Taxable amount cannot be negative');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Taxable amount cannot be negative',
+        taxableAmount,
+        { operation: 'calculate-tax' }
+      );
   }
 
   if (taxRate < 0 || taxRate > 1) {
-    throw new Error('Tax rate must be between 0 and 1');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Tax rate must be between 0 and 1',
+        taxRate,
+        { operation: 'calculate-tax' }
+      );
   }
 
   const decimals = getCurrencyDecimalsStrict(currency);
@@ -614,16 +747,55 @@ export function calculateTaxInclusive(
   currency: string = 'MYR',
 ): number {
   if (netAmount < 0) {
-    throw new Error('Net amount cannot be negative');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Net amount cannot be negative',
+        netAmount,
+        { operation: 'calculate-tax' }
+      );
   }
 
   if (taxRate < 0 || taxRate > 1) {
-    throw new Error('Tax rate must be between 0 and 1');
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Tax rate must be between 0 and 1',
+        taxRate,
+        { operation: 'calculate-tax' }
+      );
   }
 
-  const decimals = getCurrencyDecimalsStrict(currency);
-  const factor = Math.pow(10, decimals);
-  return Math.round(netAmount * (1 + taxRate) * factor) / factor;
+  const current = normalizeCurrency(currency)!;
+  return roundToCurrency(netAmount * (1 + taxRate), current);
+}
+
+/**
+ * Calculate tax-exclusive amount (strict currency validation)
+ */
+export function calculateTaxExclusive(
+  grossAmount: number,
+  taxRate: number,
+  currency: string = 'MYR',
+): number {
+  if (grossAmount < 0) {
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Gross amount cannot be negative',
+        grossAmount,
+        { operation: 'calculate-tax' }
+      );
+  }
+
+  if (taxRate < 0 || taxRate >= 1) {
+    throw createValidationError(
+        'INVALID_ACCOUNTING_INPUT',
+        'Tax rate must be between 0 and 1 (exclusive)',
+        taxRate,
+        { operation: 'calculate-tax' }
+      );
+  }
+
+  const current = normalizeCurrency(currency)!;
+  return roundToCurrency(grossAmount / (1 + taxRate), current);
 }
 
 // ============================================================================
@@ -682,7 +854,7 @@ export function roundAmount(
   method: RoundingMethod = RoundingMethod.HALF_EVEN, // Default to bankers rounding
 ): number {
   if (!Number.isFinite(amount)) return amount;
-  if (!Number.isInteger(decimals)) decimals = 2;
+  if (!Number.isInteger(decimals)) decimals = getCurrencyDecimalsStrict('MYR');
   decimals = Math.max(0, Math.min(8, decimals));
 
   const factor = Math.pow(10, decimals);

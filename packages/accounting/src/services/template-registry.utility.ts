@@ -8,7 +8,8 @@ import type {
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { omitUndefined } from '../utils';
+import { isEmpty, omitUndefined } from '../utils';
+import { createBusinessError } from '../utils/error-utilities';
 
 /**
  * Validates that a file path is safe and within the allowed base directory.
@@ -19,8 +20,11 @@ function validatePath(filePath: string, basePath: string): string {
   const resolvedBase = path.resolve(basePath);
 
   if (!resolvedPath.startsWith(resolvedBase)) {
-    throw new Error(
+    throw createBusinessError(
+      'PATH_TRAVERSAL_DETECTED',
       `Path traversal detected: ${filePath} is outside allowed directory ${basePath}`,
+      filePath,
+      { operation: 'validate-path' }
     );
   }
 
@@ -117,7 +121,12 @@ export class TemplateRegistry {
         crosswalks: crosswalks,
       };
     } catch (error) {
-      throw new Error(`Failed to load template bundle ${jurisdiction}/${version}: ${error}`);
+      throw createBusinessError(
+        'TEMPLATE_LOAD_FAILED',
+        `Failed to load template bundle ${jurisdiction}/${version}: ${error}`,
+        `${jurisdiction}/${version}`,
+        { operation: 'load-template-bundle' }
+      );
     }
   }
 
@@ -190,13 +199,23 @@ export class TemplateRegistry {
     );
     // eslint-disable-next-line security/detect-non-literal-fs-filename
     const versions = await fs.readdir(validatedJurisdictionPath);
-    if (versions.length === 0) {
-      throw new Error(`No template versions found for jurisdiction ${jurisdiction}`);
+    if (isEmpty(versions)) {
+      throw createBusinessError(
+        'NO_TEMPLATE_VERSIONS_FOUND',
+        `No template versions found for jurisdiction ${jurisdiction}`,
+        jurisdiction,
+        { operation: 'get-default-template-bundle' }
+      );
     }
     // Simple logic: pick the latest version lexicographically
     const latestVersion = versions.sort().pop();
     if (!latestVersion) {
-      throw new Error(`Could not determine latest version for jurisdiction ${jurisdiction}`);
+      throw createBusinessError(
+        'COULD_NOT_DETERMINE_LATEST_VERSION',
+        `Could not determine latest version for jurisdiction ${jurisdiction}`,
+        jurisdiction,
+        { operation: 'get-default-template-bundle' }
+      );
     }
     return this.loadTemplateBundle(jurisdiction, latestVersion);
   }

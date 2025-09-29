@@ -1,3 +1,5 @@
+import { toPairs } from '../utils';
+
 export enum JournalEntryStatus {
   DRAFT = 'Draft',
   APPROVED = 'Approved',
@@ -86,7 +88,7 @@ export class JournalEntryStatusValidator {
 
   public static nextStatuses(from: JournalEntryStatus): readonly JournalEntryStatus[] {
     const transitions = new Map(
-      Object.entries(this.TRANSITIONS) as Array<
+      toPairs(this.TRANSITIONS) as Array<
         [JournalEntryStatus, readonly JournalEntryStatus[]]
       >,
     );
@@ -103,7 +105,7 @@ export class JournalEntryStatusValidator {
     context?: JournalEntryStatusContext,
   ): void {
     const transitions = new Map(
-      Object.entries(this.TRANSITIONS) as Array<
+      toPairs(this.TRANSITIONS) as Array<
         [JournalEntryStatus, readonly JournalEntryStatus[]]
       >,
     );
