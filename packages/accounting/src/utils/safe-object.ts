@@ -7,7 +7,7 @@
  * Production-grade utilities with deterministic rounding policies and proper type safety.
  */
 
-import { getCurrencyDecimalsStrict, type SupportedCurrency } from './accounting-utilities';
+import { currencyDecimals, type SupportedCurrency } from './policies/currency-policy';
 import { createValidationError } from './error-utilities';
 
 // normalizeAccountCode moved here to avoid circular dependency
@@ -76,7 +76,7 @@ export const assert: <T>(cond: T, message?: string) => asserts cond is NonNullab
  * Uses MYR as the default currency for consistency
  */
 function getDefaultDecimals(): number {
-  return getCurrencyDecimalsStrict('MYR');
+  return currencyDecimals('MYR');
 }
 
 /**
@@ -102,7 +102,7 @@ export function round2HalfUp(value: number, decimals?: number, currency?: Suppor
   
   // Use Phase 2 utility to determine decimals if currency is provided
   if (currency) {
-    decimals = getCurrencyDecimalsStrict(currency);
+    decimals = currencyDecimals(currency);
   } else if (decimals === undefined) {
     decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
   }
@@ -127,7 +127,7 @@ export function round2Bankers(value: number, decimals?: number, currency?: Suppo
   
   // Use Phase 2 utility to determine decimals if currency is provided
   if (currency) {
-    decimals = getCurrencyDecimalsStrict(currency);
+    decimals = currencyDecimals(currency);
   } else if (decimals === undefined) {
     decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
   }
@@ -198,7 +198,7 @@ export function toMinorUnits(amount: number, decimals?: number, currency?: Suppo
   
   // Use Phase 2 utility to determine decimals if currency is provided
   if (currency) {
-    decimals = getCurrencyDecimalsStrict(currency);
+    decimals = currencyDecimals(currency);
   } else if (decimals === undefined) {
     decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
   }
@@ -222,7 +222,7 @@ export function fromMinorUnits(minor: number, decimals?: number, currency?: Supp
   
   // Use Phase 2 utility to determine decimals if currency is provided
   if (currency) {
-    decimals = getCurrencyDecimalsStrict(currency);
+    decimals = currencyDecimals(currency);
   } else if (decimals === undefined) {
     decimals = getDefaultDecimals(); // Use Phase 2 utility for consistent defaults
   }

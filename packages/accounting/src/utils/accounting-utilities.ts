@@ -47,11 +47,19 @@ export {
   hasItems,
 } from './collection-utilities';
 
+// Re-export SSOT policies
+export { RoundingMethod } from './policies/rounding-policy';
+export { DEFAULT_CURRENCY, currencyDecimals } from './policies/currency-policy';
+export { ConditionOperator, LogicalOperator } from './shared-operators';
+
 // Import for internal use
 import { isEmpty } from './collection-utilities';
 import { normalizeAccountCode } from './safe-object';
 import { validateJournalEntry, validateAmount, type JournalEntryInput, type JournalLineInput } from './validation-utilities';
 import { createValidationError } from './error-utilities';
+
+// Import SSOT types
+import { RoundingMethod } from './policies/rounding-policy';
 
 // Re-export object shaping utilities
 export {
@@ -807,13 +815,7 @@ const EPS = 1e-10;
 /**
  * Rounding methods for accounting
  */
-export enum RoundingMethod {
-  HALF_UP = 'HALF_UP',
-  HALF_DOWN = 'HALF_DOWN',
-  HALF_EVEN = 'HALF_EVEN',
-  CEILING = 'CEILING',
-  FLOOR = 'FLOOR',
-}
+// RoundingMethod enum moved to policies/rounding-policy.ts (SSOT)
 
 /**
  * True bankers rounding (half-even), correct for negatives
