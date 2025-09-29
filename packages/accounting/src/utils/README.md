@@ -1,6 +1,17 @@
 # Accounting Utilities
 
-A comprehensive collection of utilities for the AIBOS ERP accounting system. This directory contains 23 utility modules providing essential functionality for accounting operations, data validation, performance monitoring, and enterprise patterns.
+A comprehensive collection of utilities for the AIBOS ERP accounting system. This directory contains **50+ utility modules** providing essential functionality for accounting operations, data validation, performance monitoring, enterprise patterns, and **Single Source of Truth (SSOT) policies**.
+
+## 🏗️ Architecture Overview
+
+The utilities are organized with a **Single Source of Truth (SSOT)** architecture to prevent duplication, ensure consistency, and maintain type safety across all accounting operations.
+
+### 🎯 SSOT Modules
+
+- **`shared-operators.ts`** - Centralized `ConditionOperator` and `LogicalOperator` types
+- **`policies/currency-policy.ts`** - Currency defaults, decimal precision, and validation
+- **`policies/rounding-policy.ts`** - Rounding methods, defaults, and backward compatibility
+- **`money-helpers.ts`** - Currency conversion utilities with policy integration
 
 ## 📁 Directory Structure
 
@@ -8,28 +19,95 @@ A comprehensive collection of utilities for the AIBOS ERP accounting system. Thi
 utils/
 ├── README.md                           # This documentation
 ├── index.ts                           # Barrel export (single entry point)
+├── __tests__/                         # Comprehensive test suite
+│   ├── policies-enhanced.spec.ts      # SSOT policy validation tests
+│   └── [30+ test files]               # Individual utility tests
+│
+├── 🎯 SSOT MODULES (Single Source of Truth)
+├── shared-operators.ts                # ConditionOperator, LogicalOperator types
+├── policies/
+│   ├── currency-policy.ts             # MYR default, currency decimals
+│   └── rounding-policy.ts             # HALF_EVEN default, rounding methods
+├── money-helpers.ts                   # Currency conversion utilities
+│
+├── 🏦 CORE ACCOUNTING UTILITIES
 ├── accounting-utilities.ts            # Core accounting operations
-├── api-response-utilities.ts          # Standardized API responses
-├── async-utilities.ts                 # Async operations & promises
-├── caching-utilities.ts               # Caching mechanisms
-├── collection-utilities.ts            # Array & collection operations
-├── date-utilities.ts                  # Date/time operations
-├── domain-event-utilities.ts          # Domain event management
-├── error-utilities.ts                 # Error handling & types
-├── event-sourcing-utilities.ts        # Event sourcing patterns
 ├── financial-utilities.ts             # Financial calculations
-├── formatting-utilities.ts            # Data formatting
-├── monitoring-utilities.ts            # Performance monitoring
-├── object-utilities.ts                # Object manipulation
-├── omitUndefined.ts                   # Object cleaning utilities
-├── performance-utilities.ts           # Performance measurement
-├── repository-pattern-utilities.ts    # Data access patterns
-├── safe-object.ts                     # Safe object access
-├── service-pattern-utilities.ts       # Service layer patterns
+├── journal-entry-utilities.ts         # Journal entry management
+├── trial-balance-utilities.ts         # Trial balance operations
 ├── transaction-utilities.ts           # Transaction management
-├── validation-pipeline-utilities.ts   # Validation pipeline
+│
+├── 📊 FINANCIAL STATEMENTS & REPORTING
+├── financial-statements-utilities.ts  # P&L, Balance Sheet, Cash Flow
+├── tb-cf-mapping-utilities.ts         # Trial Balance to Cash Flow mapping
+├── cashflow-mapping-utilities.ts      # Cash flow categorization
+├── fiscal-period-utilities.ts         # Fiscal period management
+│
+├── 💰 TAX & COMPLIANCE UTILITIES
+├── tax-core-utilities.ts              # Tax calculation engine
+├── tax-reconciliation-utilities.ts     # Tax reconciliation
+├── withholding-tax-utilities.ts       # Withholding tax management
+├── ecl-allowance-utilities.ts         # Expected Credit Loss allowance
+│
+├── 🏭 ASSETS & INVENTORY UTILITIES
+├── fixed-asset-utilities.ts           # Fixed asset depreciation
+├── inventory-costing-utilities.ts     # Inventory costing methods
+├── manufacturing-overhead-utilities.ts # Manufacturing overhead allocation
+├── landed-cost-utilities.ts           # Landed cost allocation
+│
+├── 🌍 MULTI-CURRENCY & FX UTILITIES
+├── fx-ledger-utilities.ts             # Foreign exchange ledger
+├── fx-revaluation-utilities.ts        # FX revaluation
+├── multi-currency-rules-utilities.ts   # Multi-currency rules
+│
+├── 🏢 CONSOLIDATION & GOVERNANCE
+├── consolidation-utilities.ts         # Intercompany eliminations
+├── consolidation-mapping-utilities.ts  # Consolidation mapping
+├── coa-governance-utilities.ts        # Chart of Accounts governance
+├── posting-rules-utilities.ts         # Posting rules management
+│
+├── 🔄 RECONCILIATION & MATCHING
+├── bank-reconciliation-utilities.ts   # Bank reconciliation
+├── dunning-utilities.ts               # Dunning management
+├── aging-utilities.ts                 # Account aging
+├── allocation-utilities.ts            # Cost allocation
+│
+├── 📄 DOCUMENT & NUMBERING UTILITIES
+├── document-numbering-utilities.ts    # Document numbering
+├── number-to-words-utilities.ts       # Number to words conversion
+├── opening-balance-utilities.ts       # Opening balance management
+├── revenue-recognition-utilities.ts    # Revenue recognition
+├── accrual-deferral-utilities.ts      # Accrual and deferral
+│
+├── 🔧 FOUNDATION UTILITIES
 ├── validation-utilities.ts            # Data validation
-└── __tests__/                         # Test files
+├── validation-pipeline-utilities.ts   # Validation pipeline
+├── error-utilities.ts                 # Error handling
+├── formatting-utilities.ts            # Data formatting
+├── date-utilities.ts                  # Date/time operations
+├── collection-utilities.ts            # Array operations
+├── object-utilities.ts                 # Object manipulation
+├── safe-object.ts                     # Safe object access
+├── omitUndefined.ts                   # Object cleaning
+│
+├── ⚡ PERFORMANCE & INFRASTRUCTURE
+├── async-utilities.ts                  # Async operations
+├── performance-utilities.ts           # Performance monitoring
+├── caching-utilities.ts               # Caching mechanisms
+├── monitoring-utilities.ts            # Monitoring and metrics
+├── api-response-utilities.ts          # API response handling
+│
+├── 🏗️ ENTERPRISE PATTERNS
+├── service-pattern-utilities.ts        # Service layer patterns
+├── repository-pattern-utilities.ts    # Repository patterns
+├── domain-event-utilities.ts          # Domain events
+├── event-sourcing-utilities.ts        # Event sourcing
+│
+└── 📚 DOCUMENTATION
+    ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART1.md
+    ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART2.md
+    ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART3.md
+    └── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART4.md
 ```
 
 ## 🚀 Quick Start
@@ -39,10 +117,22 @@ utils/
 ```typescript
 // Import everything you need from the single entry point
 import { 
+  // SSOT Policies
+  DEFAULT_CURRENCY,
+  DEFAULT_ROUNDING_METHOD,
+  RoundingMethod,
+  ConditionOperator,
+  LogicalOperator,
+  
   // Core accounting
   normalizeAccountCode,
   isValidAccountCode,
   calculateTax,
+  
+  // Money operations
+  toMinorUnits,
+  fromMinorUnits,
+  roundToCurrency,
   
   // Date operations
   formatDate,
@@ -54,505 +144,378 @@ import {
   
   // Formatting
   formatCurrency,
-  formatPercentage,
-  
-  // Error handling
-  createValidationError,
-  ErrorContext,
-  
-  // Performance
-  measureTime,
-  PerformanceTimer
+  formatPercentage
 } from './utils';
 ```
 
-### Import Specific Modules
+### Import SSOT Modules Directly
 
 ```typescript
-// Import from specific modules for better tree-shaking
-import { formatCurrency } from './formatting-utilities';
-import { validateEmail } from './validation-utilities';
-import { measureTime } from './performance-utilities';
+// Import SSOT policies for type safety
+import { 
+  DEFAULT_CURRENCY, 
+  currencyDecimals,
+  isSupportedCurrency 
+} from './policies/currency-policy';
+
+import { 
+  RoundingMethod, 
+  DEFAULT_ROUNDING_METHOD,
+  roundNumber,
+  normalizeRoundingMethod 
+} from './policies/rounding-policy';
+
+import { 
+  ConditionOperator, 
+  LogicalOperator,
+  isConditionOperator,
+  isLogicalOperator 
+} from './shared-operators';
+
+import { 
+  toMinorUnits, 
+  fromMinorUnits,
+  addAmounts,
+  subtractAmounts 
+} from './money-helpers';
+```
+
+## 🎯 SSOT (Single Source of Truth) Architecture
+
+### Currency Policy (`policies/currency-policy.ts`)
+
+Centralized currency definitions and defaults:
+
+```typescript
+import { DEFAULT_CURRENCY, currencyDecimals, isSupportedCurrency } from './policies/currency-policy';
+
+// Default currency
+console.log(DEFAULT_CURRENCY); // 'MYR'
+
+// Currency decimal precision
+console.log(currencyDecimals('MYR')); // 2
+console.log(currencyDecimals('JPY')); // 0
+console.log(currencyDecimals('VND')); // 0
+
+// Currency validation
+console.log(isSupportedCurrency('USD')); // true
+console.log(isSupportedCurrency('INVALID')); // false
+```
+
+### Rounding Policy (`policies/rounding-policy.ts`)
+
+Centralized rounding methods with bankers rounding default:
+
+```typescript
+import { RoundingMethod, DEFAULT_ROUNDING_METHOD, roundNumber } from './policies/rounding-policy';
+
+// Default rounding method
+console.log(DEFAULT_ROUNDING_METHOD); // RoundingMethod.HALF_EVEN
+
+// Rounding operations
+const amount = 12.345;
+console.log(roundNumber(amount, 2, RoundingMethod.HALF_EVEN)); // 12.34 (bankers rounding)
+console.log(roundNumber(amount, 2, RoundingMethod.HALF_UP));   // 12.35 (round up)
+
+// Backward compatibility
+import { normalizeRoundingMethod } from './policies/rounding-policy';
+console.log(normalizeRoundingMethod('round_half_up')); // RoundingMethod.HALF_UP
+```
+
+### Shared Operators (`shared-operators.ts`)
+
+Centralized operator types for consistent filtering and validation:
+
+```typescript
+import { ConditionOperator, LogicalOperator, isConditionOperator } from './shared-operators';
+
+// Type-safe operator usage
+const condition: ConditionOperator = 'equals';
+const logical: LogicalOperator = 'and';
+
+// Runtime validation
+if (isConditionOperator(userInput)) {
+  // Safe to use as ConditionOperator
+}
+```
+
+### Money Helpers (`money-helpers.ts`)
+
+Currency conversion utilities with policy integration:
+
+```typescript
+import { toMinorUnits, fromMinorUnits, roundToCurrency, addAmounts } from './money-helpers';
+
+// Currency conversion
+const minor = toMinorUnits(12.34, 'MYR'); // 1234
+const major = fromMinorUnits(1234, 'MYR'); // 12.34
+
+// Currency arithmetic
+const sum = addAmounts(10.50, 5.25, 'MYR'); // 15.75
+
+// Currency rounding
+const rounded = roundToCurrency(12.345, 'MYR'); // 12.34 (HALF_EVEN)
 ```
 
 ## 📚 Utility Categories
 
 ### 🏦 Core Accounting Utilities
-**File:** `accounting-utilities.ts`
 
-Essential accounting operations and business logic.
+**Files:** `accounting-utilities.ts`, `financial-utilities.ts`, `journal-entry-utilities.ts`
+
+Essential accounting operations and business logic with SSOT integration.
 
 ```typescript
 import { 
   normalizeAccountCode,
   isValidAccountCode,
-  validateAccountCode,
-  SUPPORTED_CURRENCIES,
-  CURRENCY_DECIMALS,
+  calculateTax,
   roundToCurrency,
-  toMinor,
-  fromMinor
+  DEFAULT_CURRENCY
 } from './utils';
 
 // Account code operations
 const code = normalizeAccountCode('1000-001');
 const isValid = isValidAccountCode(code);
 
-// Currency operations
-const minor = toMinor(123.45, 'USD'); // 12345
-const major = fromMinor(12345, 'USD'); // 123.45
+// Currency operations with SSOT defaults
+const rounded = roundToCurrency(123.456, DEFAULT_CURRENCY); // Uses MYR + HALF_EVEN
 ```
 
-### 📅 Date & Time Utilities
-**File:** `date-utilities.ts`
+### 💰 Tax & Compliance Utilities
 
-Comprehensive date/time operations for accounting periods, fiscal years, and reporting.
+**Files:** `tax-core-utilities.ts`, `tax-reconciliation-utilities.ts`, `withholding-tax-utilities.ts`
 
-```typescript
-import { 
-  formatDate,
-  parseDate,
-  addBusinessDays,
-  getFiscalYear,
-  getFiscalQuarter,
-  ACCOUNTING_TIMEZONES,
-  ACCOUNTING_LOCALES
-} from './utils';
-
-// Date formatting
-const formatted = formatDate(new Date(), 'yyyy-MM-dd', 'en-US');
-
-// Fiscal year operations
-const fy = getFiscalYear(new Date(), 'US');
-const quarter = getFiscalQuarter(new Date(), 'US');
-```
-
-### 💰 Financial Calculation Utilities
-**File:** `financial-utilities.ts`
-
-Tax calculations, discounts, margins, depreciation, and financial analysis.
+Comprehensive tax calculation and compliance management.
 
 ```typescript
 import { 
   calculateTax,
-  calculateDiscount,
-  calculateDepreciation,
-  calculateNPV,
-  calculateIRR,
-  calculateCompoundInterest
+  applyTaxRounding,
+  RoundingMethod,
+  DEFAULT_ROUNDING_METHOD
 } from './utils';
 
-// Tax calculations
+// Tax calculations with SSOT rounding
 const tax = calculateTax(1000, 0.1, 'inclusive');
-
-// Depreciation
-const depreciation = calculateDepreciation(10000, 5, 'straight-line');
+const roundedTax = applyTaxRounding(tax, DEFAULT_ROUNDING_METHOD, 2);
 ```
 
-### ✅ Validation Utilities
-**File:** `validation-utilities.ts`
+### 🏭 Assets & Inventory Utilities
 
-Data validation for emails, tax IDs, bank accounts, and business entities.
+**Files:** `fixed-asset-utilities.ts`, `inventory-costing-utilities.ts`, `manufacturing-overhead-utilities.ts`
+
+Fixed asset depreciation, inventory costing, and manufacturing overhead allocation.
+
+```typescript
+import { 
+  calculateDepreciation,
+  calculateInventoryCost,
+  allocateManufacturingOverhead,
+  RoundingMethod
+} from './utils';
+
+// Depreciation with consistent rounding
+const depreciation = calculateDepreciation(10000, 5, 'straight-line', RoundingMethod.HALF_EVEN);
+```
+
+### 🌍 Multi-Currency & FX Utilities
+
+**Files:** `fx-ledger-utilities.ts`, `fx-revaluation-utilities.ts`, `multi-currency-rules-utilities.ts`
+
+Foreign exchange management and multi-currency operations.
+
+```typescript
+import { 
+  convertCurrency,
+  applyCurrencyPrecision,
+  RoundingMethod,
+  DEFAULT_CURRENCY
+} from './utils';
+
+// FX operations with SSOT policies
+const converted = convertCurrency(1000, 'USD', 'MYR', 4.2);
+const precise = applyCurrencyPrecision(converted, DEFAULT_CURRENCY, RoundingMethod.HALF_EVEN);
+```
+
+### 🔄 Reconciliation & Matching
+
+**Files:** `bank-reconciliation-utilities.ts`, `dunning-utilities.ts`, `aging-utilities.ts`
+
+Bank reconciliation, dunning management, and account aging.
+
+```typescript
+import { 
+  matchBankTransactions,
+  calculateDunningFees,
+  calculateAccountAging,
+  ConditionOperator,
+  LogicalOperator
+} from './utils';
+
+// Reconciliation with SSOT operators
+const matches = matchBankTransactions(transactions, glEntries, {
+  conditions: [
+    { field: 'amount', operator: 'equals' as ConditionOperator, value: 100 },
+    { logicalOperator: 'and' as LogicalOperator }
+  ]
+});
+```
+
+### 📊 Financial Statements & Reporting
+
+**Files:** `financial-statements-utilities.ts`, `tb-cf-mapping-utilities.ts`, `cashflow-mapping-utilities.ts`
+
+Financial statement generation and mapping utilities.
+
+```typescript
+import { 
+  generateIncomeStatement,
+  mapTrialBalanceToCashFlow,
+  categorizeCashFlow,
+  DEFAULT_CURRENCY,
+  RoundingMethod
+} from './utils';
+
+// Statement generation with SSOT defaults
+const statement = generateIncomeStatement(trialBalance, {
+  currency: DEFAULT_CURRENCY,
+  roundingMethod: RoundingMethod.HALF_EVEN
+});
+```
+
+### 🏢 Consolidation & Governance
+
+**Files:** `consolidation-utilities.ts`, `coa-governance-utilities.ts`, `posting-rules-utilities.ts`
+
+Intercompany eliminations, Chart of Accounts governance, and posting rules.
+
+```typescript
+import { 
+  performIntercompanyElimination,
+  validateChartOfAccounts,
+  applyPostingRules,
+  ConditionOperator
+} from './utils';
+
+// Consolidation with SSOT operators
+const elimination = performIntercompanyElimination(entities, {
+  conditions: [
+    { field: 'entityType', operator: 'equals' as ConditionOperator, value: 'subsidiary' }
+  ]
+});
+```
+
+### 📄 Document & Numbering Utilities
+
+**Files:** `document-numbering-utilities.ts`, `number-to-words-utilities.ts`, `opening-balance-utilities.ts`
+
+Document numbering, number-to-words conversion, and opening balance management.
+
+```typescript
+import { 
+  generateDocumentNumber,
+  convertNumberToWords,
+  processOpeningBalance,
+  DEFAULT_CURRENCY
+} from './utils';
+
+// Document operations with SSOT currency
+const docNumber = generateDocumentNumber('INV', 2024, 1);
+const words = convertNumberToWords(1234.56, DEFAULT_CURRENCY);
+```
+
+### 🔧 Foundation Utilities
+
+**Files:** `validation-utilities.ts`, `error-utilities.ts`, `formatting-utilities.ts`, `date-utilities.ts`
+
+Core validation, error handling, formatting, and date operations.
 
 ```typescript
 import { 
   validateEmail,
   validateTaxId,
-  validateCreditCard,
-  validateBankAccount,
-  validateAmount,
-  validatePercentage,
-  validateCurrencyCode
-} from './utils';
-
-// Email validation
-const emailValid = validateEmail('user@example.com');
-
-// Tax ID validation (supports multiple countries)
-const taxIdValid = validateTaxId('123456789', 'US');
-```
-
-### 🎨 Formatting Utilities
-**File:** `formatting-utilities.ts`
-
-Currency, percentage, number, and text formatting with locale support.
-
-```typescript
-import { 
-  formatCurrency,
-  formatPercentage,
-  formatNumber,
-  formatAccountCode,
-  formatPhoneNumber
-} from './utils';
-
-// Currency formatting
-const currency = formatCurrency(1234.56, 'USD', 'en-US');
-
-// Percentage formatting
-const percentage = formatPercentage(0.1234, 'en-US');
-```
-
-### ⚠️ Error Handling Utilities
-**File:** `error-utilities.ts`
-
-Structured error handling, custom error classes, and error context management.
-
-```typescript
-import { 
   createValidationError,
-  createBusinessError,
-  ValidationError,
-  BusinessError,
-  ErrorContext
+  formatCurrency,
+  formatDate,
+  DEFAULT_CURRENCY
 } from './utils';
 
-// Create validation errors
-throw createValidationError('email', 'Invalid email format', email);
-
-// Create business errors
-throw createBusinessError('INSUFFICIENT_FUNDS', 'Account balance too low', context);
+// Validation and formatting with SSOT defaults
+const emailValid = validateEmail('user@example.com');
+const formatted = formatCurrency(1234.56, DEFAULT_CURRENCY, 'en-US');
 ```
 
-### 🔄 Async & Promise Utilities
-**File:** `async-utilities.ts`
+### ⚡ Performance & Infrastructure
 
-Promise utilities, rate limiting, throttling, debouncing, and async patterns.
+**Files:** `async-utilities.ts`, `performance-utilities.ts`, `caching-utilities.ts`, `monitoring-utilities.ts`
+
+Async operations, performance monitoring, caching, and observability.
 
 ```typescript
 import { 
   delay,
   retry,
-  timeout,
-  debounce,
-  throttle,
-  batchProcess
-} from './utils';
-
-// Retry with exponential backoff
-const result = await retry(fetchData, { maxAttempts: 3, delay: 1000 });
-
-// Debounce function calls
-const debouncedSearch = debounce(searchFunction, 300);
-```
-
-### 📊 Performance Utilities
-**File:** `performance-utilities.ts`
-
-Performance monitoring, caching, profiling, and optimization tools.
-
-```typescript
-import { 
   measureTime,
   PerformanceTimer,
-  MemoryMonitor,
-  getMemoryUsage,
-  forceGarbageCollection
+  CacheManager
 } from './utils';
 
-// Measure execution time
+// Performance monitoring
 const result = await measureTime(async () => {
   return await expensiveOperation();
 });
 
-// Memory monitoring
-const memory = getMemoryUsage();
-console.log(`Heap used: ${memory.heapUsed} bytes`);
+// Caching with performance tracking
+const cache = new CacheManager<string, Account>({
+  maxSize: 1000,
+  ttl: 300000
+});
 ```
 
-### 🏗️ Service Pattern Utilities
-**File:** `service-pattern-utilities.ts`
+### 🏗️ Enterprise Patterns
 
-Standardized service base classes and patterns for consistent error handling.
+**Files:** `service-pattern-utilities.ts`, `repository-pattern-utilities.ts`, `domain-event-utilities.ts`
+
+Service layer patterns, repository patterns, and domain event management.
 
 ```typescript
 import { 
   ServiceBase,
   DomainServiceBase,
-  ApplicationServiceBase,
-  InfrastructureServiceBase
+  BaseRepository,
+  DomainEventFactory
 } from './utils';
 
+// Service pattern with error handling
 class AccountService extends DomainServiceBase {
   async createAccount(data: AccountData): Promise<Account> {
     return this.executeOperation('createAccount', async () => {
-      // Business logic here
       return await this.repository.save(account);
     });
   }
 }
 ```
 
-### 🗄️ Repository Pattern Utilities
-**File:** `repository-pattern-utilities.ts`
+## 🧪 Testing
 
-Standardized repository base classes and patterns for consistent data access.
+### SSOT Policy Tests
 
-```typescript
-import { 
-  BaseRepository,
-  DomainRepositoryBase,
-  InfrastructureRepositoryBase,
-  FindOptions,
-  SaveOptions
-} from './utils';
+The comprehensive test suite validates SSOT implementation:
 
-class AccountRepository extends DomainRepositoryBase<Account, string> {
-  async findByCode(code: string): Promise<Account | null> {
-    return this.findOne({ code });
-  }
-}
+```bash
+# Run SSOT policy tests
+npm test -- --testPathPattern=policies-enhanced
+
+# Run all utility tests
+npm test -- --testPathPattern=utils
 ```
 
-### 🔄 Transaction Utilities
-**File:** `transaction-utilities.ts`
+### Test Coverage
 
-Standardized transaction management, retry logic, and rollback strategies.
-
-```typescript
-import { 
-  TransactionManager,
-  withRetry,
-  withTimeout,
-  withAbort,
-  delayAsync
-} from './utils';
-
-// Transaction management
-const result = await TransactionManager.execute([
-  { name: 'createAccount', execute: () => createAccount(data) },
-  { name: 'updateBalance', execute: () => updateBalance(accountId, amount) }
-], { enableRollback: true });
-
-// Retry with timeout
-const data = await withRetry(
-  () => withTimeout(fetchData(), 5000),
-  { maxAttempts: 3, delay: 1000 }
-);
-```
-
-### 📡 API Response Utilities
-**File:** `api-response-utilities.ts`
-
-Standardized API response building and handling for consistent response formats.
-
-```typescript
-import { 
-  ApiResponseBuilder,
-  ControllerBase,
-  SuccessResponse,
-  ErrorResponse,
-  createPaginationMetadata
-} from './utils';
-
-class AccountController extends ControllerBase {
-  async getAccounts(req: Request): Promise<SuccessResponse<Account[]>> {
-    return this.success(accounts, {
-      pagination: createPaginationMetadata(page, limit, total)
-    });
-  }
-}
-```
-
-### 📈 Monitoring Utilities
-**File:** `monitoring-utilities.ts`
-
-Comprehensive monitoring, metrics collection, and observability utilities.
-
-```typescript
-import { 
-  MonitoringHelper,
-  createTrace,
-  createSpan,
-  recordMetric,
-  createAlert
-} from './utils';
-
-// Tracing
-const trace = createTrace('account-creation');
-const span = trace.createSpan('validate-account');
-
-// Metrics
-recordMetric('accounts.created', 1, { type: 'business' });
-
-// Alerts
-createAlert('HIGH_ERROR_RATE', 'Error rate exceeded threshold', {
-  severity: 'high',
-  threshold: 0.05
-});
-```
-
-### 🎯 Validation Pipeline Utilities
-**File:** `validation-pipeline-utilities.ts`
-
-Flexible validation pipeline system for complex validation scenarios.
-
-```typescript
-import { 
-  ValidationPipeline,
-  each,
-  every,
-  custom,
-  required,
-  minLength,
-  maxLength
-} from './utils';
-
-const pipeline = new ValidationPipeline<AccountData>()
-  .add(required('name'))
-  .add(minLength('name', 2))
-  .add(custom('email', validateEmail))
-  .add(every('lines', required('amount')));
-
-const result = await pipeline.validate(accountData);
-```
-
-### 🏛️ Domain Event Utilities
-**File:** `domain-event-utilities.ts`
-
-Standardized domain event creation, handling, and management.
-
-```typescript
-import { 
-  DomainEventFactory,
-  createDomainEvent,
-  EventHandler,
-  EventStore
-} from './utils';
-
-// Create domain events
-const event = DomainEventFactory.createDomainEvent('AccountCreated', {
-  accountId: 'acc-123',
-  name: 'Test Account'
-});
-
-// Event handling
-class AccountEventHandler extends EventHandler {
-  async handle(event: DomainEvent): Promise<void> {
-    // Handle event
-  }
-}
-```
-
-### 🗂️ Collection Utilities
-**File:** `collection-utilities.ts`
-
-Array operations, sorting, filtering, and collection management.
-
-```typescript
-import { 
-  groupBy,
-  sortBy,
-  filterBy,
-  unique,
-  chunk,
-  flatten,
-  topK
-} from './utils';
-
-// Collection operations
-const grouped = groupBy(accounts, 'type');
-const sorted = sortBy(accounts, ['name', 'createdAt']);
-const uniqueAccounts = unique(accounts, 'id');
-```
-
-### 🔧 Object Utilities
-**File:** `object-utilities.ts`
-
-Deep cloning, merging, object transformation, and immutable operations.
-
-```typescript
-import { 
-  deepClone,
-  deepMerge,
-  pick,
-  omit,
-  transform,
-  validateObjectSchema
-} from './utils';
-
-// Object operations
-const cloned = deepClone(account);
-const merged = deepMerge(account, updates);
-const picked = pick(account, ['id', 'name', 'balance']);
-```
-
-### 💾 Caching Utilities
-**File:** `caching-utilities.ts`
-
-Comprehensive caching mechanisms and strategies for performance optimization.
-
-```typescript
-import { 
-  CacheManager,
-  ScopedCache,
-  CacheHelpers,
-  DistributedCacheUtilities
-} from './utils';
-
-// Cache management
-const cache = new CacheManager<string, Account>({
-  maxSize: 1000,
-  ttl: 300000 // 5 minutes
-});
-
-const account = await cache.get('acc-123');
-```
-
-### 🎭 Event Sourcing Utilities
-**File:** `event-sourcing-utilities.ts`
-
-Advanced event sourcing patterns and utilities for aggregate reconstruction.
-
-```typescript
-import { 
-  BaseAggregateRoot,
-  EventStore,
-  Snapshot,
-  AggregateRepository
-} from './utils';
-
-class AccountAggregate extends BaseAggregateRoot<AccountState> {
-  createAccount(data: AccountData): void {
-    this.apply(new AccountCreatedEvent(data));
-  }
-}
-```
-
-### 🛡️ Safe Object Utilities
-**File:** `safe-object.ts`
-
-Safe object access, type guards, and object manipulation utilities.
-
-```typescript
-import { 
-  safeGet,
-  safeSet,
-  safeDelete,
-  isDefined,
-  isNotNull
-} from './utils';
-
-// Safe object access
-const value = safeGet(account, 'balance.amount', 0);
-const updated = safeSet(account, 'balance.amount', 1000);
-```
-
-### 🧹 Omit Undefined Utilities
-**File:** `omitUndefined.ts`
-
-Object cleaning utilities to remove undefined values.
-
-```typescript
-import { omitUndefined } from './utils';
-
-// Remove undefined values
-const clean = omitUndefined({
-  name: 'Account',
-  balance: undefined,
-  type: 'asset'
-});
-// Result: { name: 'Account', type: 'asset' }
+```bash
+# Generate coverage report
+npm run test:coverage -- --testPathPattern=utils
 ```
 
 ## 🔧 Configuration
@@ -560,6 +523,10 @@ const clean = omitUndefined({
 ### Environment Variables
 
 ```bash
+# SSOT Policy Configuration
+DEFAULT_CURRENCY=MYR
+DEFAULT_ROUNDING_METHOD=HALF_EVEN
+
 # Performance monitoring
 ENABLE_PERFORMANCE_MONITORING=true
 PERFORMANCE_SAMPLE_RATE=0.1
@@ -571,10 +538,6 @@ CACHE_MAX_SIZE=1000
 # Validation
 VALIDATION_STRICT_MODE=true
 VALIDATION_LOCALE=en-US
-
-# Monitoring
-MONITORING_ENABLED=true
-METRICS_EXPORT_INTERVAL=60000
 ```
 
 ### TypeScript Configuration
@@ -590,72 +553,37 @@ METRICS_EXPORT_INTERVAL=60000
 }
 ```
 
-## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Run all utility tests
-npm test -- --testPathPattern=utils
-
-# Run specific utility tests
-npm test -- --testPathPattern=validation-utilities
-npm test -- --testPathPattern=financial-utilities
-```
-
-### Test Coverage
-
-```bash
-# Generate coverage report
-npm run test:coverage -- --testPathPattern=utils
-```
-
-## 📊 Performance Considerations
-
-### Memory Usage
-- All utilities are designed for minimal memory footprint
-- Caching utilities include automatic cleanup
-- Performance monitoring includes memory tracking
-
-### Execution Time
-- Critical paths are optimized for performance
-- Async operations use efficient patterns
-- Validation pipelines are optimized for speed
-
-### Bundle Size
-- Tree-shakable exports for optimal bundle size
-- Minimal external dependencies
-- Modular imports for better code splitting
-
-## 🔒 Security
-
-### Input Validation
-- All user inputs are validated using the validation utilities
-- SQL injection prevention in repository patterns
-- XSS protection in formatting utilities
-
-### Error Handling
-- Sensitive information is not exposed in error messages
-- Structured error logging for security monitoring
-- Context-aware error handling
-
 ## 🚀 Best Practices
 
+### SSOT Usage
+
+```typescript
+// ✅ Good: Use SSOT imports
+import { DEFAULT_CURRENCY, RoundingMethod } from './policies/currency-policy';
+import { ConditionOperator } from './shared-operators';
+
+// ✅ Good: Use SSOT defaults
+const amount = roundToCurrency(123.456, DEFAULT_CURRENCY);
+
+// ❌ Avoid: Hardcoded values
+const amount = roundToCurrency(123.456, 'MYR');
+```
+
 ### Import Strategy
+
 ```typescript
 // ✅ Good: Import from barrel for convenience
-import { validateEmail, formatCurrency } from './utils';
+import { validateEmail, formatCurrency, DEFAULT_CURRENCY } from './utils';
+
+// ✅ Good: Import SSOT modules directly for type safety
+import { RoundingMethod, DEFAULT_ROUNDING_METHOD } from './policies/rounding-policy';
 
 // ✅ Good: Import specific modules for tree-shaking
 import { validateEmail } from './validation-utilities';
-import { formatCurrency } from './formatting-utilities';
-
-// ❌ Avoid: Importing from individual files when barrel exists
-import { validateEmail } from './validation-utilities';
-import { formatCurrency } from './formatting-utilities';
 ```
 
 ### Error Handling
+
 ```typescript
 // ✅ Good: Use structured error handling
 try {
@@ -664,23 +592,75 @@ try {
 } catch (error) {
   throw createValidationError('field', 'Invalid value', value, context);
 }
-
-// ❌ Avoid: Generic error throwing
-throw new Error('Something went wrong');
 ```
 
 ### Performance Monitoring
+
 ```typescript
 // ✅ Good: Monitor critical operations
 const result = await measureTime(async () => {
   return await expensiveOperation();
 });
 
-// ✅ Good: Use performance timers for long operations
-const timer = new PerformanceTimer();
-// ... operation
-const metrics = timer.getMetrics();
+// ✅ Good: Use SSOT defaults for consistency
+const rounded = roundToCurrency(amount, DEFAULT_CURRENCY);
 ```
+
+## 🔒 Security
+
+### Input Validation
+
+- All user inputs are validated using the validation utilities
+- SSOT operators provide type-safe filtering
+- Currency validation prevents invalid currency codes
+
+### Error Handling
+
+- Sensitive information is not exposed in error messages
+- Structured error logging for security monitoring
+- Context-aware error handling with SSOT policies
+
+## 📊 Performance Considerations
+
+### Memory Usage
+
+- SSOT modules minimize memory footprint through centralized definitions
+- Caching utilities include automatic cleanup
+- Performance monitoring includes memory tracking
+
+### Execution Time
+
+- SSOT policies eliminate duplicate type checking
+- Critical paths are optimized for performance
+- Async operations use efficient patterns
+
+### Bundle Size
+
+- Tree-shakable exports for optimal bundle size
+- SSOT modules prevent duplicate code
+- Modular imports for better code splitting
+
+## 🎯 Anti-Drift Guarantees
+
+The SSOT architecture provides comprehensive anti-drift protection:
+
+### Type Safety
+
+- Centralized type definitions prevent inconsistencies
+- Type guards provide runtime validation
+- ESLint rules prevent redefinition of SSOT types
+
+### Policy Consistency
+
+- MYR default currency enforced across all utilities
+- HALF_EVEN bankers rounding as standard
+- Consistent operator types for filtering and validation
+
+### Testing Coverage
+
+- Comprehensive test suite validates SSOT implementation
+- Integration tests ensure cross-utility consistency
+- Backward compatibility tests maintain existing behavior
 
 ## 📝 Contributing
 
@@ -688,13 +668,15 @@ const metrics = timer.getMetrics();
 
 1. Create the utility file in the appropriate category
 2. Add exports to `index.ts`
-3. Write comprehensive tests
-4. Update this README
-5. Follow the established patterns
+3. Use SSOT modules for consistent types and policies
+4. Write comprehensive tests including SSOT validation
+5. Update this README
+6. Follow the established patterns
 
 ### Code Style
 
 - Use TypeScript strict mode
+- Import from SSOT modules for consistency
 - Follow the established naming conventions
 - Include JSDoc comments for public APIs
 - Use consistent error handling patterns
@@ -706,5 +688,6 @@ This utilities package is part of the AIBOS ERP system and follows the same lice
 ---
 
 **Last Updated:** December 2024  
-**Version:** 1.0.0  
-**Maintainer:** AIBOS ERP Development Team
+**Version:** 2.0.0 (SSOT Architecture)  
+**Maintainer:** AIBOS ERP Development Team  
+**SSOT Status:** ✅ Fully Implemented and Tested
