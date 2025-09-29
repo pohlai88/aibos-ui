@@ -13,6 +13,7 @@ import {
 import { ValidationIssue } from './validation-utilities';
 import { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
 import { CashFlowStatement, StatementLine } from './financial-statements-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -184,8 +185,7 @@ export interface MappingCondition {
   logicalOperator?: LogicalOperator;
 }
 
-export type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with' | 'ends_with' | 'between';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// ConditionOperator and LogicalOperator imported from shared-operators.ts (SSOT)
 
 // ============================================================================
 // Mapping Management

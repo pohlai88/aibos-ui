@@ -11,6 +11,8 @@ import {
   SupportedCurrency,
 } from './accounting-utilities';
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
 // Types & Interfaces
@@ -168,9 +170,7 @@ export interface RoundingDifference {
 }
 
 export type ContextType = 'currency' | 'tax' | 'reporting' | 'calculation' | 'display';
-export type RoundingMethod = 'round_half_up' | 'round_half_down' | 'round_half_even' | 'round_up' | 'round_down' | 'truncate';
-export type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with' | 'between';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// RoundingMethod, ConditionOperator, and LogicalOperator imported from SSOT modules
 export type ActionType = 'round' | 'truncate' | 'ceiling' | 'floor' | 'no_action';
 export type AuditAction = 'create' | 'update' | 'delete' | 'apply' | 'validate';
 export type ComplianceFramework = 'ifrs' | 'gaap' | 'basel' | 'local' | 'internal';
@@ -202,7 +202,7 @@ export function defineRoundingPolicy(context: RoundingContext, method: RoundingM
 export function getRoundingPolicy(context: RoundingContext): RoundingPolicy | undefined {
   // In practice, this would query a policy registry
   // For now, return a default policy
-  return defineRoundingPolicy(context, 'round_half_up');
+  return defineRoundingPolicy(context, RoundingMethod.HALF_UP);
 }
 
 /**
@@ -583,7 +583,7 @@ export function checkRoundingCompliance(amount: number, policy: RoundingPolicy, 
     // Check IFRS compliance
     if (requirement.framework === 'ifrs') {
       // IFRS requires consistent rounding methods
-      if (policy.method === 'truncate') {
+      if (policy.method === RoundingMethod.TRUNCATE) {
         issues.push({
           path: 'method',
           message: 'IFRS does not allow truncation for financial reporting',
@@ -608,7 +608,7 @@ export function checkRoundingCompliance(amount: number, policy: RoundingPolicy, 
     // Check GAAP compliance
     if (requirement.framework === 'gaap') {
       // GAAP allows various rounding methods but requires consistency
-      if (policy.method === 'round_half_down') {
+      if (policy.method === RoundingMethod.HALF_DOWN) {
         issues.push({
           path: 'method',
           message: 'GAAP typically uses round_half_up for financial reporting',
@@ -622,7 +622,7 @@ export function checkRoundingCompliance(amount: number, policy: RoundingPolicy, 
     // Check Basel compliance
     if (requirement.framework === 'basel') {
       // Basel requires conservative rounding for risk calculations
-      if (policy.method === 'round_half_up' && amount < 0) {
+      if (policy.method === RoundingMethod.HALF_UP && amount < 0) {
         issues.push({
           path: 'method',
           message: 'Basel requires conservative rounding for negative amounts',
@@ -667,17 +667,17 @@ function applyRoundingMethod(amount: number, method: RoundingMethod, precision: 
   const scaled = amount * factor;
   
   switch (method) {
-    case 'round_half_up':
+    case RoundingMethod.HALF_UP:
       return Math.round(scaled) / factor;
-    case 'round_half_down':
+    case RoundingMethod.HALF_DOWN:
       return Math.floor(scaled + 0.5) / factor;
-    case 'round_half_even':
+    case RoundingMethod.HALF_EVEN:
       return Math.round(scaled) / factor; // Simplified - would implement proper banker's rounding
-    case 'round_up':
+    case RoundingMethod.CEILING:
       return Math.ceil(scaled) / factor;
-    case 'round_down':
+    case RoundingMethod.FLOOR:
       return Math.floor(scaled) / factor;
-    case 'truncate':
+    case RoundingMethod.TRUNCATE:
       return Math.trunc(scaled) / factor;
     default:
       return Math.round(scaled) / factor;

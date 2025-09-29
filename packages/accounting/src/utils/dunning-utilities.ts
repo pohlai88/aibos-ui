@@ -14,6 +14,7 @@ import {
 import { createValidationError } from './error-utilities';
 import { type ValidationIssue, type BusinessValidationResult, type ValidationCode } from './validation-utilities';
 import { isValidDate } from './date-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -148,8 +149,7 @@ export interface DateRange {
 }
 
 export type DunningLevel = 'reminder' | 'warning' | 'final_notice' | 'collection' | 'legal';
-export type ConditionOperator = 'equals' | 'greater_than' | 'less_than' | 'between' | 'contains';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// ConditionOperator and LogicalOperator imported from shared-operators.ts (SSOT)
 export type ActionType = 'send_letter' | 'charge_fee' | 'calculate_interest' | 'escalate' | 'suspend_account';
 export type FeeMethod = 'fixed' | 'percentage' | 'tiered' | 'progressive';
 export type InterestMethod = 'simple' | 'compound' | 'daily' | 'monthly';

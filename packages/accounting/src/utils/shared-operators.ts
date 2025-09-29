@@ -22,7 +22,8 @@ export type ConditionOperator =
   | 'contains' 
   | 'starts_with' 
   | 'ends_with' 
-  | 'between';
+  | 'between'
+  | 'regex';
 
 /**
  * Logical operators for combining conditions
@@ -39,7 +40,7 @@ export type LogicalOperator = 'and' | 'or' | 'not';
 export function isConditionOperator(value: unknown): value is ConditionOperator {
   return typeof value === 'string' && [
     'equals', 'not_equals', 'greater_than', 'less_than',
-    'contains', 'starts_with', 'ends_with', 'between'
+    'contains', 'starts_with', 'ends_with', 'between', 'regex'
   ].includes(value);
 }
 

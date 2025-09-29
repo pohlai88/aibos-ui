@@ -13,6 +13,7 @@ import {
 } from './accounting-utilities';
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
 import { DateRange } from './date-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -252,8 +253,7 @@ export type AccountClass = 'asset' | 'liability' | 'equity' | 'revenue' | 'expen
 export type RollupMethod = 'sum' | 'average' | 'weighted_average' | 'first' | 'last';
 export type ReportingType = 'balance_sheet' | 'income_statement' | 'cash_flow' | 'equity' | 'notes';
 export type PostingRestriction = 'debit_only' | 'credit_only' | 'no_posting' | 'approval_required';
-export type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with' | 'ends_with';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// ConditionOperator and LogicalOperator imported from shared-operators.ts (SSOT)
 export type PermissionType = 'read' | 'write' | 'post' | 'approve' | 'delete';
 export type PermissionScope = 'account' | 'category' | 'all';
 export type TransactionType = 'journal' | 'payment' | 'receipt' | 'adjustment' | 'reversal';

@@ -17,6 +17,7 @@ import {
 import { createValidationError } from './error-utilities';
 import { type ValidationIssue, type BusinessValidationResult, type ValidationCode } from './validation-utilities';
 import { formatDate, isValidDate, isAfterFns, isBeforeFns } from './date-utilities';
+import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
 // Types & Interfaces
@@ -68,7 +69,7 @@ export interface TriangulationResult {
 }
 
 export type RateType = 'mid' | 'buy' | 'sell' | 'spot' | 'forward';
-export type RoundingMethod = 'round_up' | 'round_down' | 'round_half_up' | 'round_half_even';
+// RoundingMethod imported from policies/rounding-policy.ts (SSOT)
 
 // ============================================================================
 // Rate Storage and Management
@@ -355,19 +356,19 @@ export function convertMultipleAmounts(
 export function applyCurrencyPrecision(
   amount: number,
   currency: SupportedCurrency,
-  method: RoundingMethod = 'round_half_up'
+  method: RoundingMethod = RoundingMethod.HALF_UP
 ): number {
   const decimals = CURRENCY_DECIMALS[currency];
   const factor = Math.pow(10, decimals);
   
   switch (method) {
-    case 'round_up':
+    case RoundingMethod.CEILING:
       return Math.ceil(amount * factor) / factor;
-    case 'round_down':
+    case RoundingMethod.FLOOR:
       return Math.floor(amount * factor) / factor;
-    case 'round_half_up':
+    case RoundingMethod.HALF_UP:
       return Math.round(amount * factor) / factor;
-    case 'round_half_even':
+    case RoundingMethod.HALF_EVEN:
       return Math.round(amount * factor) / factor; // Simplified implementation
     default:
       return roundToCurrency(amount, currency);

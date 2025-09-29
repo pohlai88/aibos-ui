@@ -14,6 +14,7 @@ import { ValidationIssue, BusinessValidationResult } from './validation-utilitie
 import { DateRange } from './date-utilities';
 import { AgingResult } from './aging-utilities';
 import { JournalEntry } from './journal-entry-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -228,8 +229,7 @@ export type WriteOffStatus = 'pending' | 'approved' | 'processed' | 'reversed';
 export type RecoveryStatus = 'pending' | 'confirmed' | 'processed' | 'disputed';
 export type MatrixStatus = 'draft' | 'active' | 'superseded' | 'archived';
 export type RiskCategory = 'low' | 'medium' | 'high' | 'critical';
-export type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// ConditionOperator and LogicalOperator imported from shared-operators.ts (SSOT)
 export type ApprovalLevel = 'manager' | 'director' | 'cfo' | 'ceo';
 export type ComplianceFramework = 'ifrs9' | 'basel' | 'gaap' | 'local';
 

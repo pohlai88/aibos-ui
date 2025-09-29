@@ -14,6 +14,7 @@ import {
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
 import { DateRange } from './date-utilities';
 import { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -214,8 +215,7 @@ export type SubtotalMethod = 'sum' | 'difference' | 'ratio' | 'percentage';
 export type NoteType = 'disclosure' | 'explanation' | 'reconciliation' | 'policy' | 'contingency';
 export type DisclosureLevel = 'basic' | 'detailed' | 'comprehensive' | 'regulatory';
 export type StatementStatus = 'draft' | 'review' | 'approved' | 'published' | 'archived';
-export type ConditionOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'starts_with';
-export type LogicalOperator = 'and' | 'or' | 'not';
+// ConditionOperator and LogicalOperator imported from shared-operators.ts (SSOT)
 export type DisclosureType = 'accounting_policy' | 'contingency' | 'related_party' | 'segment' | 'other';
 
 // ============================================================================

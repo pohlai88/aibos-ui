@@ -31,6 +31,7 @@
 import type { 
   SupportedCurrency
 } from './accounting-utilities';
+import type { ConditionOperator } from './shared-operators';
 
 // ============================================================================
 // SHARED TYPES
@@ -325,16 +326,7 @@ export type RuleType =
 /**
  * Condition operators
  */
-export type ConditionOperator = 
-  | 'equals'
-  | 'not_equals'
-  | 'contains'
-  | 'starts_with'
-  | 'ends_with'
-  | 'greater_than'
-  | 'less_than'
-  | 'between'
-  | 'regex';
+// ConditionOperator imported from shared-operators.ts (SSOT)
 
 /**
  * Tolerance types

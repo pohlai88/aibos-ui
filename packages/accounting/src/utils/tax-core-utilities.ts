@@ -12,6 +12,8 @@ import {
   roundToCurrency,
 } from './accounting-utilities';
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { ConditionOperator } from './shared-operators';
+import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
 // Types & Interfaces
@@ -61,11 +63,11 @@ export interface RoundingStep {
   amount: number;
   roundedAmount: number;
   difference: number;
-  method: TaxRoundingMethod;
+  method: RoundingMethod;
 }
 
 export interface TaxOptions {
-  roundingMethod?: TaxRoundingMethod;
+  roundingMethod?: RoundingMethod;
   precision?: number;
   tolerance?: number;
   includeRoundingSteps?: boolean;
@@ -131,12 +133,13 @@ export interface ExemptionCondition {
 }
 
 export type TaxCalculationMethod = 'inclusive' | 'exclusive' | 'mixed';
-export type TaxRoundingMethod = 'round_up' | 'round_down' | 'round_half_up' | 'round_half_even';
+// TaxRoundingMethod replaced with SSOT RoundingMethod from policies/rounding-policy.ts
 export type TaxType = 'vat' | 'gst' | 'sales_tax' | 'service_tax';
 export type VarianceType = 'calculation' | 'rounding' | 'timing' | 'classification' | 'rate';
 export type VarianceImpact = 'low' | 'medium' | 'high' | 'critical';
 export type ExemptionType = 'zero_rated' | 'exempt' | 'reduced_rate' | 'reverse_charge';
-export type ConditionOperator = 'equals' | 'greater_than' | 'less_than' | 'between' | 'contains';
+
+// ConditionOperator imported from shared-operators.ts (SSOT)
 
 // ============================================================================
 // Tax Calculations
@@ -159,7 +162,7 @@ export function calculateTax(
     throw new Error('Tax rate must be between 0 and 1');
   }
   
-  const roundingMethod = options?.roundingMethod || 'round_half_up';
+  const roundingMethod = options?.roundingMethod || RoundingMethod.HALF_UP;
   const precision = options?.precision || 2;
   const includeRoundingSteps = options?.includeRoundingSteps || false;
   
@@ -232,7 +235,7 @@ export function calculateExclusiveTax(
 function calculateInclusiveTaxAmount(
   grossAmount: number,
   taxRate: number,
-  roundingMethod: TaxRoundingMethod,
+  roundingMethod: RoundingMethod,
   precision: number,
   roundingSteps: RoundingStep[],
   includeRoundingSteps: boolean
@@ -272,7 +275,7 @@ function calculateInclusiveTaxAmount(
 function calculateExclusiveTaxAmount(
   netAmount: number,
   taxRate: number,
-  roundingMethod: TaxRoundingMethod,
+  roundingMethod: RoundingMethod,
   precision: number,
   roundingSteps: RoundingStep[],
   includeRoundingSteps: boolean
@@ -315,19 +318,19 @@ function calculateExclusiveTaxAmount(
  */
 export function applyTaxRounding(
   amount: number,
-  method: TaxRoundingMethod,
+  method: RoundingMethod,
   precision: number = 2
 ): number {
   const factor = Math.pow(10, precision);
   
   switch (method) {
-    case 'round_up':
+    case RoundingMethod.CEILING:
       return Math.ceil(amount * factor) / factor;
-    case 'round_down':
+    case RoundingMethod.FLOOR:
       return Math.floor(amount * factor) / factor;
-    case 'round_half_up':
+    case RoundingMethod.HALF_UP:
       return Math.round(amount * factor) / factor;
-    case 'round_half_even':
+    case RoundingMethod.HALF_EVEN:
       return Math.round(amount * factor) / factor; // Simplified implementation
     default:
       return roundToCurrency(amount, 'USD');
