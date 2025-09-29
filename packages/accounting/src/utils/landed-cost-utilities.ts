@@ -13,7 +13,7 @@ import {
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
 import { DateRange } from './date-utilities';
 import { JournalEntry } from './journal-entry-utilities';
-import { RoundingMethod } from './rounding-policy-utilities';
+import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
 // Types & Interfaces
@@ -739,7 +739,7 @@ export function calculateRoundingAdjustment(allocation: AllocationResult): Round
     originalAmount: item.allocatedCost,
     adjustedAmount: item.finalCost,
     difference: item.roundingAdjustment,
-    method: 'round_half_up' as RoundingMethod,
+    method: RoundingMethod.HALF_UP,
     reason: 'Rounding governance applied',
   }));
 }
@@ -875,17 +875,17 @@ function applyRoundingMethod(amount: number, method: RoundingMethod, precision: 
   const scaled = amount * factor;
   
   switch (method) {
-    case 'round_half_up':
+    case RoundingMethod.HALF_UP:
       return Math.round(scaled) / factor;
-    case 'round_half_down':
+    case RoundingMethod.HALF_DOWN:
       return Math.floor(scaled + 0.5) / factor;
-    case 'round_half_even':
+    case RoundingMethod.HALF_EVEN:
       return Math.round(scaled) / factor;
-    case 'round_up':
+    case RoundingMethod.CEILING:
       return Math.ceil(scaled) / factor;
-    case 'round_down':
+    case RoundingMethod.FLOOR:
       return Math.floor(scaled) / factor;
-    case 'truncate':
+    case RoundingMethod.TRUNCATE:
       return Math.trunc(scaled) / factor;
     default:
       return Math.round(scaled) / factor;
