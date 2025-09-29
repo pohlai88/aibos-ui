@@ -14,6 +14,7 @@ import {
 import { formatDate, isValidDate, addDaysFns } from './date-utilities';
 import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
 import { FiscalPeriod } from './fiscal-period-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators';
 
 // ============================================================================
 // Types & Interfaces
@@ -120,8 +121,6 @@ export type WithholdingTaxType = 'income_tax' | 'vat' | 'gst' | 'service_tax' | 
 export type GrossUpMethod = 'simple' | 'compound' | 'reverse';
 export type PayableStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 export type VendorType = 'individual' | 'corporation' | 'partnership' | 'trust' | 'government';
-export type ConditionOperator = 'equals' | 'greater_than' | 'less_than' | 'between' | 'contains';
-export type LogicalOperator = 'and' | 'or' | 'not';
 
 // ============================================================================
 // Rule Storage and Management

@@ -3,7 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./dist",
-    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
     "skipLibCheck": true
   },
   "include": [
