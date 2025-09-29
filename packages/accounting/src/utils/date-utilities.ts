@@ -58,6 +58,23 @@ import { zhHK } from 'date-fns/locale';
 
 import { isEmpty } from './index';
 import { createValidationError } from './error-utilities';
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Error messages
+const ERROR_MESSAGES = {
+  INVALID_DATE_PROVIDED: 'Invalid date provided',
+  INVALID_RANGE: 'Invalid range',
+} as const;
+
+// Operation types
+const OPERATION_TYPES = {
+  VALIDATE_DATE: 'validate-date',
+  VALIDATE_RANGE: 'validate-range',
+} as const;
+
 // Timezone functions - will use date-fns-tz when available
 // For now, provide fallback implementations that maintain API compatibility
 
@@ -197,7 +214,7 @@ export function formatDate(
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
 
@@ -285,7 +302,7 @@ export function normalizeDate(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return startOfDay(date);
@@ -314,7 +331,7 @@ export function addDaysToDate(date: Date, days: number): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   if (typeof days !== 'number' || !Number.isFinite(days)) {
@@ -347,7 +364,7 @@ export function addMonthsToDate(date: Date, months: number): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   if (typeof months !== 'number' || !Number.isFinite(months)) {
@@ -380,7 +397,7 @@ export function addYearsToDate(date: Date, years: number): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   if (typeof years !== 'number' || !Number.isFinite(years)) {
@@ -448,7 +465,7 @@ export function getStartOfMonth(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return startOfMonth(date);
@@ -471,7 +488,7 @@ export function getEndOfMonth(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return endOfMonth(date);
@@ -494,7 +511,7 @@ export function getStartOfYear(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return startOfYear(date);
@@ -517,7 +534,7 @@ export function getEndOfYear(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return endOfYear(date);
@@ -540,7 +557,7 @@ export function getStartOfQuarter(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -568,7 +585,7 @@ export function getEndOfQuarter(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -605,9 +622,9 @@ export function isDateInRange(date: Date, start: Date, end: Date): boolean {
   if (!isValid(date) || !isValid(start) || !isValid(end)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -625,9 +642,9 @@ export function isDateAfter(date: Date, compareDate: Date): boolean {
   if (!isValid(date) || !isValid(compareDate)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return isAfter(date, compareDate);
@@ -644,9 +661,9 @@ export function isDateBefore(date: Date, compareDate: Date): boolean {
   if (!isValid(date) || !isValid(compareDate)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return isBefore(date, compareDate);
@@ -663,9 +680,9 @@ export function isSameDate(date1: Date, date2: Date): boolean {
   if (!isValid(date1) || !isValid(date2)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { date1, date2 },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return isSameDay(date1, date2);
@@ -682,9 +699,9 @@ export function isSameMonth(date1: Date, date2: Date): boolean {
   if (!isValid(date1) || !isValid(date2)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { date1, date2 },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return isSameMonthFns(date1, date2);
@@ -701,9 +718,9 @@ export function isSameYear(date1: Date, date2: Date): boolean {
   if (!isValid(date1) || !isValid(date2)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { date1, date2 },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return isSameYearFns(date1, date2);
@@ -729,9 +746,9 @@ export function getDaysBetween(start: Date, end: Date): number {
   if (!isValid(start) || !isValid(end)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { start, end },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return differenceInDays(end, start);
@@ -753,9 +770,9 @@ export function getMonthsBetween(start: Date, end: Date): number {
   if (!isValid(start) || !isValid(end)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { start, end },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return differenceInMonths(end, start);
@@ -777,9 +794,9 @@ export function getYearsBetween(start: Date, end: Date): number {
   if (!isValid(start) || !isValid(end)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { start, end },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return differenceInYears(end, start);
@@ -800,7 +817,7 @@ export function toUTC(date: Date): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return new Date(date.getTime());
@@ -833,7 +850,7 @@ export function toTimezone(date: Date, timezone: AccountingTimezone): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return utcToZonedTime(date, timezone);
@@ -851,7 +868,7 @@ export function fromTimezone(date: Date, timezone: AccountingTimezone): Date {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   return zonedTimeToUtc(date, timezone);
@@ -880,7 +897,7 @@ export function getFiscalYear(date: Date, fiscalYearStart?: Date): number {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -931,7 +948,7 @@ export function getQuarter(date: Date): number {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -956,7 +973,7 @@ export function getWeekNumber(date: Date): number {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -981,7 +998,7 @@ export function getDayOfYear(date: Date): number {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -1004,9 +1021,9 @@ export function createDateRange(start: Date, end: Date): DateRange {
   if (!isValid(start) || !isValid(end)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         { start, end },
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   
@@ -1137,9 +1154,9 @@ export function getFiscalYearRange(
   if (!isValid(date) || !isValid(fiscalYearStartTemplate)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   const local = utcToZonedTime(date, timezone);
@@ -1200,9 +1217,9 @@ export function enumeratePeriodsBetween(
   if (!isValid(start) || !isValid(end) || isAfter(start, end)) {
     throw createValidationError(
         'INVALID_RANGE',
-        'Invalid range',
+        ERROR_MESSAGES.INVALID_RANGE,
         'range',
-        { operation: 'validate-range' }
+        { operation: OPERATION_TYPES.VALIDATE_RANGE }
       );
   }
   const ranges: DateRange[] = [];
@@ -2108,9 +2125,9 @@ export function bucketizePeriods(config: {
   if (!isValid(start) || !isValid(end) || isAfter(start, end)) {
     throw createValidationError(
         'INVALID_RANGE',
-        'Invalid range',
+        ERROR_MESSAGES.INVALID_RANGE,
         'range',
-        { operation: 'validate-range' }
+        { operation: OPERATION_TYPES.VALIDATE_RANGE }
       );
   }
   const ranges =
@@ -2209,9 +2226,9 @@ export function getFiscalQuarter(
   if (!isValid(date) || !isValid(fiscalYearStartTemplate)) {
     throw createValidationError(
         'INVALID_DATE_INPUT',
-        'Invalid date provided',
+        ERROR_MESSAGES.INVALID_DATE_PROVIDED,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   const local = utcToZonedTime(date, timezone);
@@ -2327,9 +2344,9 @@ export function enumerateFiscalQuartersBetween(
   if (!isValid(start) || !isValid(end) || isAfter(start, end)) {
     throw createValidationError(
         'INVALID_RANGE',
-        'Invalid range',
+        ERROR_MESSAGES.INVALID_RANGE,
         'range',
-        { operation: 'validate-range' }
+        { operation: OPERATION_TYPES.VALIDATE_RANGE }
       );
   }
   const out: DateRange[] = [];
@@ -2577,7 +2594,7 @@ export function toUnixTimestamp(date: Date): number {
         'INVALID_DATE_INPUT',
         `Invalid date provided: ${date}`,
         date,
-        { operation: 'validate-date' }
+        { operation: OPERATION_TYPES.VALIDATE_DATE }
       );
   }
   

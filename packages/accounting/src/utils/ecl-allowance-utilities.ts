@@ -7,14 +7,94 @@
  * @fileoverview ECL calculations, PD×LGD matrix, write-off and recovery management
  */
 
-import {
+import type {
   SupportedCurrency,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { DateRange } from './date-utilities';
-import { AgingResult } from './aging-utilities';
-import { JournalEntry } from './journal-entry-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import { roundToCurrency } from './accounting-utilities';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { DateRange } from './date-utilities';
+import type { AgingResult } from './aging-utilities';
+import type { JournalEntry } from './journal-entry-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
+import { z } from 'zod';
+
+// ============================================================================
+// Zod Schemas for Validation
+// ============================================================================
+
+/**
+ * Zod schema for SegmentationCriteria
+ */
+export const SegmentationCriteriaSchema = z.object({
+  field: z.string().min(1, 'Field name is required'),
+  operator: z.enum(['equals', 'not_equals', 'greater_than', 'less_than', 'contains', 'starts_with', 'ends_with', 'between', 'regex']),
+  value: z.unknown(), // Can be any type depending on operator
+  logicalOperator: z.enum(['and', 'or', 'not']).optional(),
+});
+
+/**
+ * Zod schema for ECLSegment
+ */
+export const ECLSegmentSchema = z.object({
+  id: z.string().min(1, 'Segment ID is required'),
+  name: z.string().min(1, 'Segment name is required'),
+  criteria: z.array(SegmentationCriteriaSchema).min(1, 'At least one criteria is required'),
+  pd: z.number().min(0).max(1, 'PD must be between 0 and 1'),
+  lgd: z.number().min(0).max(1, 'LGD must be between 0 and 1'),
+  ead: z.number().min(0, 'EAD must be non-negative'),
+  description: z.string().min(1, 'Description is required'),
+});
+
+/**
+ * Zod schema for ECLMatrix
+ */
+export const ECLMatrixSchema = z.object({
+  id: z.string().min(1, 'Matrix ID is required'),
+  name: z.string().min(1, 'Matrix name is required'),
+  description: z.string().min(1, 'Description is required'),
+  segments: z.array(ECLSegmentSchema).min(1, 'At least one segment is required'),
+  pdRates: z.instanceof(Map).optional(),
+  lgdRates: z.instanceof(Map).optional(),
+  effectiveDate: z.date(),
+  expiryDate: z.date().optional(),
+  status: z.enum(['draft', 'active', 'superseded', 'archived']),
+});
+
+/**
+ * Zod schema for Customer
+ */
+export const CustomerSchema = z.object({
+  id: z.string().min(1, 'Customer ID is required'),
+  name: z.string().min(1, 'Customer name is required'),
+  creditRating: z.string().min(1, 'Credit rating is required'),
+  industry: z.string().min(1, 'Industry is required'),
+  country: z.string().min(1, 'Country is required'),
+  riskCategory: z.enum(['low', 'medium', 'high', 'critical']),
+  creditLimit: z.number().min(0, 'Credit limit must be non-negative'),
+  currency: z.string().min(1, 'Currency is required'),
+});
+
+/**
+ * Zod schema for ARPortfolio
+ */
+export const ARPortfolioSchema = z.object({
+  id: z.string().min(1, 'Portfolio ID is required'),
+  name: z.string().min(1, 'Portfolio name is required'),
+  customers: z.array(CustomerSchema).min(1, 'At least one customer is required'),
+  totalExposure: z.number().min(0, 'Total exposure must be non-negative'),
+  totalECL: z.number().min(0, 'Total ECL must be non-negative'),
+  segments: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    customers: z.array(CustomerSchema),
+    exposure: z.number().min(0),
+    ecl: z.number().min(0),
+    pd: z.number().min(0).max(1),
+    lgd: z.number().min(0).max(1),
+    criteria: z.array(SegmentationCriteriaSchema),
+  })).optional(),
+  lastUpdated: z.date(),
+});
 
 // ============================================================================
 // Types & Interfaces
@@ -240,7 +320,15 @@ export type ComplianceFramework = 'ifrs9' | 'basel' | 'gaap' | 'local';
 /**
  * Calculate Expected Credit Loss for a customer
  */
-export function calculateECL(customer: Customer, aging: AgingResult, matrix: ECLMatrix): ECLResult {
+export function calculateECL(
+  customer: Customer,
+  aging: AgingResult,
+  matrix: ECLMatrix,
+  /**
+   * Optional currency override for rounding (defaults to customer's currency).
+   */
+  currency?: SupportedCurrency
+): ECLResult {
   // Determine ECL stage based on aging
   const stage = determineECLStage(aging);
   
@@ -253,7 +341,9 @@ export function calculateECL(customer: Customer, aging: AgingResult, matrix: ECL
   const exposure = aging.totalAmount;
   
   // Calculate ECL: ECL = EAD × PD × LGD
-  const ecl = exposure * pd * lgd;
+  const ccy = currency ?? customer.currency;
+  const rawEcl = exposure * pd * lgd;
+  const ecl = roundToCurrency(rawEcl, ccy);
   
   // Calculate confidence based on data quality
   const confidence = calculateConfidence(customer, aging);
@@ -274,7 +364,15 @@ export function calculateECL(customer: Customer, aging: AgingResult, matrix: ECL
 /**
  * Calculate PD × LGD for ECL calculation
  */
-export function calculatePDxLGD(exposure: number, pd: number, lgd: number): number {
+export function calculatePDxLGD(
+  exposure: number,
+  pd: number,
+  lgd: number,
+  /**
+   * Optional currency for rounding the result. If omitted, returns the raw numeric product.
+   */
+  currency?: SupportedCurrency
+): number {
   if (pd < 0 || pd > 1) {
     throw new Error('PD must be between 0 and 1');
   }
@@ -287,7 +385,8 @@ export function calculatePDxLGD(exposure: number, pd: number, lgd: number): numb
     throw new Error('Exposure cannot be negative');
   }
   
-  return exposure * pd * lgd;
+  const val = exposure * pd * lgd;
+  return currency ? roundToCurrency(val, currency) : val;
 }
 
 /**
@@ -308,7 +407,7 @@ export function calculateStageBasedECL(portfolio: ARPortfolio, stages: ECLStage[
       const exposure = customer.creditLimit * 0.8; // Assume 80% utilization
       const pd = getPDForStage(stage);
       const lgd = getLGDForStage(stage);
-      const ecl = calculatePDxLGD(exposure, pd, lgd);
+      const ecl = calculatePDxLGD(exposure, pd, lgd, customer.currency);
       
       return {
         customer,
@@ -351,7 +450,7 @@ export function calculateLifetimeECL(portfolio: ARPortfolio, matrix: ECLMatrix):
     const segment = findApplicableSegment(customer, matrix);
     const pd = segment?.pd || 0.01;
     const lgd = segment?.lgd || 0.4;
-    const ecl = calculatePDxLGD(exposure, pd, lgd);
+    const ecl = calculatePDxLGD(exposure, pd, lgd, customer.currency);
     
     switch (stage) {
       case 'stage1':
@@ -444,10 +543,28 @@ export function updateECLMatrix(matrix: ECLMatrix, newData: ECLData): ECLMatrix 
 }
 
 /**
- * Validate ECL matrix
+ * Validate ECL matrix with Zod schema validation
  */
 export function validateECLMatrix(matrix: ECLMatrix): BusinessValidationResult {
   const issues: ValidationIssue[] = [];
+
+  // ---------------------------------------------------------------------------
+  // Zod schema validation (adds guardrails without breaking existing API)
+  // ---------------------------------------------------------------------------
+  const zres = ECLMatrixSchema.safeParse(matrix);
+  if (!zres.success) {
+    for (const err of zres.error.issues) {
+      issues.push({
+        code: 'FORMAT' as unknown,
+        message: `Schema: ${err.message}`,
+        path: err.path.join('.') || 'matrix',
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Business logic validation (existing logic)
+  // ---------------------------------------------------------------------------
   
   // Validate matrix name
   if (!matrix.name || matrix.name.trim() === '') {
@@ -506,6 +623,70 @@ export function validateECLMatrix(matrix: ECLMatrix): BusinessValidationResult {
     warnings: issues.filter(i => i.severity === 'warning').map(i => i.message),
     errors: issues.filter(i => i.severity === 'error').map(i => i.message),
   };
+}
+
+/**
+ * Validate ECL segment using Zod schema
+ */
+export function validateECLSegment(segment: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedSegment = ECLSegmentSchema.parse(segment);
+    return { isValid: true, errors: [], data: validatedSegment };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
+
+/**
+ * Validate customer using Zod schema
+ */
+export function validateCustomer(customer: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedCustomer = CustomerSchema.parse(customer);
+    return { isValid: true, errors: [], data: validatedCustomer };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
+
+/**
+ * Validate AR portfolio using Zod schema
+ */
+export function validateARPortfolio(portfolio: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedPortfolio = ARPortfolioSchema.parse(portfolio);
+    return { isValid: true, errors: [], data: validatedPortfolio };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
+
+/**
+ * Validate segmentation criteria using Zod schema
+ */
+export function validateSegmentationCriteria(criteria: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedCriteria = SegmentationCriteriaSchema.parse(criteria);
+    return { isValid: true, errors: [], data: validatedCriteria };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
 }
 
 /**
@@ -702,7 +883,7 @@ export function calculatePortfolioECL(portfolio: ARPortfolio, matrix: ECLMatrix)
     const segment = findApplicableSegment(customer, matrix);
     const pd = segment?.pd || 0.01;
     const lgd = segment?.lgd || 0.4;
-    const ecl = calculatePDxLGD(exposure, pd, lgd);
+    const ecl = calculatePDxLGD(exposure, pd, lgd, customer.currency);
     
     const eclResult: ECLResult = {
       customer,
@@ -907,6 +1088,13 @@ export function validateECLCompliance(report: ECLReport, requirements: Complianc
  */
 export function calculateECLProvision(portfolio: ARPortfolio, matrix: ECLMatrix): ECLProvision {
   const lifetimeECL = calculateLifetimeECL(portfolio, matrix);
+  // Choose a base currency for the provision entry:
+  // prefer the first customer's currency if available, fallback to 'USD'
+  const baseCurrency = (portfolio.customers[0]?.currency ?? ('USD' as SupportedCurrency)) as SupportedCurrency;
+  const provTotal = roundToCurrency(lifetimeECL.lifetimeECL, baseCurrency);
+  const provS1 = roundToCurrency(lifetimeECL.stage1ECL, baseCurrency);
+  const provS2 = roundToCurrency(lifetimeECL.stage2ECL, baseCurrency);
+  const provS3 = roundToCurrency(lifetimeECL.stage3ECL, baseCurrency);
   
   // Create journal entry for ECL provision
   const journalEntry: JournalEntry = {
@@ -919,32 +1107,32 @@ export function calculateECLProvision(portfolio: ARPortfolio, matrix: ECLMatrix)
         id: `ecl_line_1_${Date.now()}`,
         accountCode: '6901', // ECL Expense
         description: 'ECL Provision',
-        debit: lifetimeECL.lifetimeECL,
+        debit: provTotal,
         credit: 0,
-        currency: 'USD' as SupportedCurrency,
+        currency: baseCurrency,
       },
       {
         id: `ecl_line_2_${Date.now()}`,
         accountCode: '1900', // ECL Allowance
         description: 'ECL Provision',
         debit: 0,
-        credit: lifetimeECL.lifetimeECL,
-        currency: 'USD' as SupportedCurrency,
+        credit: provTotal,
+        currency: baseCurrency,
       },
     ],
-    totalDebits: lifetimeECL.lifetimeECL,
-    totalCredits: lifetimeECL.lifetimeECL,
-    currency: 'USD' as SupportedCurrency,
+    totalDebits: provTotal,
+    totalCredits: provTotal,
+    currency: baseCurrency,
     status: 'draft',
   };
   
   return {
     id: `provision_${Date.now()}`,
     portfolio,
-    totalProvision: lifetimeECL.lifetimeECL,
-    stage1Provision: lifetimeECL.stage1ECL,
-    stage2Provision: lifetimeECL.stage2ECL,
-    stage3Provision: lifetimeECL.stage3ECL,
+    totalProvision: provTotal,
+    stage1Provision: provS1,
+    stage2Provision: provS2,
+    stage3Provision: provS3,
     calculationDate: new Date(),
     journalEntry,
   };

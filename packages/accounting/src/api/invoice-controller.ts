@@ -6,7 +6,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { InvoiceService } from '../services/invoice.service';
 import { isEmpty } from '../utils';
 

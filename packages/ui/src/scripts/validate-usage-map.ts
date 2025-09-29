@@ -7,8 +7,7 @@
  * for coverage, a11y, theming, and performance. Combines basic and enhanced validation.
  */
 
-import { safeGet } from '@aibos/utils';
-import { safeRegExpFromUser } from '@aibos/utils/security';
+import { safeGet, safeRegExpFromUser } from '../utils/internal';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -525,8 +524,8 @@ function validateUsageMap(usageMap: UsageMap): ValidationResult {
   if (componentDefaults) {
     const allComponents = Object.keys(usageMap.components);
     const componentsWithA11y = allComponents.filter((name) => {
-      const component = safeGet(usageMap.components, name, Object.keys(usageMap.components));
-      return component?.tags?.includes('a11y');
+      const component = safeGet(usageMap.components, name);
+      return component && typeof component === 'object' && 'tags' in component && Array.isArray(component.tags) && component.tags.includes('a11y');
     });
 
     if (componentsWithA11y.length < allComponents.length) {
@@ -536,8 +535,8 @@ function validateUsageMap(usageMap: UsageMap): ValidationResult {
     }
 
     const componentsWithDark = allComponents.filter((name) => {
-      const component = safeGet(usageMap.components, name, Object.keys(usageMap.components));
-      return component?.stories?.includes('Dark');
+      const component = safeGet(usageMap.components, name);
+      return component && typeof component === 'object' && 'stories' in component && Array.isArray(component.stories) && component.stories.includes('Dark');
     });
 
     if (componentsWithDark.length < allComponents.length) {
@@ -547,8 +546,8 @@ function validateUsageMap(usageMap: UsageMap): ValidationResult {
     }
 
     const componentsWithRTL = allComponents.filter((name) => {
-      const component = safeGet(usageMap.components, name, Object.keys(usageMap.components));
-      return component?.stories?.includes('RTL');
+      const component = safeGet(usageMap.components, name);
+      return component && typeof component === 'object' && 'stories' in component && Array.isArray(component.stories) && component.stories.includes('RTL');
     });
 
     if (componentsWithRTL.length < allComponents.length) {
@@ -563,7 +562,7 @@ function validateUsageMap(usageMap: UsageMap): ValidationResult {
   const scanRoot = parseArgument('--scan');
   const importPatternArgument = parseArgument('--import-pattern') ?? '';
   const importPattern = importPatternArgument ? safeRegExpFromUser(importPatternArgument) : /.*/; // accept all modules by default
-  if (scanRoot) {
+  if (scanRoot && importPattern) {
     const { usedNames, files } = scanDirectory(
       path.resolve(process.cwd(), scanRoot),
       importPattern,

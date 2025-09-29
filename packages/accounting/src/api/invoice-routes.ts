@@ -4,7 +4,7 @@
  * Express router configuration for invoice API endpoints.
  */
 
-import { Router, type RequestHandler } from 'express';
+import { Router, type RequestHandler, type Request, type Response, type NextFunction } from 'express';
 import { type InvoiceController } from './invoice-controller.js';
 
 export interface InvoiceRouteValidators {
@@ -32,7 +32,7 @@ export function createInvoiceRoutes(
 
   // Async error wrapper: ensure thrown/rejected handlers reach error middleware
   const wrap =
-    (function_: (req: unknown, res: unknown, next: unknown) => unknown): RequestHandler =>
+    (function_: (req: Request, res: Response, next: NextFunction) => unknown): RequestHandler =>
     (req, res, next) =>
       Promise.resolve(function_(req, res, next)).catch(next);
 

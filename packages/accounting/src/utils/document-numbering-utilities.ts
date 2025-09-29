@@ -37,6 +37,22 @@ import type {
   ValidationResult
 } from './fiscal-period-utilities';
 
+// -----------------------------------------------------------------------------
+// Internal helpers & state (in real systems replace with DB-backed repos)
+// -----------------------------------------------------------------------------
+const SERIES_REGISTRY = new Map<string, NumberingSeries>();
+
+function escapeRegexLiteral(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function assertSinglePlaceholder(format: string): void {
+  const matches = [...format.matchAll(/\{([0-9]+)\}/g)];
+  if (matches.length !== 1) {
+    throw new Error('Format must contain exactly one numeric placeholder like {0000}');
+  }
+}
+
 // ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
@@ -314,8 +330,8 @@ export function defineNumberingSeries(series: NumberingSeries): void {
     throw new Error(`Invalid numbering series: ${validation.errors.join(', ')}`);
   }
 
-  // Store series (in real implementation, this would persist to database)
-  // For now, we just validate and return
+  // Store series (stub registry; replace with persistence in production)
+  SERIES_REGISTRY.set(series.id, { ...series });
 }
 
 /**
@@ -355,7 +371,14 @@ export function validateNumberingSeries(series: NumberingSeries): ValidationResu
   }
 
   if (!series.format.includes('{') || !series.format.includes('}')) {
-    errors.push('Series format must contain number placeholder {0000}');
+    errors.push('Series format must contain numeric placeholder like {0000}');
+  }
+
+  // Enforce exactly one placeholder
+  try {
+    assertSinglePlaceholder(series.format);
+  } catch (e: unknown) {
+    errors.push(e.message || 'Invalid format placeholder');
   }
 
   // Validate numbers
@@ -424,7 +447,7 @@ export function getNextNumber(
     throw new Error('Entity and user are required in context');
   }
 
-  // Get series configuration (in real implementation, this would fetch from database)
+  // Get series configuration
   const seriesConfig = getSeriesConfiguration(series);
   if (!seriesConfig) {
     throw new Error(`Series not found: ${series}`);
@@ -438,13 +461,14 @@ export function getNextNumber(
   const nextNumber = seriesConfig.currentNumber + seriesConfig.increment;
   
   // Format the number
-  const formattedNumber = formatNumber(nextNumber, seriesConfig.format);
+  const formattedCore = formatNumber(nextNumber, seriesConfig.format);
+  const composed = composeWithAffixes(formattedCore, seriesConfig.prefix, seriesConfig.suffix);
   
   // Add check digit if required
-  let finalNumber = formattedNumber;
+  let finalNumber = composed;
   if (seriesConfig.checkDigit) {
-    const checkDigit = calculateCheckDigit(nextNumber.toString(), seriesConfig.checkDigitAlgorithm);
-    finalNumber = `${formattedNumber}${checkDigit}`;
+    const checkDigit = calculateCheckDigit(extractNumericFromFormatPayload(formattedCore, seriesConfig.format), seriesConfig.checkDigitAlgorithm);
+    finalNumber = `${composed}${checkDigit}`; // check digit at the very end
   }
 
   return {
@@ -492,20 +516,21 @@ export function generateSequenceNumber(
 
   // Generate number
   const number = seriesConfig.currentNumber + seriesConfig.increment;
-  const formattedNumber = formatNumber(number, seriesConfig.format);
+  const formattedCore = formatNumber(number, seriesConfig.format);
+  const composed = composeWithAffixes(formattedCore, seriesConfig.prefix, seriesConfig.suffix);
   
   // Add check digit if required
-  let fullNumber = formattedNumber;
+  let fullNumber = composed;
   let checkDigit: string | undefined;
   
   if (seriesConfig.checkDigit) {
-    checkDigit = calculateCheckDigit(number.toString(), seriesConfig.checkDigitAlgorithm);
-    fullNumber = `${formattedNumber}${checkDigit}`;
+    checkDigit = calculateCheckDigit(extractNumericFromFormatPayload(formattedCore, seriesConfig.format), seriesConfig.checkDigitAlgorithm);
+    fullNumber = `${composed}${checkDigit}`;
   }
 
   return {
     series,
-    number: formattedNumber,
+    number: composed,
     fullNumber,
     generatedDate: new Date(),
     ...(checkDigit && { checkDigit })
@@ -550,27 +575,31 @@ export function validateSequenceNumber(
     return { isValid: false, errors, warnings };
   }
 
-  // Validate format
-  if (!isValidNumberFormat(number, seriesConfig.format)) {
-    errors.push('Number does not match series format');
+  // Validate format including prefix/suffix and one placeholder
+  if (!isValidNumberFormatWithAffixes(number, seriesConfig)) {
+    errors.push('Number does not match series format/prefix/suffix');
   }
 
   // Validate check digit if required
-  if (seriesConfig.checkDigit) {
-    const numberWithoutCheckDigit = number.slice(0, -1);
+  if (seriesConfig.checkDigit && number.length >= 2) {
     const providedCheckDigit = number.slice(-1);
-    const calculatedCheckDigit = calculateCheckDigit(
-      numberWithoutCheckDigit, 
-      seriesConfig.checkDigitAlgorithm
-    );
-    
-    if (providedCheckDigit !== calculatedCheckDigit) {
-      errors.push('Invalid check digit');
+    const withoutCheckDigit = number.slice(0, -1);
+    if (!isValidNumberFormatWithAffixes(withoutCheckDigit, seriesConfig)) {
+      errors.push('Check-digit position invalid');
+    } else {
+      // Extract numeric payload as per format (from the core, not including prefix/suffix)
+      const core = stripAffixes(withoutCheckDigit, seriesConfig.prefix, seriesConfig.suffix);
+      const numericPayload = extractNumericFromFormatPayload(core, seriesConfig.format);
+      const calculated = calculateCheckDigit(numericPayload, seriesConfig.checkDigitAlgorithm);
+      if (providedCheckDigit !== calculated) {
+        errors.push('Invalid check digit');
+      }
     }
   }
 
   // Validate number range
-  const numericValue = extractNumericValue(number, seriesConfig.format);
+  const coreForRange = stripAffixes(seriesConfig.checkDigit ? number.slice(0, -1) : number, seriesConfig.prefix, seriesConfig.suffix);
+  const numericValue = extractNumericValue(coreForRange, seriesConfig.format);
   if (numericValue < seriesConfig.startNumber) {
     errors.push('Number is below series start number');
   }
@@ -615,18 +644,19 @@ export function reserveSequenceNumber(
 
   // Generate next number
   const nextNumber = seriesConfig.currentNumber + seriesConfig.increment;
-  const formattedNumber = formatNumber(nextNumber, seriesConfig.format);
+  const formattedCore = formatNumber(nextNumber, seriesConfig.format);
+  const composed = composeWithAffixes(formattedCore, seriesConfig.prefix, seriesConfig.suffix);
   
   // Add check digit if required
-  let fullNumber = formattedNumber;
+  let fullNumber = composed;
   if (seriesConfig.checkDigit) {
-    const checkDigit = calculateCheckDigit(nextNumber.toString(), seriesConfig.checkDigitAlgorithm);
-    fullNumber = `${formattedNumber}${checkDigit}`;
+    const checkDigit = calculateCheckDigit(extractNumericFromFormatPayload(formattedCore, seriesConfig.format), seriesConfig.checkDigitAlgorithm);
+    fullNumber = `${composed}${checkDigit}`;
   }
 
   // Calculate expiry date (default 24 hours)
   const expiryDate = new Date();
-  expiryDate.setHours(expiryDate.getHours() + 24);
+  expiryDate.setHours(expiryDate.getHours() + 24); // default; make policy-driven in adapter
 
   return {
     id: `reservation-${series}-${Date.now()}`,
@@ -682,7 +712,26 @@ export function identifyNumberingGaps(
   
   // Identify gaps
   const gaps: NumberingGap[] = [];
-  const sortedNumbers = usedNumbers.sort((a, b) => a - b);
+  const sortedNumbers = usedNumbers.slice().sort((a, b) => a - b);
+
+  // Detect initial gap from startNumber to first used number
+  if (sortedNumbers.length > 0) {
+    const first = sortedNumbers[0]!;
+    if (first > seriesConfig.startNumber) {
+      const gapSize = Math.floor((first - seriesConfig.startNumber) / seriesConfig.increment);
+      if (gapSize > 0) {
+        gaps.push({
+          series,
+          startNumber: seriesConfig.startNumber,
+          endNumber: first - seriesConfig.increment,
+          gapSize,
+          period,
+          status: 'identified',
+          identifiedAt: new Date()
+        });
+      }
+    }
+  }
   
   for (let i = 0; i < sortedNumbers.length - 1; i++) {
     const current = sortedNumbers[i];
@@ -690,13 +739,14 @@ export function identifyNumberingGaps(
     if (!current || !next) continue;
     
     const expectedNext = current + seriesConfig.increment;
-    
     if (next > expectedNext) {
+      const stepsMissing = Math.floor((next - expectedNext) / seriesConfig.increment) + 1 - 1;
+      const endNum = next - seriesConfig.increment;
       gaps.push({
         series,
         startNumber: expectedNext,
-        endNumber: next - seriesConfig.increment,
-        gapSize: next - expectedNext,
+        endNumber: endNum,
+        gapSize: Math.max(stepsMissing, 1),
         period,
         status: 'identified',
         identifiedAt: new Date()
@@ -964,36 +1014,9 @@ export function generateCheckDigitNumber(
  * @returns Series configuration or undefined
  */
 function getSeriesConfiguration(series: string): NumberingSeries | undefined {
-  // This would typically fetch from database
-  // For now, we'll return a placeholder configuration
-  return {
-    id: series,
-    name: 'Sample Series',
-    description: 'Sample numbering series',
-    prefix: 'SMP',
-    suffix: '',
-    format: 'SMP-{0000}',
-    startNumber: 1000,
-    currentNumber: 1000,
-    increment: 1,
-    checkDigit: false,
-    checkDigitAlgorithm: 'mod10' as CheckDigitAlgorithm,
-    gapPolicy: {
-      id: 'gap-policy-001',
-      name: 'Standard Gap Policy',
-      description: 'Standard gap policy',
-      policyType: 'allow',
-      maxGapSize: 100,
-      autoFill: false,
-      requireApproval: false,
-      active: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    active: true,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  // Fetch from registry (stub). Replace with real repository.
+  if (SERIES_REGISTRY.has(series)) return SERIES_REGISTRY.get(series);
+  return undefined;
 }
 
 /**
@@ -1004,6 +1027,7 @@ function getSeriesConfiguration(series: string): NumberingSeries | undefined {
  * @returns Formatted number
  */
 function formatNumber(number: number, format: string): string {
+  assertSinglePlaceholder(format);
   // Extract the placeholder pattern
   const placeholderMatch = format.match(/\{([0-9]+)\}/);
   if (!placeholderMatch) {
@@ -1024,30 +1048,38 @@ function formatNumber(number: number, format: string): string {
 }
 
 /**
- * Check if number format is valid
- * 
- * @param number - Number to check
- * @param format - Expected format
- * @returns True if format is valid
+ * Compose code with prefix/suffix
  */
-function isValidNumberFormat(number: string, format: string): boolean {
-  // Extract the placeholder pattern
-  const placeholderMatch = format.match(/\{([0-9]+)\}/);
-  if (!placeholderMatch) {
-    return false;
-  }
+function composeWithAffixes(core: string, prefix: string, suffix: string): string {
+  const pre = prefix ?? '';
+  const suf = suffix ?? '';
+  return `${pre}${core}${suf}`;
+}
 
-  const placeholder = placeholderMatch[1];
-  if (!placeholder) {
-    return false;
-  }
-  const padding = parseInt(placeholder, 10);
-  
-  // Check if number matches the expected pattern
-  const expectedPattern = format.replace(/\{[0-9]+\}/, `[0-9]{${padding}}`);
-  const regex = new RegExp(`^${expectedPattern}$`);
-  
-  return regex.test(number);
+/**
+ * Validate with prefix/suffix
+ */
+function isValidNumberFormatWithAffixes(full: string, series: NumberingSeries): boolean {
+  assertSinglePlaceholder(series.format);
+  const placeholderMatch = series.format.match(/\{([0-9]+)\}/);
+  if (!placeholderMatch) return false;
+  const padding = parseInt(placeholderMatch[1]!, 10);
+  const escapedCore = escapeRegexLiteral(series.format).replace(/\{[0-9]+\}/, `[0-9]{${padding}}`);
+  const pre = escapeRegexLiteral(series.prefix ?? '');
+  const suf = escapeRegexLiteral(series.suffix ?? '');
+  const regex = new RegExp(`^${pre}${escapedCore}${suf}$`);
+  return regex.test(full);
+}
+
+/**
+ * Remove prefix/suffix
+ */
+function stripAffixes(full: string, prefix: string, suffix: string): string {
+  const pre = prefix ?? '';
+  const suf = suffix ?? '';
+  if (pre && !full.startsWith(pre)) return full;
+  if (suf && !full.endsWith(suf)) return full;
+  return full.substring(pre.length, full.length - suf.length);
 }
 
 /**
@@ -1074,6 +1106,18 @@ function extractNumericValue(number: string, format: string): number {
   const numericPart = number.slice(-padding);
   
   return parseInt(numericPart, 10);
+}
+
+/**
+ * Extract the numeric payload used for check digit (the {000..} core)
+ */
+function extractNumericFromFormatPayload(core: string, format: string): string {
+  assertSinglePlaceholder(format);
+  const placeholderMatch = format.match(/\{([0-9]+)\}/);
+  if (!placeholderMatch) throw new Error('Invalid format');
+  const padding = parseInt(placeholderMatch[1]!, 10);
+  // Core == format with placeholder replaced -> numeric sits at the end of core portion
+  return core.slice(-padding);
 }
 
 /**
@@ -1142,9 +1186,8 @@ function calculateMod11CheckDigit(number: string, weight: number[], modulus: num
     sum += digit * w;
   }
   
-  const remainder = sum % modulus;
-  const checkDigit = remainder < 2 ? remainder : modulus - remainder;
-  
+  // Standardized modulo 11 digit in range 0..(modulus-1)
+  const checkDigit = (modulus - (sum % modulus)) % modulus;
   return checkDigit.toString();
 }
 

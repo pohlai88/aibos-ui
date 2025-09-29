@@ -41,13 +41,33 @@ export interface QueryOptions {
   limit?: number;
   offset?: number;
   orderBy?: string;
-  orderDirection?: 'ASC' | 'DESC';
+  orderDirection?: OrderDir;
+  /** Optional NULLS ordering hint; adapters may ignore if unsupported */
+  orderNulls?: NullsPlacement;
   includeDeleted?: boolean;
   /** Optional transaction object passed through to concrete repos */
   tx?: unknown;
   /** Optional cancellation signal to abort long-running ops */
-  signal?: AbortSignal;
+  signal?: AbortSignal | { aborted: boolean };
 }
+
+// --------------------------------------------------------------------------------------
+// Order direction enum (typo-safe) + union alias (back-compat)
+// --------------------------------------------------------------------------------------
+export enum OrderDirection {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}
+export type OrderDir = 'ASC' | 'DESC';
+
+// --------------------------------------------------------------------------------------
+// NULLS order enum (typo-safe) + union alias (back-compat)
+// --------------------------------------------------------------------------------------
+export enum NullsOrder {
+  FIRST = 'FIRST',
+  LAST = 'LAST',
+}
+export type NullsPlacement = 'FIRST' | 'LAST';
 
 export interface RepositoryContext extends ErrorContext {
   operation: string;
@@ -59,10 +79,19 @@ export interface RepositoryContext extends ErrorContext {
   duration?: number;
 }
 
-export interface FindOptions extends QueryOptions {
-  where?: Partial<Record<string | number | symbol, unknown>>; // overridden in subclasses for keyof T
+// --------------------------------------------------------------------------------------
+// Typed FindOptions<T> helpers (backward compatible: default T = any)
+// --------------------------------------------------------------------------------------
+export type KeyOf<T> = Extract<keyof T, string>;
+/** Allows both strictly-typed keys of T and permissive ad-hoc filters for legacy callers */
+export type WhereInput<T> =
+  Partial<Record<string | number | symbol, unknown>> &
+  Partial<Pick<T, KeyOf<T>>>;
+
+export interface FindOptions<T = unknown> extends QueryOptions {
+  where?: WhereInput<T>;
   relations?: string[];
-  select?: string[]; // subclasses may tighten to (keyof T)[]
+  select?: Array<KeyOf<T>>;
 }
 
 export interface SaveOptions {
@@ -74,7 +103,7 @@ export interface SaveOptions {
   /** Optional transaction object passed through to concrete repos */
   tx?: unknown;
   /** Optional cancellation signal to abort long-running ops */
-  signal?: AbortSignal;
+  signal?: AbortSignal | { aborted: boolean };
 }
 
 export interface DeleteOptions {
@@ -84,7 +113,7 @@ export interface DeleteOptions {
   /** Optional transaction object passed through to concrete repos */
   tx?: unknown;
   /** Optional cancellation signal to abort long-running ops */
-  signal?: AbortSignal;
+  signal?: AbortSignal | { aborted: boolean };
 }
 
 // ============================================================================
@@ -128,11 +157,10 @@ export abstract class BaseRepository<T, ID = string> {
    */
   protected async findByIdWithErrorHandling(
     id: ID,
-    options: FindOptions = {}
+    options: FindOptions<T> = {}
   ): Promise<T | null> {
     const context = this.createContext('findById', { entityId: String(id) });
     const timer = this.startTimer('findById');
-
     try {
       this.logOperation('Finding entity by ID', context);
       this.throwIfAborted(options.signal, context);
@@ -144,13 +172,12 @@ export abstract class BaseRepository<T, ID = string> {
       } else {
         this.logOperation('Entity found successfully', context);
       }
-      
-      this.finishTimer(timer, context);
       return entity;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to find entity by ID', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'findById', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -158,11 +185,10 @@ export abstract class BaseRepository<T, ID = string> {
    * Find entities with error handling
    */
   protected async findWithErrorHandling(
-    options: FindOptions = {}
+    options: FindOptions<T> = {}
   ): Promise<T[]> {
     const context = this.createContext('find', { query: options });
     const timer = this.startTimer('find');
-
     try {
       this.logOperation('Finding entities', context);
       this.throwIfAborted(options.signal, context);
@@ -170,13 +196,12 @@ export abstract class BaseRepository<T, ID = string> {
       const entities = await this.find(options);
       
       this.logOperation(`Found ${entities.length} entities`, context);
-      
-      this.finishTimer(timer, context);
       return entities;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to find entities', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'find', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -184,11 +209,10 @@ export abstract class BaseRepository<T, ID = string> {
    * Find one entity with error handling
    */
   protected async findOneWithErrorHandling(
-    options: FindOptions = {}
+    options: FindOptions<T> = {}
   ): Promise<T | null> {
     const context = this.createContext('findOne', { query: options });
     const timer = this.startTimer('findOne');
-
     try {
       this.logOperation('Finding one entity', context);
       this.throwIfAborted(options.signal, context);
@@ -200,13 +224,12 @@ export abstract class BaseRepository<T, ID = string> {
       } else {
         this.logOperation('Entity found successfully', context);
       }
-      
-      this.finishTimer(timer, context);
       return entity;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to find entity', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'findOne', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -226,7 +249,6 @@ export abstract class BaseRepository<T, ID = string> {
       entityType: this.entityName
     });
     const timer = this.startTimer('save');
-
     try {
       this.logOperation('Saving entity', context);
       this.throwIfAborted(options.signal, context);
@@ -239,13 +261,12 @@ export abstract class BaseRepository<T, ID = string> {
       const saved = await this.save(entity, options);
       
       this.logOperation('Entity saved successfully', context);
-      
-      this.finishTimer(timer, context);
       return saved;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to save entity', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'save', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -262,13 +283,12 @@ export abstract class BaseRepository<T, ID = string> {
       entityType: this.entityName
     });
     const timer = this.startTimer('update');
-
     try {
       this.logOperation('Updating entity', context);
       this.throwIfAborted(options.signal, context);
 
       // Check if entity exists
-      const existing = await this.findById(id, { tx: options.tx, signal: options.signal } as any);
+      const existing = await this.findById(id, { tx: options.tx, signal: options.signal } as unknown);
       if (!existing) {
         throw this.createNotFoundError(id);
       }
@@ -281,13 +301,12 @@ export abstract class BaseRepository<T, ID = string> {
       const updated = await this.update(id, updates, options);
       
       this.logOperation('Entity updated successfully', context);
-      
-      this.finishTimer(timer, context);
       return updated;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to update entity', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'update', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -307,13 +326,12 @@ export abstract class BaseRepository<T, ID = string> {
       entityType: this.entityName
     });
     const timer = this.startTimer('delete');
-
     try {
       this.logOperation('Deleting entity', context);
       this.throwIfAborted(options.signal, context);
 
       // Check if entity exists
-      const existing = await this.findById(id, { tx: options.tx, signal: options.signal } as any);
+      const existing = await this.findById(id, { tx: options.tx, signal: options.signal } as unknown);
       if (!existing) {
         throw this.createNotFoundError(id);
       }
@@ -321,12 +339,11 @@ export abstract class BaseRepository<T, ID = string> {
       await this.delete(id, options);
       
       this.logOperation('Entity deleted successfully', context);
-      
-      this.finishTimer(timer, context);
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to delete entity', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'delete', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -338,11 +355,10 @@ export abstract class BaseRepository<T, ID = string> {
    * Count entities with error handling
    */
   protected async countWithErrorHandling(
-    options: FindOptions = {}
+    options: FindOptions<T> = {}
   ): Promise<number> {
     const context = this.createContext('count', { query: options });
     const timer = this.startTimer('count');
-
     try {
       this.logOperation('Counting entities', context);
       this.throwIfAborted(options.signal, context);
@@ -350,13 +366,12 @@ export abstract class BaseRepository<T, ID = string> {
       const count = await this.count(options);
       
       this.logOperation(`Counted ${count} entities`, context);
-      
-      this.finishTimer(timer, context);
       return count;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to count entities', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'count', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -368,25 +383,22 @@ export abstract class BaseRepository<T, ID = string> {
    * Check if entity exists with error handling
    */
   protected async existsWithErrorHandling(
-    id: ID
+    id: ID,
+    options?: { signal?: AbortSignal }
   ): Promise<boolean> {
     const context = this.createContext('exists', { entityId: String(id) });
     const timer = this.startTimer('exists');
-
     try {
       this.logOperation('Checking entity existence', context);
-      // no extra options here; callers can prefer findByIdWithErrorHandling with signal/tx
-      
+      this.throwIfAborted(options?.signal, context);
       const exists = await this.exists(id);
-      
       this.logOperation(`Entity exists: ${exists}`, context);
-      
-      this.finishTimer(timer, context);
       return exists;
     } catch (error) {
-      this.finishTimer(timer, context);
       this.logError('Failed to check entity existence', error as Error, context);
       throw this.enhanceRepositoryError(error as Error, 'exists', context);
+    } finally {
+      this.finishTimer(timer, context);
     }
   }
 
@@ -394,13 +406,13 @@ export abstract class BaseRepository<T, ID = string> {
   // ABSTRACT METHODS (TO BE IMPLEMENTED BY SUBCLASSES)
   // ============================================================================
 
-  protected abstract findById(id: ID, options?: FindOptions): Promise<T | null>;
-  protected abstract find(options?: FindOptions): Promise<T[]>;
-  protected abstract findOne(options?: FindOptions): Promise<T | null>;
+  protected abstract findById(id: ID, options?: FindOptions<T>): Promise<T | null>;
+  protected abstract find(options?: FindOptions<T>): Promise<T[]>;
+  protected abstract findOne(options?: FindOptions<T>): Promise<T | null>;
   protected abstract save(entity: T, options?: SaveOptions): Promise<T>;
   protected abstract update(id: ID, updates: Partial<T>, options?: SaveOptions): Promise<T>;
   protected abstract delete(id: ID, options?: DeleteOptions): Promise<void>;
-  protected abstract count(options?: FindOptions): Promise<number>;
+  protected abstract count(options?: FindOptions<T>): Promise<number>;
   protected abstract exists(id: ID): Promise<boolean>;
 
   // ============================================================================
@@ -463,7 +475,7 @@ export abstract class BaseRepository<T, ID = string> {
   ): Error {
     // If it's already a business error, just add context (duck-typing)
     if (isBusinessError(error)) {
-      (error as any).context = { ...(error as any).context, ...context };
+      (error as unknown).context = { ...(error as unknown).context, ...context };
       return error as Error;
     }
 
@@ -484,7 +496,7 @@ export abstract class BaseRepository<T, ID = string> {
    * Get entity ID (to be overridden by subclasses)
    */
   protected getEntityId(entity: T): string {
-    const anyEntity = entity as any;
+    const anyEntity = entity as unknown;
     if (anyEntity && (typeof anyEntity.id === 'string' || typeof anyEntity.id === 'number')) {
       return String(anyEntity.id);
     }
@@ -527,6 +539,11 @@ export abstract class BaseRepository<T, ID = string> {
         duration: context.duration
       })}`, this.constructor.name);
     }
+    // Lightweight debug hook for deeper tracing without changing call sites
+    if (this.options.enableLogging && this.shouldLog('debug')) {
+      // Intentionally terse to avoid log noise; only emits when logLevel==='debug'
+      this.logger.debug(`repo:${this.entityName}:${context.operation}`, this.constructor.name);
+    }
   }
 
   /**
@@ -541,7 +558,7 @@ export abstract class BaseRepository<T, ID = string> {
           entityId: context.entityId,
           duration: context.duration
         })}`,
-        (error as any)?.stack,
+        (error as unknown)?.stack,
         this.constructor.name
       );
     }
@@ -550,7 +567,7 @@ export abstract class BaseRepository<T, ID = string> {
   /**
    * Get performance metrics
    */
-  protected getPerformanceMetrics(): any {
+  protected getPerformanceMetrics(): unknown {
     return this.profiler.getStats();
   }
 
@@ -591,9 +608,9 @@ export abstract class BaseRepository<T, ID = string> {
     if (signal?.aborted) {
       throw createBusinessError(
         'REPOSITORY_OPERATION_ABORTED',
-        `${context.operation} aborted${(signal as any)?.reason ? `: ${(signal as any).reason}` : ''}`,
+        `${context.operation} aborted${(signal as unknown)?.reason ? `: ${(signal as unknown).reason}` : ''}`,
         this.constructor.name,
-        { ...context, reason: (signal as any)?.reason }
+        { ...context, reason: (signal as unknown)?.reason }
       );
     }
   }
@@ -652,13 +669,13 @@ export abstract class InfrastructureRepositoryBase<T, ID = string> extends BaseR
  * Query builder for common repository operations
  */
 export class RepositoryQueryBuilder {
-  private query: FindOptions = {};
+  private query: FindOptions<unknown> = {};
 
   static create(): RepositoryQueryBuilder {
     return new RepositoryQueryBuilder();
   }
 
-  where(condition: Record<string, any>): this {
+  where(condition: Record<string, unknown>): this {
     this.query.where = { ...this.query.where, ...condition };
     return this;
   }
@@ -673,9 +690,29 @@ export class RepositoryQueryBuilder {
     return this;
   }
 
-  orderBy(field: string, direction: 'ASC' | 'DESC' = 'ASC'): this {
+  orderBy(field: string, direction: OrderDir = OrderDirection.ASC, nulls?: NullsPlacement): this {
     this.query.orderBy = field;
-    this.query.orderDirection = (direction || 'ASC').toUpperCase() as 'ASC'|'DESC';
+    this.query.orderDirection = direction ?? OrderDirection.ASC;
+    if (nulls) this.query.orderNulls = nulls;
+    return this;
+  }
+
+  /**
+   * UNSAFE: allow adapter-specific order expressions (e.g., functions, JSON paths).
+   * Leaves typing permissive as this is the untyped builder.
+   */
+  orderByUnsafe(expression: string, direction: OrderDir = OrderDirection.ASC, nulls?: NullsPlacement): this {
+    this.query.orderBy = expression;
+    this.query.orderDirection = direction ?? OrderDirection.ASC;
+    if (nulls) this.query.orderNulls = nulls;
+    return this;
+  }
+
+  /**
+   * Set NULLS ordering independently (will apply to the next built options).
+   */
+  orderNulls(nulls: NullsPlacement): this {
+    this.query.orderNulls = nulls;
     return this;
   }
 
@@ -704,7 +741,102 @@ export class RepositoryQueryBuilder {
     return this;
   }
 
-  build(): FindOptions {
+  build(): FindOptions<unknown> {
+    return this.query;
+  }
+}
+
+// --------------------------------------------------------------------------------------
+// Strongly-typed RepositoryQueryBuilder<T>
+// (non-breaking: keep the existing builder; add a generic variant for new code)
+// --------------------------------------------------------------------------------------
+export class TypedRepositoryQueryBuilder<T> {
+  private query: FindOptions<T> = {};
+
+  static create<T>(): TypedRepositoryQueryBuilder<T> {
+    return new TypedRepositoryQueryBuilder<T>();
+  }
+
+  where(condition: WhereInput<T>): this {
+    this.query.where = { ...(this.query.where ?? {}), ...(condition ?? {}) };
+    return this;
+  }
+
+  limit(count: number): this {
+    this.query.limit = count;
+    return this;
+  }
+
+  offset(count: number): this {
+    this.query.offset = count;
+    return this;
+  }
+
+  orderBy(field: string, direction: OrderDir = OrderDirection.ASC, nulls?: NullsPlacement): this {
+    this.query.orderBy = field;
+    this.query.orderDirection = direction ?? OrderDirection.ASC;
+    if (nulls) this.query.orderNulls = nulls;
+    return this;
+  }
+
+  /**
+   * UNSAFE: allow adapter-specific order expressions (computed columns, functions, JSON paths).
+   * Casts to string to preserve FindOptions<T> shape without enforcing keyof<T>.
+   */
+  orderByUnsafe(expression: string, direction: OrderDir = OrderDirection.ASC, nulls?: NullsPlacement): this {
+    this.query.orderBy = String(expression);
+    this.query.orderDirection = direction ?? OrderDirection.ASC;
+    if (nulls) this.query.orderNulls = nulls;
+    return this;
+  }
+
+  /**
+   * Set NULLS ordering independently (will apply to the next built options).
+   */
+  orderNulls(nulls: NullsPlacement): this {
+    this.query.orderNulls = nulls;
+    return this;
+  }
+
+  relations(relations: string[]): this {
+    this.query.relations = relations;
+    return this;
+  }
+
+  /** Strongly typed select; still allows string[] for gradual migration */
+  select(fields: Array<KeyOf<T>> | string[]): this {
+    this.query.select = fields as Array<KeyOf<T>>;
+    return this;
+  }
+
+  /** Explicitly unsafe select for dynamic field names */
+  selectUnsafe(fields: string[]): this {
+    this.query.select = fields as Array<KeyOf<T>>;
+    return this;
+  }
+
+  /** Explicitly unsafe where for dynamic filters */
+  whereUnsafe(condition: Record<string, unknown>): this {
+    this.query.where = { ...(this.query.where ?? {}), ...condition } as WhereInput<T>;
+    return this;
+  }
+
+  includeDeleted(include: boolean = true): this {
+    this.query.includeDeleted = include;
+    return this;
+  }
+
+  tx(tx: unknown): this {
+    this.query.tx = tx;
+    return this;
+  }
+
+  cancellable(signal: AbortSignal): this {
+    this.query.signal = signal;
+    return this;
+  }
+
+  build(): FindOptions<T> {
     return this.query;
   }
 }
@@ -724,7 +856,8 @@ export function createPaginationOptions(
     limit,
     offset: (page - 1) * limit,
     orderBy: 'id',
-    orderDirection: 'ASC'
+    orderDirection: OrderDirection.ASC
+    // orderNulls intentionally omitted by default
   };
 }
 
@@ -734,8 +867,8 @@ export function createPaginationOptions(
 export function createFindOptionsWithPagination(
   page: number = 1,
   limit: number = 10,
-  where?: Partial<Record<string | number | symbol, unknown>>
-): FindOptions {
+  where?: WhereInput<unknown>
+): FindOptions<unknown> {
   return {
     ...createPaginationOptions(page, limit),
     ...(where && { where })
@@ -774,17 +907,17 @@ export interface PaginatedResult<T> {
  */
 export async function paginateRepository<T, ID = string>(
   repo: BaseRepository<T, ID>,
-  options: FindOptions & { page?: number; limit?: number } = {}
+  options: FindOptions<T> & { page?: number; limit?: number } = {}
 ): Promise<PaginatedResult<T>> {
   const page = Math.max(1, options.page ?? 1);
   const limit = Math.max(1, options.limit ?? 10);
-  const findOpts: FindOptions = {
+  const findOpts: FindOptions<T> = {
     ...options,
     ...createPaginationOptions(page, limit),
   };
   const [total, data] = await Promise.all([
-    (repo as any).countWithErrorHandling({ ...options }),
-    (repo as any).findWithErrorHandling(findOpts),
+    (repo as unknown).countWithErrorHandling({ ...options } as FindOptions<T>),
+    (repo as unknown).findWithErrorHandling(findOpts as FindOptions<T>),
   ]);
   const totalPages = calculateTotalPages(total, limit);
   return { data, page, limit, total, totalPages };
@@ -794,7 +927,7 @@ export async function paginateRepository<T, ID = string>(
 // Local type guard to avoid runtime `instanceof` on an erased type import
 // --------------------------------------------------------------------------------------
 function isBusinessError(err: unknown): err is BusinessRuleError & { context?: unknown } {
-  const e = err as any;
+  const e = err as unknown;
   return !!e && typeof e === 'object'
     && typeof e.code === 'string'
     && typeof e.message === 'string'

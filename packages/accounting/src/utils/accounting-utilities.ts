@@ -39,7 +39,7 @@ export {
   type AccountType as AccountTypeType,
   type Dict,
   assert,
-} from './safe-object';
+} from './safe-object-utilities';
 
 // Re-export collection utilities
 export {
@@ -50,11 +50,11 @@ export {
 // Re-export SSOT policies
 export { RoundingMethod } from './policies/rounding-policy';
 export { DEFAULT_CURRENCY, currencyDecimals } from './policies/currency-policy';
-export { ConditionOperator, LogicalOperator } from './shared-operators';
+export type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
 
 // Import for internal use
 import { isEmpty } from './collection-utilities';
-import { normalizeAccountCode } from './safe-object';
+import { normalizeAccountCode } from './safe-object-utilities';
 import { validateJournalEntry, validateAmount, type JournalEntryInput, type JournalLineInput } from './validation-utilities';
 import { createValidationError } from './error-utilities';
 
@@ -67,7 +67,7 @@ export {
   conditionalProperty,
   buildConditionalObject,
   safeSpread,
-} from './omitUndefined';
+} from './omit-undefined-utilities';
 
 // ============================================================================
 // CURRENCY UTILITIES

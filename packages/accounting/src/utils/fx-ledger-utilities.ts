@@ -7,8 +7,10 @@
  * @fileoverview FX rate management, conversion operations, and precision handling
  */
 
-import {
+import type {
   SupportedCurrency,
+} from './accounting-utilities';
+import { 
   CURRENCY_DECIMALS,
   roundToCurrency,
   toMinor,
@@ -16,7 +18,7 @@ import {
 } from './accounting-utilities';
 import { createValidationError } from './error-utilities';
 import { type ValidationIssue, type BusinessValidationResult, type ValidationCode } from './validation-utilities';
-import { formatDate, isValidDate, isAfterFns, isBeforeFns } from './date-utilities';
+import { formatDate, isValidDate } from './date-utilities';
 import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
@@ -56,6 +58,12 @@ export interface RateLookupOptions {
   source?: string;
   allowTriangulation?: boolean;
   baseCurrency?: SupportedCurrency;
+  /** When exact date not found, how many days back are we allowed to look. Defaults to 7. */
+  toleranceDays?: number;
+  /** If no direct pair, try inverse (to→from) and invert the rate. Defaults to true. */
+  allowInverse?: boolean;
+  /** If nothing found within tolerance, allow latest (by rateType). Defaults to false. */
+  fallbackToLatest?: boolean;
 }
 
 export interface TriangulationResult {
@@ -71,6 +79,21 @@ export interface TriangulationResult {
 export type RateType = 'mid' | 'buy' | 'sell' | 'spot' | 'forward';
 // RoundingMethod imported from policies/rounding-policy.ts (SSOT)
 
+/**
+ * Dealer selection policy — which rate type to use for a trade intent.
+ * By convention here:
+ * - 'buy'  = customer buys FROM_CURRENCY (dealer sells base to you) → ask
+ * - 'sell' = customer sells FROM_CURRENCY (dealer buys base from you) → bid
+ */
+export type TradeIntent = 'buy_from' | 'sell_from' | 'neutral';
+export function selectRateType(intent: TradeIntent): RateType {
+  switch (intent) {
+    case 'buy_from': return 'buy';
+    case 'sell_from': return 'sell';
+    default: return 'mid';
+  }
+}
+
 // ============================================================================
 // Rate Storage and Management
 // ============================================================================
@@ -85,6 +108,14 @@ function generateRateKey(fromCurrency: SupportedCurrency, toCurrency: SupportedC
   return `${fromCurrency}_${toCurrency}`;
 }
 
+/** Try inverse mapping of rate type when inverting a pair. */
+function invertRateType(rt: RateType): RateType {
+  // In most dealer conventions, inverting flips buy<->sell; others stay as-is.
+  if (rt === 'buy') return 'sell';
+  if (rt === 'sell') return 'buy';
+  return rt;
+}
+
 /**
  * Set exchange rate
  */
@@ -93,6 +124,12 @@ export function setExchangeRate(
   toCurrency: SupportedCurrency,
   rate: ExchangeRate
 ): void {
+  // Validate upfront (non-throwing — consumer may throw from their layer if needed)
+  const validation = validateExchangeRate(rate);
+  if (!validation.isValid) {
+    // keep behavior non-breaking: still allow setting, but mark invalid
+    rate.valid = false;
+  }
   const key = generateRateKey(fromCurrency, toCurrency);
   const rates = exchangeRates.get(key) || [];
   
@@ -142,6 +179,86 @@ export function getLatestExchangeRate(
     .sort((a, b) => b.date.getTime() - a.date.getTime());
   
   return filteredRates[0] || null;
+}
+
+/**
+ * Get exchange rate at or before a date, within a tolerance window (days).
+ */
+function getExchangeRateAtOrBefore(
+  fromCurrency: SupportedCurrency,
+  toCurrency: SupportedCurrency,
+  rateType: RateType,
+  date: Date,
+  toleranceDays: number
+): ExchangeRate | null {
+  const key = generateRateKey(fromCurrency, toCurrency);
+  const rates = (exchangeRates.get(key) || []).filter(r => r.rateType === rateType);
+  if (rates.length === 0) return null;
+  const target = formatDate(date);
+  // Keep rates on or before the target day (inclusive)
+  const candidates = rates
+    .filter(r => formatDate(r.date) <= target)
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
+  if (candidates.length === 0) return null;
+  const best = candidates[0];
+  if (!best) return null;
+  // Enforce tolerance in days (difference in UTC days)
+  const deltaMs = date.getTime() - best.date.getTime();
+  const days = Math.floor(deltaMs / (1000 * 60 * 60 * 24));
+  return days <= toleranceDays ? best : null;
+}
+
+/**
+ * Smart rate lookup with fallbacks:
+ *  1) exact day
+ *  2) at-or-before within tolerance
+ *  3) inverse pair (inverted rate, inverted type)
+ *  4) latest (opt-in)
+ */
+export function getExchangeRateSmart(
+  fromCurrency: SupportedCurrency,
+  toCurrency: SupportedCurrency,
+  opts: Required<Pick<RateLookupOptions, 'rateType'>> & Partial<RateLookupOptions>
+): ExchangeRate | null {
+  const rateType = opts.rateType;
+  const date = opts.date ?? new Date();
+  const toleranceDays = opts.toleranceDays ?? 7;
+  const allowInverse = opts.allowInverse ?? true;
+  const fallbackToLatest = opts.fallbackToLatest ?? false;
+  const source = opts.source;
+
+  // 1) exact
+  const exact = getExchangeRate(fromCurrency, toCurrency, rateType, date);
+  if (exact && (!source || exact.source === source)) return exact;
+
+  // 2) at-or-before within tolerance
+  const windowed = getExchangeRateAtOrBefore(fromCurrency, toCurrency, rateType, date, toleranceDays);
+  if (windowed && (!source || windowed.source === source)) return windowed;
+
+  // 3) inverse
+  if (allowInverse) {
+    const invType = invertRateType(rateType);
+    const invExact = getExchangeRate(toCurrency, fromCurrency, invType, date)
+      ?? getExchangeRateAtOrBefore(toCurrency, fromCurrency, invType, date, toleranceDays);
+    if (invExact && (!source || invExact.source === source)) {
+      return {
+        fromCurrency,
+        toCurrency,
+        rateType,
+        rate: invExact.rate === 0 ? 0 : 1 / invExact.rate,
+        date: invExact.date,
+        source: invExact.source,
+        valid: invExact.valid
+      };
+    }
+  }
+
+  // 4) latest (opt-in)
+  if (fallbackToLatest) {
+    const latest = getLatestExchangeRate(fromCurrency, toCurrency, rateType);
+    if (latest && (!source || latest.source === source)) return latest;
+  }
+  return null;
 }
 
 /**
@@ -209,7 +326,8 @@ export function convertAmount(
   amount: number,
   fromCurrency: SupportedCurrency,
   toCurrency: SupportedCurrency,
-  rate: ExchangeRate
+  rate: ExchangeRate,
+  rounding: RoundingMethod = RoundingMethod.HALF_UP
 ): ConversionResult {
   if (fromCurrency === toCurrency) {
     return {
@@ -234,18 +352,23 @@ export function convertAmount(
     );
   }
   
-  const originalAmount = toMinor(amount, fromCurrency);
-  const convertedAmount = Math.round(originalAmount * rate.rate);
-  const precisionDifference = convertedAmount - (originalAmount * rate.rate);
+  const originalMinor = toMinor(amount, fromCurrency);
+  // Ideal minor (float); then apply SSOT rounding to target currency units
+  const idealMinorFloat = originalMinor * rate.rate;
+  // Convert to target display units, round using policy, then back to minor for delta
+  const idealUnitsFloat = idealMinorFloat / Math.pow(10, CURRENCY_DECIMALS[toCurrency]);
+  const roundedUnits = applyCurrencyPrecision(idealUnitsFloat, toCurrency, rounding);
+  const convertedMinor = toMinor(roundedUnits, toCurrency);
+  const precisionMinorDiff = convertedMinor - Math.round(idealMinorFloat);
   
   return {
-    originalAmount: fromMinor(originalAmount, fromCurrency),
-    convertedAmount: fromMinor(convertedAmount, toCurrency),
+    originalAmount: fromMinor(originalMinor, fromCurrency),
+    convertedAmount: fromMinor(convertedMinor, toCurrency),
     fromCurrency,
     toCurrency,
     rate: rate.rate,
     rateType: rate.rateType,
-    precisionDifference: fromMinor(Math.abs(precisionDifference), toCurrency),
+    precisionDifference: fromMinor(Math.abs(precisionMinorDiff), toCurrency),
     conversionDate: rate.date,
   };
 }
@@ -257,7 +380,9 @@ export function convertWithTriangulation(
   amount: number,
   fromCurrency: SupportedCurrency,
   toCurrency: SupportedCurrency,
-  baseCurrency: SupportedCurrency
+  baseCurrency: SupportedCurrency,
+  opts: Partial<Pick<RateLookupOptions, 'rateType' | 'toleranceDays' | 'allowInverse' | 'fallbackToLatest'>> = {},
+  rounding: RoundingMethod = RoundingMethod.HALF_UP
 ): ConversionResult {
   if (fromCurrency === toCurrency) {
     return {
@@ -272,15 +397,16 @@ export function convertWithTriangulation(
     };
   }
   
-  // Try direct rate first
-  const directRate = getLatestExchangeRate(fromCurrency, toCurrency, 'mid');
+  const rateType: RateType = opts.rateType ?? 'mid';
+  // Try smart direct rate first
+  const directRate = getExchangeRateSmart(fromCurrency, toCurrency, { rateType, fallbackToLatest: true });
   if (directRate) {
-    return convertAmount(amount, fromCurrency, toCurrency, directRate);
+    return convertAmount(amount, fromCurrency, toCurrency, directRate, rounding);
   }
   
   // Use triangulation through base currency
-  const fromToBaseRate = getLatestExchangeRate(fromCurrency, baseCurrency, 'mid');
-  const baseToTargetRate = getLatestExchangeRate(baseCurrency, toCurrency, 'mid');
+  const fromToBaseRate = getExchangeRateSmart(fromCurrency, baseCurrency, { rateType, ...opts, fallbackToLatest: true });
+  const baseToTargetRate = getExchangeRateSmart(baseCurrency, toCurrency, { rateType, ...opts, fallbackToLatest: true });
   
   if (!fromToBaseRate || !baseToTargetRate) {
     throw createValidationError(
@@ -294,14 +420,15 @@ export function convertWithTriangulation(
   const triangulatedRate: ExchangeRate = {
     fromCurrency,
     toCurrency,
-    rateType: 'mid',
+    rateType,
     rate: fromToBaseRate.rate * baseToTargetRate.rate,
-    date: new Date(),
-    source: 'triangulation',
+    // keep the earlier of the two component dates for conservative reporting
+    date: new Date(Math.min(fromToBaseRate.date.getTime(), baseToTargetRate.date.getTime())),
+    source: `triangulation:${fromToBaseRate.source || 'n/a'}+${baseToTargetRate.source || 'n/a'}`,
     valid: true,
   };
   
-  return convertAmount(amount, fromCurrency, toCurrency, triangulatedRate);
+  return convertAmount(amount, fromCurrency, toCurrency, triangulatedRate, rounding);
 }
 
 /**
@@ -310,7 +437,9 @@ export function convertWithTriangulation(
 export function convertMultipleAmounts(
   amounts: CurrencyAmount[],
   toCurrency: SupportedCurrency,
-  date: Date
+  date: Date,
+  rateType: RateType = 'mid',
+  rounding: RoundingMethod = RoundingMethod.HALF_UP
 ): ConversionResult[] {
   const results: ConversionResult[] = [];
   
@@ -329,7 +458,10 @@ export function convertMultipleAmounts(
       continue;
     }
     
-    const rate = getExchangeRate(amount.currency, toCurrency, 'mid', date);
+    const rate =
+      getExchangeRate(amount.currency, toCurrency, rateType, date) ??
+      getExchangeRateAtOrBefore(amount.currency, toCurrency, rateType, date, 7) ??
+      getExchangeRateSmart(amount.currency, toCurrency, { rateType, date, allowInverse: true, fallbackToLatest: true });
     if (!rate) {
       throw createValidationError(
         'MISSING_EXCHANGE_RATE',
@@ -339,7 +471,7 @@ export function convertMultipleAmounts(
       );
     }
     
-    const result = convertAmount(amount.amount, amount.currency, toCurrency, rate);
+    const result = convertAmount(amount.amount, amount.currency, toCurrency, rate, rounding);
     results.push(result);
   }
   
@@ -369,7 +501,16 @@ export function applyCurrencyPrecision(
     case RoundingMethod.HALF_UP:
       return Math.round(amount * factor) / factor;
     case RoundingMethod.HALF_EVEN:
-      return Math.round(amount * factor) / factor; // Simplified implementation
+      {
+        // Banker's rounding: ties go to even
+        const scaled = amount * factor;
+        const floor = Math.floor(scaled);
+        const diff = scaled - floor;
+        if (diff > 0.5) return (floor + 1) / factor;
+        if (diff < 0.5) return floor / factor;
+        // exactly .5, choose even
+        return (floor % 2 === 0 ? floor : floor + 1) / factor;
+      }
     default:
       return roundToCurrency(amount, currency);
   }
@@ -475,9 +616,13 @@ export function getRatesByDateRange(
 ): ExchangeRate[] {
   const allRates = getAllRates(fromCurrency, toCurrency);
   
-  return allRates.filter(rate => 
-    isAfterFns(rate.date, startDate) && isBeforeFns(rate.date, endDate)
-  );
+  // Inclusive range [startDate, endDate]
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
+  return allRates.filter(rate => {
+    const d = formatDate(rate.date);
+    return d >= start && d <= end;
+  });
 }
 
 /**
@@ -527,4 +672,29 @@ export function getRateStatistics(
     latestDate: sortedRates[sortedRates.length - 1]?.date || null,
     earliestDate: sortedRates[0]?.date || null,
   };
+}
+
+/**
+ * Helper: trade-aware conversion that auto-selects rate type via dealer rule.
+ */
+export function convertTradeAmount(
+  amount: number,
+  fromCurrency: SupportedCurrency,
+  toCurrency: SupportedCurrency,
+  intent: TradeIntent,
+  date: Date = new Date(),
+  opts: Omit<RateLookupOptions, 'rateType' | 'date'> = {},
+  rounding: RoundingMethod = RoundingMethod.HALF_EVEN
+): ConversionResult {
+  const rateType = selectRateType(intent);
+  const rate = getExchangeRateSmart(fromCurrency, toCurrency, { ...opts, rateType, date, fallbackToLatest: true });
+  if (!rate) {
+    throw createValidationError(
+      'MISSING_EXCHANGE_RATE',
+      `No ${rateType} rate available for ${fromCurrency}->${toCurrency}`,
+      { fromCurrency, toCurrency, date, rateType },
+      { operation: 'convert-trade-amount' }
+    );
+  }
+  return convertAmount(amount, fromCurrency, toCurrency, rate, rounding);
 }

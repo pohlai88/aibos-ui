@@ -439,6 +439,50 @@ export function validateCOAMapping(mapping: COAMapping): ValidationResult {
 }
 
 /**
+ * Validate COA mapping set for overlaps and conflicts
+ * 
+ * @param mappings - COA mappings to validate
+ * @returns Validation result
+ * 
+ * @example
+ * ```typescript
+ * const validation = validateCOAMappingSet(mappings);
+ * if (!validation.isValid) {
+ *   console.error('Mapping set validation failed:', validation.errors);
+ * }
+ * ```
+ */
+export function validateCOAMappingSet(mappings: readonly COAMapping[]): ValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // entity + localAccount uniqueness over time
+  const byKey = new Map<string, COAMapping[]>();
+  for (const m of mappings) {
+    const k = `${m.entity}::${m.localAccount}`;
+    byKey.set(k, [...(byKey.get(k) || []), m]);
+  }
+
+  for (const [k, list] of byKey.entries()) {
+    const sorted = list.slice().sort((a,b)=> a.effectiveDate.getTime()-b.effectiveDate.getTime());
+    for (let i=0;i<sorted.length;i++){
+      const a = sorted[i]!;
+      for (let j=i+1;j<sorted.length;j++){
+        const b = sorted[j]!;
+        const aEnd = a.expiryDate ?? new Date(8640000000000000); // max date
+        const bEnd = b.expiryDate ?? new Date(8640000000000000);
+        const overlap = a.effectiveDate <= bEnd && b.effectiveDate <= aEnd;
+        if (overlap) {
+          errors.push(`Overlapping mappings for ${k} -> ${a.groupAccount} & ${b.groupAccount}`);
+        }
+      }
+    }
+  }
+
+  return { isValid: errors.length === 0, errors, warnings };
+}
+
+/**
  * Apply COA mapping to transactions
  * 
  * @param transactions - Transactions to map
@@ -460,7 +504,7 @@ export function applyCOAMapping(
     // Find applicable mapping
     const mapping = findApplicableMapping(transaction, mappings);
     
-    if (mapping) {
+    if (mapping && mapping.active) {
       const mappedTransaction: MappedTransaction = {
         original: transaction,
         mapped: {
@@ -502,13 +546,19 @@ export function translateCurrency(
   toCurrency: SupportedCurrency,
   rate: ExchangeRate
 ): TranslationResult {
-  // Validate inputs
-  if (amount < 0) {
-    throw new Error('Amount cannot be negative');
-  }
+  // Validate inputs (amount may be signed for debit/credit semantics)
 
+  // Allow identity translation when currencies are equal (rate.rate should be 1)
   if (fromCurrency === toCurrency) {
-    throw new Error('Source and target currencies cannot be the same');
+    return {
+      originalAmount: amount,
+      translatedAmount: amount,
+      fromCurrency,
+      toCurrency,
+      rate: 1,
+      translationDate: new Date(),
+      translationMethod: 'current_rate'
+    };
   }
 
   if (rate.rate <= 0) {
@@ -519,7 +569,7 @@ export function translateCurrency(
     throw new Error('Exchange rate currencies do not match translation currencies');
   }
 
-  // Calculate translated amount
+  // Calculate translated amount (preserve sign)
   const translatedAmount = amount * rate.rate;
 
   return {
@@ -566,8 +616,9 @@ export function translateTransaction(
     currency: targetCurrency
   };
 
-  // Calculate CTA (simplified calculation)
-  const cta = translation.translatedAmount - transaction.amount;
+  // CTA here is a per-transaction *remeasurement delta* for reporting currency.
+  // (Still simplified; true CTA is period-aggregate on equity/OCI.)
+  const cta = translation.translatedAmount - (transaction.amount);
 
   return {
     original: transaction,
@@ -596,21 +647,13 @@ export function validateCurrencyTranslation(translation: TranslationResult): Val
   const warnings: string[] = [];
 
   // Validate basic properties
-  if (translation.originalAmount < 0) {
-    errors.push('Original amount cannot be negative');
-  }
-
-  if (translation.translatedAmount < 0) {
-    errors.push('Translated amount cannot be negative');
-  }
+  // Signed amounts are allowed; remove error
 
   if (translation.rate <= 0) {
     errors.push('Exchange rate must be positive');
   }
 
-  if (translation.fromCurrency === translation.toCurrency) {
-    errors.push('Source and target currencies cannot be the same');
-  }
+  // Identity translations are permitted
 
   // Validate calculation
   const expectedTranslatedAmount = translation.originalAmount * translation.rate;
@@ -716,7 +759,7 @@ export function generateCTAEntries(cta: CTAResult): readonly JournalEntry[] {
       lines: [],
       totalDebits: 0,
       totalCredits: 0,
-      currency: 'USD', // Assuming reporting currency is USD
+      currency: 'USD', // Consider threading reporting currency if available on the entity
       status: 'draft',
       createdAt: new Date()
     };
@@ -764,8 +807,8 @@ export function generateCTAEntries(cta: CTAResult): readonly JournalEntry[] {
     }
 
     // Calculate totals
-    entry.totalDebits = entry.lines.reduce((sum: number, line: JournalLine) => sum + line.debit, 0);
-    entry.totalCredits = entry.lines.reduce((sum: number, line: JournalLine) => sum + line.credit, 0);
+    entry.totalDebits  = Number(entry.lines.reduce((s,l)=> s + l.debit ,0).toFixed(2));
+    entry.totalCredits = Number(entry.lines.reduce((s,l)=> s + l.credit,0).toFixed(2));
 
     entries.push(entry);
   }
@@ -888,8 +931,11 @@ export function applyTranslationRule(
     throw new Error('No applicable exchange rate found for translation rule');
   }
 
-  // Calculate total amount to translate
-  const totalAmount = data.transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+  // Scope: same entity AND same source currency
+  const scoped = data.transactions.filter(t =>
+    t.entity === data.entity && t.currency === rule.sourceCurrency
+  );
+  const totalAmount = scoped.reduce((sum, t) => sum + t.amount, 0);
 
   // Translate using rule
   return translateCurrency(
@@ -976,14 +1022,14 @@ function findApplicableMapping(
   transaction: Transaction,
   mappings: readonly COAMapping[]
 ): COAMapping | undefined {
-  const now = new Date();
+  const txDate = transaction.date;
 
   return mappings.find(mapping => 
     mapping.active &&
     mapping.entity === transaction.entity &&
     mapping.localAccount === transaction.account &&
-    mapping.effectiveDate <= now &&
-    (!mapping.expiryDate || mapping.expiryDate > now)
+    mapping.effectiveDate <= txDate &&
+    (!mapping.expiryDate || mapping.expiryDate > txDate)
   );
 }
 
@@ -1002,11 +1048,10 @@ function findRateForDate(
   fromCurrency: SupportedCurrency,
   toCurrency: SupportedCurrency
 ): ExchangeRate | undefined {
-  return rates.find(rate =>
-    rate.fromCurrency === fromCurrency &&
-    rate.toCurrency === toCurrency &&
-    rate.date <= date
-  );
+  const candidates = rates
+    .filter(r => r.fromCurrency === fromCurrency && r.toCurrency === toCurrency && r.date <= date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+  return candidates[candidates.length - 1];
 }
 
 /**
@@ -1028,8 +1073,9 @@ function calculatePeriodCTA(
   // 2. Translating them using appropriate rates
   // 3. Calculating the difference between translated and original amounts
   
-  // Placeholder calculation
-  const baseAmount = 100000; // This would be the actual period transactions
+  // Placeholder: retranslate a notional base net-asset figure with opening vs closing rate.
+  // In production, feed this function opening net assets (ex-cash) or equity balances.
+  const baseAmount = 100000;
   const openingRate = findRateForDate(rates, period.startDate, entity.currency, entity.reportingCurrency);
   const closingRate = findRateForDate(rates, period.endDate, entity.currency, entity.reportingCurrency);
   
@@ -1056,25 +1102,23 @@ function findApplicableRate(
   rates: readonly ExchangeRate[],
   period: FiscalPeriod
 ): ExchangeRate | undefined {
-  // Find rates matching the rule's source and target currencies
   const applicableRates = rates.filter(rate =>
     rate.fromCurrency === rule.sourceCurrency &&
     rate.toCurrency === rule.targetCurrency &&
     rate.date >= period.startDate &&
     rate.date <= period.endDate
-  );
+  ).sort((a,b)=> a.date.getTime()-b.date.getTime());
 
   if (applicableRates.length === 0) {
     return undefined;
   }
 
-  // Select rate based on translation method
   switch (rule.translationMethod) {
     case 'current_rate':
-      return applicableRates[applicableRates.length - 1]; // Latest rate
+      return applicableRates[applicableRates.length - 1]; // latest by date
     case 'historical_rate':
-      return applicableRates[0]; // Earliest rate
-    case 'average_rate':
+      return applicableRates[0]; // earliest
+    case 'average_rate': {
       const averageRate = applicableRates.reduce((sum, rate) => sum + rate.rate, 0) / applicableRates.length;
       const firstRate = applicableRates[0];
       if (!firstRate) {
@@ -1084,12 +1128,13 @@ function findApplicableRate(
         ...firstRate, 
         rate: averageRate
       };
+    }
     case 'closing_rate':
-      return applicableRates[applicableRates.length - 1]; // Latest rate
+      return applicableRates[applicableRates.length - 1]; // period-end
     case 'weighted_average':
       // This would require transaction data to calculate weighted average
       return applicableRates[applicableRates.length - 1]; // Fallback to latest
     default:
-      return applicableRates[applicableRates.length - 1]; // Default to latest
+      return applicableRates[applicableRates.length - 1];
   }
 }

@@ -5,7 +5,7 @@
  * in production and development environments.
  */
 
-import { createDict, safeSet } from '@aibos/utils';
+import { createDict, safeSet } from '../utils/internal';
 import * as React from 'react';
 
 export interface PerformanceMetrics {
@@ -326,7 +326,7 @@ export function performanceMonitored(componentName?: string) {
       const { measureRender } = usePerformanceMonitor(name);
 
       const { result } = measureRender(() => {
-        return React.createElement(Component, props as unknown);
+        return React.createElement(Component, props as React.Attributes);
       });
 
       // Wrap the result in a div to attach the ref, avoiding ref injection issues

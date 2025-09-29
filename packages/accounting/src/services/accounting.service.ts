@@ -378,17 +378,17 @@ export class AccountingService {
       );
     }
 
-    if ((originalEntry as any).status !== 'POSTED') {
+    if ((originalEntry as unknown).status !== 'POSTED') {
       throw createBusinessError(
         'INVALID_REVERSAL_STATUS',
-        `Cannot reverse journal entry in ${(originalEntry as any).status} status`,
+        `Cannot reverse journal entry in ${(originalEntry as unknown).status} status`,
         'AccountingService',
         context
       );
     }
 
     // Create a reversal journal entry with opposite amounts
-    const reversalEntries = (originalEntry as any).entries.map((entry: any) => ({
+    const reversalEntries = (originalEntry as unknown).entries.map((entry: unknown) => ({
       accountCode: entry.accountCode,
       debitAmount: entry.creditAmount, // Swap debit/credit
       creditAmount: entry.debitAmount,
@@ -399,8 +399,8 @@ export class AccountingService {
     const reversalCommand = new PostJournalEntryCommand({
       journalEntryId: `REV-${journalEntryId}`,
       entries: reversalEntries,
-      reference: `REV-${(originalEntry as any).reference || journalEntryId}`,
-      description: `Reversal: ${(originalEntry as any).description || ''} - ${reason}`,
+      reference: `REV-${(originalEntry as unknown).reference || journalEntryId}`,
+      description: `Reversal: ${(originalEntry as unknown).description || ''} - ${reason}`,
       userId: reversedBy,
       postingDate: new Date(),
       baseCurrency: 'MYR',
@@ -412,7 +412,7 @@ export class AccountingService {
 
     // Update the original entry status to REVERSED
     const reversedEntry = originalEntry;
-    (reversedEntry as any).status = 'REVERSED';
+    (reversedEntry as unknown).status = 'REVERSED';
     await this.journalEntryRepository.save(reversedEntry);
     
     // Record performance metrics

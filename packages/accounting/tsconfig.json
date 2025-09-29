@@ -1,19 +1,27 @@
 {
   "extends": "../../tsconfig.base.json",
+  "references": [
+    { "path": "../eventsourcing" }
+  ],
   "compilerOptions": {
     "composite": true,
-    "outDir": "./dist",
     "declaration": true,
     "declarationMap": true,
-    "skipLibCheck": true
+    "outDir": "dist",
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "baseUrl": ".",
+    "paths": {
+      "@aibos/eventsourcing": ["../eventsourcing/dist/types/src/index.d.ts"]
+    },
+    "rootDir": "src"
   },
-  "include": [
-    "src/**/*.ts", 
-    "src/**/*.tsx"
-  ],
+  "include": ["src"],
   "exclude": [
-    "src/utils/**/*.spec.ts",
-    "src/utils/**/*.test.ts",
-    "src/utils/__tests__/**/*"
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**",
+    "dist",
+    "node_modules",
+    ".next"
   ]
 }

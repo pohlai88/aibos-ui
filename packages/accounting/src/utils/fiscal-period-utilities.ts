@@ -16,6 +16,34 @@ import { createValidationError } from './error-utilities';
 import { addDaysFns, getEndOfMonth, isAfterFns, isBeforeFns, isSameDate } from './date-utilities';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Error messages
+const ERROR_MESSAGES = {
+  PERIOD_STRUCTURE_REQUIRED: 'Period structure is required',
+  FISCAL_PERIOD_REQUIRED: 'Fiscal period is required',
+  FISCAL_YEAR_REQUIRED: 'Fiscal year is required',
+} as const;
+
+// Period status values
+const PERIOD_STATUS = {
+  OPEN: 'open',
+  CLOSED: 'closed',
+  SOFT_LOCKED: 'soft-locked',
+} as const;
+
+// Operation types
+const OPERATION_TYPES = {
+  CREATE_FISCAL_YEAR: 'create-fiscal-year',
+  CALCULATE_PERIOD_BOUNDARIES: 'calculate-period-boundaries',
+  OPEN_PERIOD: 'open-period',
+  CLOSE_PERIOD: 'close-period',
+  SOFT_LOCK_PERIOD: 'soft-lock-period',
+  FIND_PERIOD_BY_DATE: 'find-period-by-date',
+} as const;
+
+// ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
 
@@ -23,6 +51,31 @@ export interface PeriodStructure {
   type: 'monthly' | 'quarterly' | '4-4-5' | 'custom';
   periods: number;
   customPeriods?: CustomPeriodDefinition[];
+  /**
+   * Optional fiscal start month (0 = Jan, 11 = Dec). Defaults to 0 (January).
+   * Applies to 'monthly', 'quarterly', and '4-4-5' structures.
+   */
+  startMonth?: number;
+  /**
+   * Higher-precision alternative to startMonth.
+   * If provided, this takes precedence over startMonth for the fiscal year start anchor.
+   * Example: new Date(2025, 3, 1) for an Apr 1 start.
+   */
+  fiscalYearStartDate?: Date;
+  /**
+   * For 4-4-5 calendars: if true, extend the FINAL period by +7 days
+   * to create a 53-week fiscal year when needed. Default: false.
+   * (Keeps naming stable; we annotate the last period's name.)
+   */
+  addExtraWeekAtYearEnd?: boolean;
+  /**
+   * Rule-based 53-week handling for 4-4-5 calendars.
+   * - 'auto': Automatically detect when fiscal year ending Saturday would spill into next month
+   * - 'never': Always use 52 weeks (standard year)
+   * - 'always': Always use 53 weeks (extended year)
+   * Default: 'auto'
+   */
+  fiftyThreeWeekRule?: 'auto' | 'never' | 'always';
 }
 
 export interface CustomPeriodDefinition {
@@ -103,16 +156,16 @@ export function createFiscalYear(year: number, structure: PeriodStructure): Fisc
       'INVALID_ACCOUNTING_INPUT',
       'Year must be a valid number between 1900 and 2100',
       year,
-      { operation: 'create-fiscal-year' }
+      { operation: OPERATION_TYPES.CREATE_FISCAL_YEAR }
     );
   }
 
   if (!structure) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Period structure is required',
+      ERROR_MESSAGES.PERIOD_STRUCTURE_REQUIRED,
       structure,
-      { operation: 'create-fiscal-year' }
+      { operation: OPERATION_TYPES.CREATE_FISCAL_YEAR }
     );
   }
 
@@ -123,7 +176,7 @@ export function createFiscalYear(year: number, structure: PeriodStructure): Fisc
       'INVALID_ACCOUNTING_INPUT',
       `Invalid period structure: ${structureValidation.errors.join(', ')}`,
       structure,
-      { operation: 'create-fiscal-year' }
+      { operation: OPERATION_TYPES.CREATE_FISCAL_YEAR }
     );
   }
 
@@ -158,6 +211,41 @@ export function createFiscalYear(year: number, structure: PeriodStructure): Fisc
   };
 }
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Determine if a 53-week year is needed based on calendar rules.
+ * Rule: Add 53rd week when fiscal year ending Saturday would spill into next month.
+ */
+function shouldUse53WeekYear(startDate: Date, rule: 'auto' | 'never' | 'always'): boolean {
+  switch (rule) {
+    case 'never':
+      return false;
+    case 'always':
+      return true;
+    case 'auto':
+    default:
+      // Calculate what the 52-week year end would be
+      const fiftyTwoWeekEnd = addDaysFns(startDate, 52 * 7 - 1);
+      
+      // Check if the 52-week end date falls on a Saturday
+      const isSaturday = fiftyTwoWeekEnd.getDay() === 6; // 6 = Saturday
+      
+      // Check if adding one more week would push us into the next month
+      const fiftyThreeWeekEnd = addDaysFns(fiftyTwoWeekEnd, 7);
+      const wouldSpillIntoNextMonth = fiftyThreeWeekEnd.getMonth() !== fiftyTwoWeekEnd.getMonth();
+      
+      // Use 53 weeks if it's Saturday and would spill into next month
+      return isSaturday && wouldSpillIntoNextMonth;
+  }
+}
+
+// ============================================================================
+// PERIOD STRUCTURE VALIDATION
+// ============================================================================
+
 /**
  * Validate period structure
  */
@@ -166,7 +254,7 @@ export function validatePeriodStructure(structure: PeriodStructure): ValidationR
   const warnings: string[] = [];
 
   if (!structure) {
-    errors.push('Period structure is required');
+    errors.push(ERROR_MESSAGES.PERIOD_STRUCTURE_REQUIRED);
     return { isValid: false, errors, warnings };
   }
 
@@ -179,6 +267,28 @@ export function validatePeriodStructure(structure: PeriodStructure): ValidationR
   // Validate periods count
   if (typeof structure.periods !== 'number' || structure.periods < 1 || structure.periods > 13) {
     errors.push('Periods count must be between 1 and 13');
+  }
+
+  // Validate optional startMonth
+  if (structure.startMonth !== undefined) {
+    if (
+      typeof structure.startMonth !== 'number' ||
+      structure.startMonth < 0 ||
+      structure.startMonth > 11
+    ) {
+      errors.push('startMonth must be an integer between 0 (Jan) and 11 (Dec)');
+    }
+  }
+
+  // Validate optional fiscalYearStartDate
+  if (structure.fiscalYearStartDate !== undefined) {
+    if (!(structure.fiscalYearStartDate instanceof Date) || isNaN(structure.fiscalYearStartDate.getTime())) {
+      errors.push('fiscalYearStartDate must be a valid Date');
+    }
+    if (structure.startMonth !== undefined) {
+      // Not an error: we allow both, but clarify precedence
+      warnings.push('fiscalYearStartDate takes precedence over startMonth when both are provided');
+    }
   }
 
   // Validate custom periods
@@ -221,6 +331,30 @@ export function validatePeriodStructure(structure: PeriodStructure): ValidationR
     warnings.push('4-4-5 structure typically has 12 periods');
   }
 
+  // Gentle guidance for monthly/quarterly period counts
+  if (structure.type === 'monthly' && structure.periods !== 12) {
+    warnings.push('Monthly structure typically has 12 periods');
+  }
+  if (structure.type === 'quarterly' && structure.periods !== 4) {
+    warnings.push('Quarterly structure typically has 4 periods');
+  }
+
+  // 4-4-5 specific flags
+  if (structure.type === '4-4-5' && structure.addExtraWeekAtYearEnd !== undefined && typeof structure.addExtraWeekAtYearEnd !== 'boolean') {
+    errors.push('addExtraWeekAtYearEnd must be a boolean when provided');
+  }
+  if (structure.type === '4-4-5' && structure.fiftyThreeWeekRule !== undefined) {
+    const validRules = ['auto', 'never', 'always'];
+    if (!validRules.includes(structure.fiftyThreeWeekRule)) {
+      errors.push(`fiftyThreeWeekRule must be one of: ${validRules.join(', ')}`);
+    }
+  }
+  
+  // Warn when both 53-week options are provided
+  if (structure.type === '4-4-5' && structure.addExtraWeekAtYearEnd !== undefined && structure.fiftyThreeWeekRule !== undefined) {
+    warnings.push('addExtraWeekAtYearEnd takes precedence over fiftyThreeWeekRule when both are provided');
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -237,30 +371,42 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
       'INVALID_ACCOUNTING_INPUT',
       'Year must be a valid number between 1900 and 2100',
       year,
-      { operation: 'calculate-period-boundaries' }
+      { operation: OPERATION_TYPES.CALCULATE_PERIOD_BOUNDARIES }
     );
   }
 
   if (!structure) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Period structure is required',
+      ERROR_MESSAGES.PERIOD_STRUCTURE_REQUIRED,
       structure,
-      { operation: 'calculate-period-boundaries' }
+      { operation: OPERATION_TYPES.CALCULATE_PERIOD_BOUNDARIES }
     );
   }
 
   const boundaries: PeriodBoundary[] = [];
 
+  const startMonth = structure.startMonth ?? 0; // default Jan
+  const startOfFiscalYear = structure.fiscalYearStartDate
+    ? new Date(structure.fiscalYearStartDate) // take precedence if provided
+    : new Date(year, startMonth, 1);
+
+  // Helper to add months with year wrap
+  const addMonths = (d: Date, m: number) => {
+    const copy = new Date(d);
+    copy.setMonth(copy.getMonth() + m);
+    return copy;
+  };
+
   switch (structure.type) {
     case 'monthly':
-      for (let month = 0; month < 12; month++) {
-        const startDate = new Date(year, month, 1);
+      for (let i = 0; i < 12; i++) {
+        const startDate = addMonths(startOfFiscalYear, i);
         const endDate = getEndOfMonth(startDate);
         
         boundaries.push({
-          period: month + 1,
-          name: `Month ${month + 1}`,
+          period: i + 1,
+          name: `Month ${i + 1}`,
           startDate,
           endDate,
         });
@@ -269,9 +415,11 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
 
     case 'quarterly':
       for (let quarter = 0; quarter < 4; quarter++) {
-        const startMonth = quarter * 3;
-        const startDate = new Date(year, startMonth, 1);
-        const endDate = new Date(year, startMonth + 2, 31);
+        const qm = quarter * 3;
+        const startDate = addMonths(startOfFiscalYear, qm);
+        // Use end-of-month for the quarter's third month to avoid invalid date bugs
+        const quarterThirdMonth = addMonths(startOfFiscalYear, qm + 2);
+        const endDate = getEndOfMonth(quarterThirdMonth);
         
         boundaries.push({
           period: quarter + 1,
@@ -285,7 +433,7 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
     case '4-4-5':
       // 4-4-5 structure: 4 weeks, 4 weeks, 5 weeks pattern
       const weeksPerPeriod = [4, 4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 5];
-      let currentDate = new Date(year, 0, 1);
+      let currentDate = new Date(startOfFiscalYear);
       
       for (let period = 0; period < 12; period++) {
         const startDate = new Date(currentDate);
@@ -300,6 +448,21 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
         
         currentDate = addDaysFns(endDate, 1);
       }
+
+      // Rule-based 53-week adjustment
+      const rule = structure.fiftyThreeWeekRule ?? 'auto';
+      const use53Weeks = shouldUse53WeekYear(startOfFiscalYear, rule);
+      
+      // Legacy support: addExtraWeekAtYearEnd takes precedence if explicitly set
+      const shouldExtend = structure.addExtraWeekAtYearEnd ?? use53Weeks;
+      
+      if (shouldExtend) {
+        const last = boundaries[boundaries.length - 1];
+        if (last) {
+          last.endDate = addDaysFns(last.endDate, 7);
+          last.name = `${last.name} (53w)`;
+        }
+      }
       break;
 
     case 'custom':
@@ -308,7 +471,7 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
           'INVALID_ACCOUNTING_INPUT',
           'Custom periods are required for custom structure',
           structure,
-          { operation: 'calculate-period-boundaries' }
+          { operation: OPERATION_TYPES.CALCULATE_PERIOD_BOUNDARIES }
         );
       }
       
@@ -327,7 +490,7 @@ export function calculatePeriodBoundaries(year: number, structure: PeriodStructu
         'INVALID_ACCOUNTING_INPUT',
         `Unsupported period structure type: ${structure.type}`,
         structure,
-        { operation: 'calculate-period-boundaries' }
+        { operation: OPERATION_TYPES.CALCULATE_PERIOD_BOUNDARIES }
       );
   }
 
@@ -345,9 +508,9 @@ export function openPeriod(period: FiscalPeriod): PeriodStatusChange {
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
-      { operation: 'open-period' }
+      { operation: OPERATION_TYPES.OPEN_PERIOD }
     );
   }
 
@@ -358,7 +521,7 @@ export function openPeriod(period: FiscalPeriod): PeriodStatusChange {
       'INVALID_ACCOUNTING_INPUT',
       'Period is already open',
       period,
-      { operation: 'open-period' }
+      { operation: OPERATION_TYPES.OPEN_PERIOD }
     );
   }
 
@@ -367,6 +530,9 @@ export function openPeriod(period: FiscalPeriod): PeriodStatusChange {
     openedAt: new Date(),
     openedBy: 'system', // Would be passed as parameter in real implementation
   };
+
+  // Apply mutation so caller's period reflects the new status
+  period.status = newStatus;
 
   return {
     period,
@@ -385,9 +551,9 @@ export function closePeriod(period: FiscalPeriod): PeriodStatusChange {
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
-      { operation: 'close-period' }
+      { operation: OPERATION_TYPES.CLOSE_PERIOD }
     );
   }
 
@@ -398,7 +564,7 @@ export function closePeriod(period: FiscalPeriod): PeriodStatusChange {
       'INVALID_ACCOUNTING_INPUT',
       'Period is already closed',
       period,
-      { operation: 'close-period' }
+      { operation: OPERATION_TYPES.CLOSE_PERIOD }
     );
   }
 
@@ -408,6 +574,9 @@ export function closePeriod(period: FiscalPeriod): PeriodStatusChange {
     closedAt: new Date(),
     closedBy: 'system', // Would be passed as parameter in real implementation
   };
+
+  // Apply mutation so caller's period reflects the new status
+  period.status = newStatus;
 
   return {
     period,
@@ -426,27 +595,30 @@ export function softLockPeriod(period: FiscalPeriod): PeriodStatusChange {
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
-      { operation: 'soft-lock-period' }
+      { operation: OPERATION_TYPES.SOFT_LOCK_PERIOD }
     );
   }
 
   const previousStatus = { ...period.status };
   
-  if (period.status.status === 'soft-locked') {
+  if (period.status.status === PERIOD_STATUS.SOFT_LOCKED) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
       'Period is already soft-locked',
       period,
-      { operation: 'soft-lock-period' }
+      { operation: OPERATION_TYPES.SOFT_LOCK_PERIOD }
     );
   }
 
   const newStatus: PeriodStatus = {
     ...previousStatus,
-    status: 'soft-locked',
+    status: PERIOD_STATUS.SOFT_LOCKED,
   };
+
+  // Apply mutation so caller's period reflects the new status
+  period.status = newStatus;
 
   return {
     period,
@@ -465,7 +637,7 @@ export function getPeriodStatus(period: FiscalPeriod): PeriodStatus {
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
       { operation: 'get-period-status' }
     );
@@ -488,7 +660,7 @@ export function validateBackdateWindow(
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
       { operation: 'validate-backdate-window' }
     );
@@ -532,7 +704,7 @@ export function calculateBackdateWindow(period: FiscalPeriod): { start: Date; en
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
       { operation: 'calculate-backdate-window' }
     );
@@ -554,7 +726,7 @@ export function isWithinBackdateWindow(period: FiscalPeriod, date: Date): boolea
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal period is required',
+      ERROR_MESSAGES.FISCAL_PERIOD_REQUIRED,
       period,
       { operation: 'is-within-backdate-window' }
     );
@@ -586,9 +758,9 @@ export function findPeriodByDate(fiscalYear: FiscalYear, date: Date): FiscalPeri
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
-      { operation: 'find-period-by-date' }
+      { operation: OPERATION_TYPES.FIND_PERIOD_BY_DATE }
     );
   }
 
@@ -597,7 +769,7 @@ export function findPeriodByDate(fiscalYear: FiscalYear, date: Date): FiscalPeri
       'INVALID_ACCOUNTING_INPUT',
       'Date is required',
       date,
-      { operation: 'find-period-by-date' }
+      { operation: OPERATION_TYPES.FIND_PERIOD_BY_DATE }
     );
   }
 
@@ -627,7 +799,7 @@ export function getNextPeriod(currentPeriod: FiscalPeriod, fiscalYear: FiscalYea
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-next-period' }
     );
@@ -653,7 +825,7 @@ export function getPreviousPeriod(currentPeriod: FiscalPeriod, fiscalYear: Fisca
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-previous-period' }
     );
@@ -670,7 +842,7 @@ export function getOpenPeriods(fiscalYear: FiscalYear): FiscalPeriod[] {
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-open-periods' }
     );
@@ -686,7 +858,7 @@ export function getClosedPeriods(fiscalYear: FiscalYear): FiscalPeriod[] {
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-closed-periods' }
     );
@@ -702,14 +874,16 @@ export function getCurrentPeriod(fiscalYear: FiscalYear): FiscalPeriod | null {
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-current-period' }
     );
   }
 
   const openPeriods = getOpenPeriods(fiscalYear);
-  return openPeriods.length > 0 ? openPeriods[0]! : null;
+  // Prefer the open period with the earliest start date (first open chronologically)
+  if (openPeriods.length === 0) return null;
+  return openPeriods.slice().sort((a, b) => a.startDate.getTime() - b.startDate.getTime())[0]!;
 }
 
 /**
@@ -778,7 +952,7 @@ export function getFiscalYearSummary(fiscalYear: FiscalYear): {
   if (!fiscalYear) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Fiscal year is required',
+      ERROR_MESSAGES.FISCAL_YEAR_REQUIRED,
       fiscalYear,
       { operation: 'get-fiscal-year-summary' }
     );
@@ -786,7 +960,7 @@ export function getFiscalYearSummary(fiscalYear: FiscalYear): {
 
   const openPeriods = getOpenPeriods(fiscalYear);
   const closedPeriods = getClosedPeriods(fiscalYear);
-  const softLockedPeriods = fiscalYear.periods.filter(period => period.status.status === 'soft-locked');
+  const softLockedPeriods = fiscalYear.periods.filter(period => period.status.status === PERIOD_STATUS.SOFT_LOCKED);
   const currentPeriod = getCurrentPeriod(fiscalYear);
 
   return {

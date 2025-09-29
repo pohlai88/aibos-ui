@@ -40,6 +40,9 @@ import type {
 import type { 
   FiscalPeriod
 } from './fiscal-period-utilities';
+import {
+  roundToCurrency,
+} from './accounting-utilities';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -324,6 +327,11 @@ export const ABSORPTION_BASES = {
 } as const;
 
 // ============================================================================
+// INTERNAL CONSTANTS
+// ============================================================================
+const NUM_TOLERANCE = 1e-6; // generic numeric tolerance (non-currency)
+
+// ============================================================================
 // OVERHEAD ABSORPTION
 // ============================================================================
 
@@ -333,17 +341,28 @@ export const ABSORPTION_BASES = {
  * @param overhead - Manufacturing overhead
  * @param base - Absorption base
  * @param period - Fiscal period
+ * @param options - Optional configuration for rate calculation
  * @returns Overhead rate calculation
  * 
  * @example
  * ```typescript
  * const rate = calculateOverheadRate(overhead, 'direct_labor_hours', period);
+ * const predeterminedRate = calculateOverheadRate(overhead, 'machine_hours', period, {
+ *   budgetedBaseQuantity: 12500,
+ *   method: 'predetermined'
+ * });
  * ```
  */
 export function calculateOverheadRate(
   overhead: ManufacturingOverhead,
   base: AbsorptionBase,
-  period: FiscalPeriod
+  period: FiscalPeriod,
+  options?: {
+    /** Budgeted base quantity for predetermined/standard rate (e.g., budgeted DLH, MH). */
+    budgetedBaseQuantity?: number;
+    /** Explicit calculation method override. Defaults to 'predetermined'. */
+    method?: RateCalculationMethod;
+  }
 ): OverheadRate {
   // Validate inputs
   if (overhead.totalCost <= 0) {
@@ -354,30 +373,28 @@ export function calculateOverheadRate(
     throw new Error('Period start date must be before end date');
   }
 
-  // Calculate rate based on base
-  let rate: number;
-  let calculationMethod: RateCalculationMethod = 'predetermined';
+  // Determine calculation method
+  const calculationMethod: RateCalculationMethod = options?.method ?? 'predetermined';
 
-  switch (base) {
-    case 'direct_labor_hours':
-      // Rate per direct labor hour
-      rate = overhead.totalCost / 1000; // Placeholder calculation
-      break;
-    case 'direct_labor_cost':
-      // Rate per dollar of direct labor
-      rate = overhead.totalCost / 50000; // Placeholder calculation
-      break;
-    case 'machine_hours':
-      // Rate per machine hour
-      rate = overhead.totalCost / 800; // Placeholder calculation
-      break;
-    case 'units_produced':
-      // Rate per unit produced
-      rate = overhead.totalCost / 1000; // Placeholder calculation
-      break;
-    default:
-      throw new Error(`Unsupported absorption base: ${base}`);
+  // Where possible, compute RM per base unit using a supplied budgeted base quantity.
+  // Fallback to legacy placeholders ONLY if not provided (keeps backward compatibility).
+  const fallbackBaseQtyByBase: Partial<Record<AbsorptionBase, number>> = {
+    direct_labor_hours: 1000,
+    direct_labor_cost: 50000,
+    machine_hours: 800,
+    units_produced: 1000,
+  };
+  const baseQty =
+    options?.budgetedBaseQuantity ??
+    fallbackBaseQtyByBase[base as keyof typeof fallbackBaseQtyByBase];
+
+  if (baseQty === undefined || baseQty <= 0) {
+    throw new Error(
+      `Missing or invalid budgeted base quantity for base '${base}'. Pass options.budgetedBaseQuantity to compute a predetermined rate.`
+    );
   }
+
+  const rate = overhead.totalCost / baseQty;
 
   return {
     id: `rate-${overhead.id}-${base}-${period.period}`,
@@ -459,17 +476,17 @@ export function validateOverheadAbsorption(absorption: AbsorptionResult): Valida
 
   // Validate calculation
   const expectedAmount = absorption.baseQuantity * absorption.rate.rate;
-  if (Math.abs(absorption.absorbedAmount - expectedAmount) > 0.01) {
+  if (Math.abs(absorption.absorbedAmount - expectedAmount) > NUM_TOLERANCE) {
     errors.push('Absorbed amount calculation is incorrect');
   }
 
   // Warnings
-  if (absorption.absorbedAmount > absorption.overhead.totalCost) {
+  if (absorption.absorbedAmount - absorption.overhead.totalCost > NUM_TOLERANCE) {
     warnings.push('Absorbed amount exceeds total overhead cost');
   }
-
-  if (absorption.rate.rate > 100) {
-    warnings.push('Overhead rate exceeds 100% - verify reasonableness');
+  // Note: rate is RM per base unit (not a percentage). Keep reasonableness check light-touch:
+  if (!Number.isFinite(absorption.rate.rate) || absorption.rate.rate <= 0) {
+    warnings.push('Overhead rate looks invalid (non-finite or non-positive)');
   }
 
   return {
@@ -513,7 +530,8 @@ export function calculateOverheadVariance(
   // Calculate variance
   const varianceAmount = actual.actualCost - absorbed.absorbedCost;
   const varianceType: VarianceType = varianceAmount >= 0 ? 'unfavorable' : 'favorable';
-  const variancePercentage = (Math.abs(varianceAmount) / absorbed.absorbedCost) * 100;
+  const denom = Math.abs(absorbed.absorbedCost);
+  const variancePercentage = denom > NUM_TOLERANCE ? (Math.abs(varianceAmount) / denom) * 100 : 0;
 
   return {
     id: `variance-${actual.overhead.id}-${period.period}`,
@@ -541,10 +559,12 @@ export function calculateOverheadVariance(
  */
 export function analyzeVarianceComponents(variance: OverheadVariance): VarianceAnalysis {
   // Calculate variance components
-  const volumeVariance = variance.varianceAmount * 0.3; // Placeholder calculation
-  const efficiencyVariance = variance.varianceAmount * 0.4; // Placeholder calculation
-  const spendingVariance = variance.varianceAmount * 0.3; // Placeholder calculation
-  const capacityVariance = variance.varianceAmount * 0.1; // Placeholder calculation
+  // Keep placeholders but ensure proportions sum to 1 and sign is preserved.
+  const base = variance.varianceAmount;
+  const volumeVariance = base * 0.30;
+  const efficiencyVariance = base * 0.40;
+  const spendingVariance = base * 0.20;
+  const capacityVariance = base * 0.10;
 
   return {
     variance,
@@ -626,8 +646,11 @@ export function postVarianceAdjustments(variance: OverheadVariance): readonly Jo
     }
 
     // Calculate totals
-    entry.totalDebits = entry.lines.reduce((sum: number, line) => sum + line.debit, 0);
-    entry.totalCredits = entry.lines.reduce((sum: number, line) => sum + line.credit, 0);
+    const totalDebits = entry.lines.reduce((sum: number, line) => sum + line.debit, 0);
+    const totalCredits = entry.lines.reduce((sum: number, line) => sum + line.credit, 0);
+    // Round to currency to avoid penny drift
+    entry.totalDebits = roundToCurrency(totalDebits, variance.overhead.currency);
+    entry.totalCredits = roundToCurrency(totalCredits, variance.overhead.currency);
 
     entries.push(entry);
   }
@@ -699,7 +722,9 @@ export function allocateOverheadCosts(
     totalAllocated += amount;
   }
 
-  const unallocatedAmount = overhead.totalCost - totalAllocated;
+  // Clamp unallocated to 0 within tolerance; then round totals to currency.
+  let unallocatedAmount = overhead.totalCost - totalAllocated;
+  if (Math.abs(unallocatedAmount) < NUM_TOLERANCE) unallocatedAmount = 0;
 
   return {
     overhead,
@@ -794,7 +819,7 @@ export function validateAllocation(allocation: AllocationResult): ValidationResu
   const expectedTotal = allocation.overhead.totalCost;
   const actualTotal = allocation.totalAllocated + allocation.unallocatedAmount;
   
-  if (Math.abs(actualTotal - expectedTotal) > 0.01) {
+  if (Math.abs(actualTotal - expectedTotal) > NUM_TOLERANCE) {
     errors.push('Allocation total does not match overhead cost');
   }
 
@@ -902,8 +927,9 @@ export function validateOverheadRate(rate: OverheadRate): ValidationResult {
   }
 
   // Warnings
-  if (rate.rate > 100) {
-    warnings.push('Rate exceeds 100% - verify reasonableness');
+  // Rate is an absolute (e.g., RM/hour). We avoid arbitrary caps but keep sanity checks.
+  if (!Number.isFinite(rate.rate)) {
+    warnings.push('Rate is not a finite number');
   }
 
   if (rate.status === 'active' && rate.calculationMethod === 'predetermined') {
@@ -945,7 +971,8 @@ export function calculateRateVariance(
   // Calculate variance
   const varianceAmount = actual.rate - standard.rate;
   const varianceType: VarianceType = varianceAmount >= 0 ? 'unfavorable' : 'favorable';
-  const variancePercentage = (Math.abs(varianceAmount) / standard.rate) * 100;
+  const denom = Math.abs(standard.rate);
+  const variancePercentage = denom > NUM_TOLERANCE ? (Math.abs(varianceAmount) / denom) * 100 : 0;
 
   return {
     actualRate: actual,

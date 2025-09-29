@@ -1191,7 +1191,7 @@ export interface AsyncChunkOptions {
   /** Yield back to event loop after this many tasks (default 100). */
   yieldEvery?: number;
   /** Optional cancellation. */
-  signal?: AbortSignal;
+  signal?: AbortSignal | { aborted: boolean };
   /** Progress callback (completed / total). */
   onProgress?: (done: number, total: number) => void;
 }
@@ -1216,11 +1216,11 @@ export async function mapAsyncChunked<T, U>(
   const total = array.length;
   const out = new Array<U>(total);
   let next = 0, done = 0, sinceYield = 0;
-  if (signal?.aborted) throw new DOMException('Aborted','AbortError');
+  if (signal?.aborted) throw new Error('Aborted');
 
   async function worker() {
     while (true) {
-      if (signal?.aborted) throw new DOMException('Aborted','AbortError');
+      if (signal?.aborted) throw new Error('Aborted');
       const index = next++;
       if (index >= total) break;
       out[index] = await mapper(array[index]!, index);
@@ -1247,7 +1247,7 @@ export async function reduceAsyncChunked<T, U>(
   const { yieldEvery = 100, signal, onProgress } = options;
   let accumulator = initial, sinceYield = 0;
   for (let index = 0; index < array.length; index++) {
-    if (signal?.aborted) throw new DOMException('Aborted','AbortError');
+    if (signal?.aborted) throw new Error('Aborted');
     accumulator = await reducer(accumulator, array[index]!, index);
     if (onProgress && (index % 10 === 9 || index === array.length - 1)) onProgress(index + 1, array.length);
     sinceYield++;
@@ -1303,7 +1303,10 @@ export interface QueryResult<U> {
 // ---- Helpers ----------------------------------------------------------------
 function andAll<T>(preds: Array<Predicate<T>>): Predicate<T> {
   return (r) => {
-    for (let index = 0; index < preds.length; index++) if (!preds[index]!(r)) return false;
+    for (let index = 0; index < preds.length; index++) {
+      const pred = preds[index];
+      if (pred && !pred(r)) return false;
+    }
     return true;
   };
 }
@@ -1366,7 +1369,12 @@ export function query<T, U = T>(spec: QuerySpec<T, U>): QueryResult<U> {
 }
 
 // ---- Convenience builders ---------------------------------------------------
-export function qFrom<T>(from: ReadonlyArray<T>) {
+export function qFrom<T>(from: ReadonlyArray<T>): {
+  where: (w: Predicate<T> | Array<Predicate<T>>) => unknown;
+  select: <U>(sel: Projector<T, U>) => unknown;
+  orderBy: (o: Array<OrderKey<T>>) => unknown;
+  exec: () => QueryResult<T>;
+} {
   return {
     where: (w: Predicate<T> | Array<Predicate<T>>) => qFromWhere(from, w),
     select: <U>(sel: Projector<T, U>) => qFromSelect(from, sel),
@@ -1581,7 +1589,14 @@ function evaluateCondition<T>(row: T, condition: FilterCondition<T>): boolean {
     case 'contains': return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.includes(value);
     case 'starts-with': return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.startsWith(value);
     case 'ends-with': return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.endsWith(value);
-    case 'regex': return typeof fieldValue === 'string' && typeof value === 'string' && new RegExp(value).test(fieldValue);
+    case 'regex': {
+      if (typeof fieldValue !== 'string' || typeof value !== 'string') return false;
+      try {
+        return new RegExp(value).test(fieldValue);
+      } catch {
+        return false;
+      }
+    }
     default: return false;
   }
 }

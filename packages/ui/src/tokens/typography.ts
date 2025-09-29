@@ -5,7 +5,7 @@
  * All typography values use CSS variables for theming support.
  */
 
-import { safeGet } from '@aibos/utils';
+import { safeGet } from '../utils/internal';
 
 const CSS_VAR_PREFIX = 'aibos' as const;
 
@@ -186,7 +186,7 @@ export const typographyResolver = {
     let current: Record<string, unknown> = typography;
 
     for (const key of keys) {
-      current = safeGet(current, key, Object.keys(current)) as Record<string, unknown>;
+      current = safeGet(current, key) as Record<string, unknown>;
       if (current === undefined) {
         // Try semantic typography
         if (keys[0] === 'semantic' && keys[1] && keys[1] in semanticTypography) {
@@ -194,7 +194,6 @@ export const typographyResolver = {
             safeGet(
               semanticTypography,
               keys[1] as keyof typeof semanticTypography,
-              Object.keys(semanticTypography),
             ) || path
           );
         }
@@ -246,7 +245,7 @@ export const typographyResolver = {
     let current: Record<string, unknown> = typography;
     for (const key of keys) {
       if (!(key in current)) return false;
-      current = safeGet(current, key, Object.keys(current)) as Record<string, unknown>;
+      current = safeGet(current, key) as Record<string, unknown>;
     }
     return true;
   },

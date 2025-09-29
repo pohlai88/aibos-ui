@@ -26,7 +26,7 @@ import {
 // TYPES & INTERFACES
 // ============================================================================
 
-export interface AggregateRoot<T = any> {
+export interface AggregateRoot<T = unknown> {
   id: string;
   version: number;
   uncommittedEvents: DomainEvent[];
@@ -46,7 +46,7 @@ export interface Snapshot {
   aggregateId: string;
   aggregateType: string;
   version: number;
-  data: any;
+  data: unknown;
   timestamp: Date;
   eventId: string;
 }
@@ -175,7 +175,7 @@ export class EventSourcingHelper {
       
     } catch (error) {
       // Prefer structured code checks instead of message contains
-      if ((error as any)?.code === 'AGGREGATE_NOT_FOUND') {
+      if ((error as unknown)?.code === 'AGGREGATE_NOT_FOUND') {
         throw error;
       }
       
@@ -258,7 +258,7 @@ export class EventSourcingHelper {
       // bounded retry w/ simple exponential backoff for write conflicts
       // (your store should throw a recognizable error on version mismatch)
       // NOTE: no busy-wait; use setTimeout via Promise
-      // eslint-disable-next-line no-constant-condition
+       
       while (true) {
         try {
           await eventStore.saveEvents(aggregate.id, uncommittedEvents, expectedVersion);
@@ -341,7 +341,7 @@ export class EventSourcingHelper {
 /**
  * Base class for aggregate roots
  */
-export abstract class BaseAggregateRoot<T = any> implements AggregateRoot<T> {
+export abstract class BaseAggregateRoot<T = unknown> implements AggregateRoot<T> {
   public id: string;
   public version: number;
   public uncommittedEvents: DomainEvent[] = [];
@@ -721,14 +721,14 @@ export class EventSourcingHelpers {
   /**
    * Calculate aggregate state hash
    */
-  static calculateStateHash(state: any): string {
+  static calculateStateHash(state: unknown): string {
     return this.canonicalStringify(state);
   }
 
   /**
    * Compare aggregate states
    */
-  static compareStates(state1: any, state2: any): boolean {
+  static compareStates(state1: unknown, state2: unknown): boolean {
     return this.calculateStateHash(state1) === this.calculateStateHash(state2);
   }
 }

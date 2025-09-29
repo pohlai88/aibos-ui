@@ -53,6 +53,14 @@ export const STRING_TO_ENUM_MAP: Record<string, RoundingMethod> = {
   'truncate': RoundingMethod.TRUNCATE,
 } as const;
 
+/**
+ * Fast membership checks and case-insensitive string normalization.
+ */
+export const ROUNDING_METHOD_SET: ReadonlySet<RoundingMethod> = new Set(Object.values(RoundingMethod));
+const STRING_TO_ENUM_LOWER: Readonly<Record<string, RoundingMethod>> = Object.fromEntries(
+  Object.entries(STRING_TO_ENUM_MAP).map(([k, v]) => [k.toLowerCase(), v])
+) as Record<string, RoundingMethod>;
+
 // ============================================================================
 // ROUNDING UTILITIES
 // ============================================================================
@@ -62,7 +70,14 @@ export const STRING_TO_ENUM_MAP: Record<string, RoundingMethod> = {
  */
 export function normalizeRoundingMethod(method: string | RoundingMethod): RoundingMethod {
   if (typeof method === 'string') {
-    return STRING_TO_ENUM_MAP[method] || DEFAULT_ROUNDING_METHOD;
+    const raw = method.trim();
+    // Prefer exact match, then UPPER, then lower
+    return (
+      STRING_TO_ENUM_MAP[raw] ??
+      STRING_TO_ENUM_MAP[raw.toUpperCase()] ??
+      STRING_TO_ENUM_LOWER[raw.toLowerCase()] ??
+      DEFAULT_ROUNDING_METHOD
+    );
   }
   return method;
 }
@@ -71,7 +86,7 @@ export function normalizeRoundingMethod(method: string | RoundingMethod): Roundi
  * Check if value is a valid rounding method
  */
 export function isRoundingMethod(value: unknown): value is RoundingMethod {
-  return typeof value === 'string' && Object.values(RoundingMethod).includes(value as RoundingMethod);
+  return typeof value === 'string' && ROUNDING_METHOD_SET.has(value as RoundingMethod);
 }
 
 /**
@@ -124,6 +139,22 @@ function roundHalfDown(x: number): number {
 }
 
 /**
+ * True half-up rounding (away from zero for .5), correct for negatives
+ * Implemented similar to the other half-* variants for consistency.
+ */
+function roundHalfUp(x: number): number {
+  const sign = Math.sign(x);
+  const ax = Math.abs(x);
+  const flo = Math.floor(ax);
+  const frac = ax - flo;
+  let res: number;
+  if (frac > 0.5 + EPS) res = Math.ceil(ax);
+  else if (frac < 0.5 - EPS) res = Math.floor(ax);
+  else res = flo + 1; // tie → away from zero
+  return sign * res;
+}
+
+/**
  * Round number using specified method
  */
 export function roundNumber(
@@ -141,7 +172,7 @@ export function roundNumber(
   let rounded: number;
   switch (method) {
     case RoundingMethod.HALF_UP:
-      rounded = Math.sign(scaled) * Math.round(Math.abs(scaled)); // standard half-up
+      rounded = roundHalfUp(scaled);
       break;
     case RoundingMethod.HALF_DOWN:
       rounded = roundHalfDown(scaled);

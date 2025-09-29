@@ -31,6 +31,7 @@
 import type { 
   SupportedCurrency
 } from './accounting-utilities';
+import { roundToCurrency } from './accounting-utilities';
 
 // ============================================================================
 // SHARED TYPES
@@ -596,11 +597,16 @@ export function generateIndirectCashFlow(
   const financing = calculateFinancingCashFlow(glData, period, mappings);
   
   // Calculate net cash flow
-  const netCashFlow = operating.operatingCashFlow + investing.investingCashFlow + financing.financingCashFlow;
+  const netCashFlowRaw = operating.operatingCashFlow + investing.investingCashFlow + financing.financingCashFlow;
   
   // Calculate opening and closing cash
-  const openingCash = calculateOpeningCash(glData, period);
-  const closingCash = openingCash + netCashFlow;
+  const openingCashRaw = calculateOpeningCash(glData, period);
+  const closingCashRaw = openingCashRaw + netCashFlowRaw;
+
+  // Apply currency rounding SSOT at outputs
+  const netCashFlow = roundToCurrency(netCashFlowRaw, glData.currency);
+  const openingCash = roundToCurrency(openingCashRaw, glData.currency);
+  const closingCash = roundToCurrency(closingCashRaw, glData.currency);
 
   return {
     period,
@@ -676,7 +682,7 @@ export function validateIndirectCashFlow(cashFlow: IndirectCashFlow): Validation
     errors.push('Period start date must be before end date');
   }
 
-  if (!cashFlow.currency || cashFlow.currency.trim() === '') {
+  if (!cashFlow.currency || (cashFlow.currency as string).trim() === '') {
     errors.push('Currency is required');
   }
 
@@ -890,8 +896,9 @@ export function analyzeCashFlowPatterns(
   cashFlow: IndirectCashFlow,
   _periods: readonly DateRange[]
 ): CashFlowAnalysis {
-  // Calculate operating margin
-  const operatingMargin = cashFlow.operating.operatingCashFlow / Math.abs(cashFlow.netCashFlow) * 100;
+  // Calculate operating margin; guard division by zero
+  const denom = Math.abs(cashFlow.netCashFlow);
+  const operatingMargin = denom > 0 ? (cashFlow.operating.operatingCashFlow / denom) * 100 : 0;
   
   // Calculate cash conversion cycle (simplified)
   const cashConversionCycle = calculateCashConversionCycle(cashFlow);
@@ -929,19 +936,25 @@ export function analyzeCashFlowPatterns(
  */
 export function calculateCashFlowRatios(cashFlow: IndirectCashFlow): CashFlowRatios {
   // Calculate operating cash flow ratio
-  const operatingCashFlowRatio = cashFlow.operating.operatingCashFlow / Math.abs(cashFlow.netCashFlow);
+  const dNet = Math.abs(cashFlow.netCashFlow);
+  const operatingCashFlowRatio = dNet > 0 ? cashFlow.operating.operatingCashFlow / dNet : 0;
   
   // Calculate cash flow coverage ratio (simplified)
-  const cashFlowCoverageRatio = cashFlow.operating.operatingCashFlow / 100000; // Placeholder for debt service
+  const debtService = 100000; // Placeholder for debt service
+  const cashFlowCoverageRatio = cashFlow.operating.operatingCashFlow / debtService;
   
   // Calculate free cash flow yield
-  const freeCashFlowYield = (cashFlow.operating.operatingCashFlow + cashFlow.investing.investingCashFlow) / 1000000; // Placeholder for market cap
+  const marketCap = 1000000; // Placeholder
+  const fcFlow = cashFlow.operating.operatingCashFlow + cashFlow.investing.investingCashFlow;
+  const freeCashFlowYield = fcFlow / marketCap;
   
   // Calculate cash flow to sales ratio (simplified)
-  const cashFlowToSalesRatio = cashFlow.operating.operatingCashFlow / 1000000; // Placeholder for sales
+  const sales = 1000000; // Placeholder
+  const cashFlowToSalesRatio = cashFlow.operating.operatingCashFlow / sales;
   
   // Calculate cash flow to debt ratio (simplified)
-  const cashFlowToDebtRatio = cashFlow.operating.operatingCashFlow / 500000; // Placeholder for total debt
+  const totalDebt = 500000; // Placeholder
+  const cashFlowToDebtRatio = cashFlow.operating.operatingCashFlow / totalDebt;
 
   return {
     operatingCashFlowRatio,
@@ -1010,13 +1023,13 @@ function findApplicableMapping(
   transaction: Transaction,
   mappings: readonly CashFlowMapping[]
 ): CashFlowMapping | undefined {
-  const now = new Date();
-
-  return mappings.find(mapping => 
+  // Use the transaction's date to evaluate mapping windows
+  const txDate = transaction.date;
+  return mappings.find(mapping =>
     mapping.active &&
     mapping.account === transaction.account &&
-    mapping.effectiveDate <= now &&
-    (!mapping.expiryDate || mapping.expiryDate > now)
+    mapping.effectiveDate <= txDate &&
+    (!mapping.expiryDate || mapping.expiryDate > txDate)
   );
 }
 

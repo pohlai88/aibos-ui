@@ -48,9 +48,9 @@ export class TypeormJournalEntryRepository implements JournalEntryRepository {
       entity.userId || 'system'
     );
     // Set private properties using reflection or public methods if available
-    (journalEntry as any).id = entity.id;
-    (journalEntry as any).status = entity.status;
-    (journalEntry as any).entries = entity.generalLedgerEntries?.map((gle) => ({
+    (journalEntry as unknown).id = entity.id;
+    (journalEntry as unknown).status = entity.status;
+    (journalEntry as unknown).entries = entity.generalLedgerEntries?.map((gle) => ({
       accountCode: gle.accountCode,
       debitAmount: Number(gle.debitAmount),
       creditAmount: Number(gle.creditAmount),
@@ -62,12 +62,12 @@ export class TypeormJournalEntryRepository implements JournalEntryRepository {
 
   private toEntity(journalEntry: JournalEntry): JournalEntryEntity {
     const entity = new JournalEntryEntity();
-    entity.id = (journalEntry as any).id;
-    entity.tenantId = (journalEntry as any).tenantId;
-    entity.reference = (journalEntry as any).reference;
-    entity.description = (journalEntry as any).description;
-    entity.postingDate = (journalEntry as any).postingDate;
-    entity.status = (journalEntry as any).status;
+    entity.id = (journalEntry as unknown).id;
+    entity.tenantId = (journalEntry as unknown).tenantId;
+    entity.reference = (journalEntry as unknown).reference;
+    entity.description = (journalEntry as unknown).description;
+    entity.postingDate = (journalEntry as unknown).postingDate;
+    entity.status = (journalEntry as unknown).status;
     return entity;
   }
 }

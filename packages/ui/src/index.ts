@@ -12,7 +12,7 @@
 export * from './utils/index';
 
 // TypeScript Definitions
-export * from './types/index';
+export type * from './types/index';
 
 // Custom Hooks
 export * from './hooks/index';

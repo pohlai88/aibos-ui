@@ -68,7 +68,7 @@ export class InvoiceProjectionManager {
    * Process invoice issued event
    */
   public async processInvoiceIssued(event: unknown): Promise<void> {
-    const e = event as any;
+    const e = event as unknown;
     const invoiceSummary: InvoiceSummary = {
       invoiceId: e.invoiceId,
       tenantId: e.tenantId,
@@ -93,7 +93,7 @@ export class InvoiceProjectionManager {
    * Process invoice sent event
    */
   public async processInvoiceSent(event: unknown): Promise<void> {
-    const e = event as any;
+    const e = event as unknown;
     const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
@@ -110,7 +110,7 @@ export class InvoiceProjectionManager {
    * Process invoice paid event
    */
   public async processInvoicePaid(event: unknown): Promise<void> {
-    const e = event as any;
+    const e = event as unknown;
     const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
@@ -129,7 +129,7 @@ export class InvoiceProjectionManager {
    * Process invoice cancelled event
    */
   public async processInvoiceCancelled(event: unknown): Promise<void> {
-    const e = event as any;
+    const e = event as unknown;
     const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 
@@ -148,7 +148,7 @@ export class InvoiceProjectionManager {
    * Process invoice overdue event
    */
   public async processInvoiceOverdue(event: unknown): Promise<void> {
-    const e = event as any;
+    const e = event as unknown;
     const invoice = this.invoices.get(e.aggregateId);
     if (!invoice) return;
 

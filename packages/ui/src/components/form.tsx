@@ -6,7 +6,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { safeGet } from '@aibos/utils';
+import { safeGet } from '../utils/internal';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';
 import {
@@ -78,7 +78,7 @@ const InnerField = React.memo(function InnerField<T extends Record<string, unkno
   render,
 }: FormFieldProperties<T>): React.ReactElement {
   const field = form.register(name);
-  const error = safeGet(form.formState.errors, name, [name]);
+  const error = safeGet(form.formState.errors, name);
   const value = form.watch(name);
 
   // Use ref to avoid re-renders on value changes
@@ -102,7 +102,7 @@ const InnerField = React.memo(function InnerField<T extends Record<string, unkno
           [form, name],
         ),
         onBlur: field.onBlur,
-        error: error?.message as string | undefined,
+        error: error && typeof error === 'object' && 'message' in error ? (error as { message: string }).message : undefined,
       })}
     </div>
   );

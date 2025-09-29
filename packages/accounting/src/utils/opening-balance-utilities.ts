@@ -18,7 +18,8 @@ import {
 } from './accounting-utilities';
 import { createValidationError } from './error-utilities';
 import type { JournalEntry, JournalLine } from './journal-entry-utilities';
-import type { FiscalPeriod } from './trial-balance-utilities';
+// Align with fiscal period utilities used elsewhere
+import type { FiscalPeriod } from './fiscal-period-utilities';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -48,20 +49,22 @@ export interface ImportResult {
   errors: ImportError[];
   warnings: ImportWarning[];
   journalEntry?: JournalEntry | undefined;
+  /** When splitEntriesPerCurrency is enabled, multiple entries will be returned here */
+  journalEntries?: JournalEntry[] | undefined;
 }
 
 export interface ImportError {
   row: number;
   field: string;
   message: string;
-  value: any;
+  value: unknown;
 }
 
 export interface ImportWarning {
   row: number;
   field: string;
   message: string;
-  value: any;
+  value: unknown;
 }
 
 export interface ValidationResult {
@@ -79,6 +82,105 @@ export interface Period0ValidationResult {
   isBalanced: boolean;
 }
 
+export interface OpeningBalancePolicy {
+  /** Base currency for totals/period-0; if omitted, caller must ensure single-currency payloads */
+  baseCurrency?: SupportedCurrency;
+  /** Small-diff tolerance for balance checks (in base currency minor units after rounding) */
+  balanceTolerance?: number; // e.g. 0.01 for 2dp currencies
+  /** Large-value and adjustment warning thresholds */
+  largeBalanceWarning?: number;
+  largeAdjustmentWarning?: number;
+  /** Optional recommended accounts to check (advisory only) */
+  recommendedAccounts?: string[];
+  /** If true, auto-post a plug line for tiny residuals within tolerance */
+  autoBalanceSmallResidual?: boolean;
+  /** Account code used for the auto-balance plug line (equity account recommended) */
+  autoBalanceAccountCode?: string;
+  /** Max residual allowed for auto-balance; defaults to balanceTolerance if not set */
+  autoBalanceMaxResidual?: number;
+  /** If true, add plug lines per currency so each currency bucket balances independently */
+  perCurrencyAutoBalance?: boolean;
+  /** If true, create one journal entry per currency */
+  splitEntriesPerCurrency?: boolean;
+}
+
+const DEFAULT_POLICY: Required<OpeningBalancePolicy> = {
+  baseCurrency: 'MYR',
+  balanceTolerance: 0.01,
+  largeBalanceWarning: 1_000_000,
+  largeAdjustmentWarning: 10_000,
+  recommendedAccounts: [],
+  autoBalanceSmallResidual: false,
+  autoBalanceAccountCode: 'OPENING_EQUITY',
+  autoBalanceMaxResidual: 0.01,
+  perCurrencyAutoBalance: false,
+  splitEntriesPerCurrency: false,
+};
+
+function appendAutoBalancePlug(params: {
+  lines: JournalLine[];
+  entryPrefix: string;
+  accountCode: string;
+  baseCurrency: SupportedCurrency;
+  periodId?: string;
+}): { totalDebits: number; totalCredits: number } {
+  const { lines, entryPrefix, accountCode, baseCurrency, periodId } = params;
+  let totalDebits = lines.reduce((s, l) => s + l.debit, 0);
+  let totalCredits = lines.reduce((s, l) => s + l.credit, 0);
+  const diff = roundToCurrency(totalDebits - totalCredits, baseCurrency); // +ve means more debits
+  if (diff === 0) return { totalDebits: roundToCurrency(totalDebits, baseCurrency), totalCredits: roundToCurrency(totalCredits, baseCurrency) };
+  const plugIsDebit = diff < 0; // credits > debits → need a debit
+  const plugAmount = Math.abs(diff);
+  lines.push({
+    id: `${entryPrefix}-${periodId ?? 'P0'}-PLUG`,
+    accountCode,
+    description: 'Auto-balance residual (policy)',
+    debit: plugIsDebit ? plugAmount : 0,
+    credit: plugIsDebit ? 0 : plugAmount,
+    currency: baseCurrency,
+  });
+  totalDebits += plugIsDebit ? plugAmount : 0;
+  totalCredits += plugIsDebit ? 0 : plugAmount;
+  return {
+    totalDebits: roundToCurrency(totalDebits, baseCurrency),
+    totalCredits: roundToCurrency(totalCredits, baseCurrency),
+  };
+}
+
+function appendPerCurrencyPlugs(params: {
+  lines: JournalLine[];
+  entryPrefix: string;
+  accountCode: string;
+  maxResidual: number;
+  periodId?: string;
+}): void {
+  const { lines, entryPrefix, accountCode, maxResidual, periodId } = params;
+  // Aggregate by line currency
+  const byCcy = new Map<SupportedCurrency, { debits: number; credits: number }>();
+  for (const l of lines) {
+    const agg = byCcy.get(l.currency) ?? { debits: 0, credits: 0 };
+    agg.debits += l.debit;
+    agg.credits += l.credit;
+    byCcy.set(l.currency, agg);
+  }
+  // For each currency, plug small residuals within threshold
+  for (const [ccy, agg] of byCcy.entries()) {
+    const diff = roundToCurrency(agg.debits - agg.credits, ccy); // +ve means more debits
+    const residual = Math.abs(diff);
+    if (residual > 0 && residual <= maxResidual) {
+      const plugIsDebit = diff < 0; // credits > debits → need a debit
+      lines.push({
+        id: `${entryPrefix}-${periodId ?? 'P0'}-PLUG-${ccy}`,
+        accountCode,
+        description: `Auto-balance residual (${ccy}) (policy)`,
+        debit: plugIsDebit ? residual : 0,
+        credit: plugIsDebit ? 0 : residual,
+        currency: ccy,
+      });
+    }
+  }
+}
+
 // ============================================================================
 // OPENING BALANCE MANAGEMENT
 // ============================================================================
@@ -88,8 +190,10 @@ export interface Period0ValidationResult {
  */
 export function importOpeningBalances(
   balances: OpeningBalance[],
-  period: FiscalPeriod
+  period: FiscalPeriod,
+  policy?: OpeningBalancePolicy
 ): ImportResult {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   if (!balances || balances.length === 0) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
@@ -118,7 +222,7 @@ export function importOpeningBalances(
     const row = i + 1;
 
     try {
-      const validation = validateOpeningBalance(balance);
+      const validation = validateOpeningBalance(balance, cfg);
       if (!validation.isValid) {
         errors.push(...validation.errors.map(error => ({
           row,
@@ -149,9 +253,14 @@ export function importOpeningBalances(
 
   // Create journal entry if import is successful
   let journalEntry: JournalEntry | undefined;
+  let journalEntries: JournalEntry[] | undefined;
   if (errors.length === 0 && importedCount > 0) {
     try {
-      journalEntry = postOpeningBalances(balances, period);
+      if (cfg.splitEntriesPerCurrency) {
+        journalEntries = postOpeningBalancesSplit(balances, period, cfg);
+      } else {
+        journalEntry = postOpeningBalances(balances, period, cfg);
+      }
     } catch (error) {
       errors.push({
         row: 0,
@@ -168,6 +277,7 @@ export function importOpeningBalances(
     errors,
     warnings,
     journalEntry,
+    journalEntries,
   };
 }
 
@@ -224,7 +334,8 @@ export function validateOpeningBalances(balances: OpeningBalance[]): ValidationR
 /**
  * Validate a single opening balance
  */
-export function validateOpeningBalance(balance: OpeningBalance): ValidationResult {
+export function validateOpeningBalance(balance: OpeningBalance, policy?: OpeningBalancePolicy): ValidationResult {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -266,7 +377,7 @@ export function validateOpeningBalance(balance: OpeningBalance): ValidationResul
   }
 
   // Check for unusually large balance
-  if (balance.balance > 1000000) {
+  if (balance.balance > cfg.largeBalanceWarning) {
     warnings.push('Unusually large balance detected');
   }
 
@@ -282,8 +393,10 @@ export function validateOpeningBalance(balance: OpeningBalance): ValidationResul
  */
 export function postOpeningBalances(
   balances: OpeningBalance[],
-  period: FiscalPeriod
+  period: FiscalPeriod,
+  policy?: OpeningBalancePolicy
 ): JournalEntry {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   if (!balances || balances.length === 0) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
@@ -329,8 +442,36 @@ export function postOpeningBalances(
   });
 
   // Calculate totals
-  const totalDebits = lines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = lines.reduce((sum, line) => sum + line.credit, 0);
+  let totalDebits = lines.reduce((sum, line) => sum + line.debit, 0);
+  let totalCredits = lines.reduce((sum, line) => sum + line.credit, 0);
+
+  // Optional auto-balance for small residuals (either entry-level or per-currency)
+  const residual = Math.abs(roundToCurrency(totalDebits - totalCredits, cfg.baseCurrency));
+  const maxResidual = cfg.autoBalanceMaxResidual ?? cfg.balanceTolerance;
+  if (cfg.autoBalanceSmallResidual) {
+    if (cfg.perCurrencyAutoBalance) {
+      appendPerCurrencyPlugs({
+        lines,
+        entryPrefix: 'OB',
+        accountCode: cfg.autoBalanceAccountCode,
+        maxResidual,
+        periodId: period.id,
+      });
+      // Recompute totals (note: these are raw sums across currencies; correctness by currency is ensured by plugs)
+      totalDebits = lines.reduce((s, l) => s + l.debit, 0);
+      totalCredits = lines.reduce((s, l) => s + l.credit, 0);
+    } else if (residual > 0 && residual <= maxResidual) {
+      const totals = appendAutoBalancePlug({
+        lines,
+        entryPrefix: 'OB',
+        accountCode: cfg.autoBalanceAccountCode,
+        baseCurrency: cfg.baseCurrency,
+        periodId: period.id,
+      });
+      totalDebits = totals.totalDebits;
+      totalCredits = totals.totalCredits;
+    }
+  }
 
   // Create journal entry
   const entry: JournalEntry = {
@@ -339,13 +480,75 @@ export function postOpeningBalances(
     reference: `OB-${period.year}-${period.period}`,
     description: `Opening balances for ${period.name}`,
     lines,
-    totalDebits: roundToCurrency(totalDebits, 'MYR'), // Default currency
-    totalCredits: roundToCurrency(totalCredits, 'MYR'),
-    currency: 'MYR',
+    totalDebits: roundToCurrency(totalDebits, cfg.baseCurrency),
+    totalCredits: roundToCurrency(totalCredits, cfg.baseCurrency),
+    currency: cfg.baseCurrency,
     status: 'draft',
   };
 
   return entry;
+}
+
+/**
+ * Create one Opening Balances entry per currency.
+ * - Applies per-currency auto-balance if enabled.
+ * - Entry.currency is the bucket currency.
+ */
+export function postOpeningBalancesSplit(
+  balances: OpeningBalance[],
+  period: FiscalPeriod,
+  policy?: OpeningBalancePolicy
+): JournalEntry[] {
+  if (!balances || balances.length === 0) {
+    throw createValidationError('INVALID_ACCOUNTING_INPUT', 'Opening balances are required', balances, { operation: 'post-opening-balances-split' });
+  }
+  const validation = validateOpeningBalances(balances);
+  if (!validation.isValid) {
+    throw createValidationError('INVALID_ACCOUNTING_INPUT', `Invalid opening balances: ${validation.errors.join(', ')}`, balances, { operation: 'post-opening-balances-split' });
+  }
+  const byCcy = new Map<SupportedCurrency, OpeningBalance[]>();
+  for (const b of balances) {
+    const arr = byCcy.get(b.currency) ?? [];
+    arr.push(b);
+    byCcy.set(b.currency, arr);
+  }
+  const entries: JournalEntry[] = [];
+  for (const [ccy, group] of byCcy.entries()) {
+    const lines: JournalLine[] = group.map((balance, idx) => ({
+      id: `OB-${period.id}-${ccy}-${idx}`,
+      accountCode: balance.accountCode,
+      description: `Opening balance for ${balance.accountName}`,
+      debit: balance.balanceType === 'debit' ? roundToCurrency(balance.balance, ccy) : 0,
+      credit: balance.balanceType === 'credit' ? roundToCurrency(balance.balance, ccy) : 0,
+      currency: ccy,
+      ...(balance.dimensions && { dimensions: balance.dimensions }),
+    }));
+    // optional plugs per currency
+    if (policy?.autoBalanceSmallResidual) {
+      const maxResidual = policy.autoBalanceMaxResidual ?? policy.balanceTolerance ?? DEFAULT_POLICY.balanceTolerance;
+      appendPerCurrencyPlugs({
+        lines,
+        entryPrefix: 'OB',
+        accountCode: (policy?.autoBalanceAccountCode ?? DEFAULT_POLICY.autoBalanceAccountCode)!,
+        maxResidual,
+        periodId: period.id,
+      });
+    }
+    const totalDebits = lines.reduce((s, l) => s + l.debit, 0);
+    const totalCredits = lines.reduce((s, l) => s + l.credit, 0);
+    entries.push({
+      id: `OB-${period.id}-${ccy}-${Date.now()}`,
+      date: period.startDate,
+      reference: `OB-${period.year}-${period.period}-${ccy}`,
+      description: `Opening balances (${ccy}) for ${period.name}`,
+      lines,
+      totalDebits: roundToCurrency(totalDebits, ccy),
+      totalCredits: roundToCurrency(totalCredits, ccy),
+      currency: ccy,
+      status: 'draft',
+    });
+  }
+  return entries;
 }
 
 // ============================================================================
@@ -543,8 +746,10 @@ export function validateRetainedEarnings(calculation: RetainedEarningsCalculatio
  */
 export function validatePeriod0Data(
   period: FiscalPeriod,
-  balances: OpeningBalance[]
+  balances: OpeningBalance[],
+  policy?: OpeningBalancePolicy
 ): Period0ValidationResult {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   if (!period) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
@@ -573,23 +778,40 @@ export function validatePeriod0Data(
   }
   warnings.push(...balanceValidation.warnings);
 
-  // Calculate totals
-  const totalDebits = balances
-    .filter(balance => balance.balanceType === 'debit')
-    .reduce((sum, balance) => sum + balance.balance, 0);
-
-  const totalCredits = balances
-    .filter(balance => balance.balanceType === 'credit')
-    .reduce((sum, balance) => sum + balance.balance, 0);
-
-  const isBalanced = Math.abs(totalDebits - totalCredits) <= 0.01;
-
-  if (!isBalanced) {
-    issues.push(`Period 0 is not balanced. Difference: ${Math.abs(totalDebits - totalCredits)}`);
+  // Per-currency subtotals to avoid cross-currency summation
+  const byCurrency = new Map<SupportedCurrency, { debits: number; credits: number }>();
+  for (const b of balances) {
+    const agg = byCurrency.get(b.currency) ?? { debits: 0, credits: 0 };
+    if (b.balanceType === 'debit') agg.debits += b.balance; else agg.credits += b.balance;
+    byCurrency.set(b.currency, agg);
+  }
+  // If multiple currencies exist, we report using baseCurrency totals only as advisory
+  const multiCurrency = byCurrency.size > 1;
+  const currencyList = Array.from(byCurrency.keys());
+  if (multiCurrency) {
+    warnings.push(`Period 0 contains multiple currencies: ${currencyList.join(', ')}. Balance check is per-currency.`);
+  }
+  // If single currency, perform balance check; else leave as advisory (not balanced)
+  let totalDebits = 0;
+  let totalCredits = 0;
+  let isBalanced = false;
+  if (!multiCurrency) {
+    const only = currencyList[0]!;
+    const agg = byCurrency.get(only)!;
+    totalDebits = roundToCurrency(agg.debits, cfg.baseCurrency);
+    totalCredits = roundToCurrency(agg.credits, cfg.baseCurrency);
+    isBalanced = Math.abs(totalDebits - totalCredits) <= cfg.balanceTolerance;
+    if (!isBalanced) {
+      issues.push(`Period 0 is not balanced in ${only}. Difference: ${roundToCurrency(Math.abs(totalDebits - totalCredits), cfg.baseCurrency)}`);
+    }
+  } else {
+    // Provide advisory totals in baseCurrency for UI; correctness requires pre-conversion by caller
+    totalDebits = 0;
+    totalCredits = 0;
   }
 
   // Check for required accounts
-  const requiredAccounts = ['CASH', 'RETAINED_EARNINGS', 'EQUITY'];
+  const requiredAccounts = (cfg.recommendedAccounts ?? []);
   const presentAccounts = balances.map(balance => balance.accountCode);
   const missingAccounts = requiredAccounts.filter(account => !presentAccounts.includes(account));
 
@@ -607,8 +829,8 @@ export function validatePeriod0Data(
     isValid: issues.length === 0,
     issues,
     warnings,
-    totalDebits: roundToCurrency(totalDebits, 'MYR'),
-    totalCredits: roundToCurrency(totalCredits, 'MYR'),
+    totalDebits: roundToCurrency(totalDebits, cfg.baseCurrency),
+    totalCredits: roundToCurrency(totalCredits, cfg.baseCurrency),
     isBalanced,
   };
 }
@@ -616,7 +838,8 @@ export function validatePeriod0Data(
 /**
  * Create period 0 entries
  */
-export function createPeriod0Entries(balances: OpeningBalance[]): JournalEntry[] {
+export function createPeriod0Entries(balances: OpeningBalance[], period: FiscalPeriod, policy?: OpeningBalancePolicy): JournalEntry[] {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   if (!balances || balances.length === 0) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
@@ -651,19 +874,109 @@ export function createPeriod0Entries(balances: OpeningBalance[]): JournalEntry[]
   const totalDebits = lines.reduce((sum, line) => sum + line.debit, 0);
   const totalCredits = lines.reduce((sum, line) => sum + line.credit, 0);
 
+  // Optionally add auto-balance plug line for small residuals
+  let finalTotalDebits = totalDebits;
+  let finalTotalCredits = totalCredits;
+  const residual = Math.abs(roundToCurrency(totalDebits - totalCredits, cfg.baseCurrency));
+  const maxResidual = cfg.autoBalanceMaxResidual ?? cfg.balanceTolerance;
+  if (cfg.autoBalanceSmallResidual) {
+    if (cfg.perCurrencyAutoBalance) {
+      appendPerCurrencyPlugs({
+        lines,
+        entryPrefix: 'P0',
+        accountCode: cfg.autoBalanceAccountCode,
+        maxResidual,
+        periodId: period.id,
+      });
+      // Recompute totals after per-currency plugs
+      finalTotalDebits = lines.reduce((s, l) => s + l.debit, 0);
+      finalTotalCredits = lines.reduce((s, l) => s + l.credit, 0);
+    } else if (residual > 0 && residual <= maxResidual) {
+      const totals = appendAutoBalancePlug({
+        lines,
+        entryPrefix: 'P0',
+        accountCode: cfg.autoBalanceAccountCode,
+        baseCurrency: cfg.baseCurrency,
+        periodId: period.id,
+      });
+      finalTotalDebits = totals.totalDebits;
+      finalTotalCredits = totals.totalCredits;
+    }
+  }
+
   const entry: JournalEntry = {
     id: `P0-${Date.now()}`,
-    date: new Date(),
+    date: period.startDate,
     reference: 'P0-OPENING',
     description: 'Period 0 opening balances',
     lines,
-    totalDebits: roundToCurrency(totalDebits, 'MYR'),
-    totalCredits: roundToCurrency(totalCredits, 'MYR'),
-    currency: 'MYR',
+    totalDebits: finalTotalDebits,
+    totalCredits: finalTotalCredits,
+    currency: cfg.baseCurrency,
     status: 'draft',
   };
 
   return [entry];
+}
+
+/**
+ * Create Period-0 entries split by currency (one entry per currency).
+ */
+export function createPeriod0EntriesSplit(
+  balances: OpeningBalance[],
+  period: FiscalPeriod,
+  policy?: OpeningBalancePolicy
+): JournalEntry[] {
+  if (!balances || balances.length === 0) {
+    throw createValidationError('INVALID_ACCOUNTING_INPUT', 'Opening balances are required', balances, { operation: 'create-period-0-entries-split' });
+  }
+  const validation = validateOpeningBalances(balances);
+  if (!validation.isValid) {
+    throw createValidationError('INVALID_ACCOUNTING_INPUT', `Invalid opening balances: ${validation.errors.join(', ')}`, balances, { operation: 'create-period-0-entries-split' });
+  }
+  const byCcy = new Map<SupportedCurrency, OpeningBalance[]>();
+  for (const b of balances) {
+    const arr = byCcy.get(b.currency) ?? [];
+    arr.push(b);
+    byCcy.set(b.currency, arr);
+  }
+  const entries: JournalEntry[] = [];
+  for (const [ccy, group] of byCcy.entries()) {
+    const lines: JournalLine[] = group.map((balance, idx) => ({
+      id: `P0-${ccy}-${idx}`,
+      accountCode: balance.accountCode,
+      description: `Period 0 opening balance for ${balance.accountName}`,
+      debit: balance.balanceType === 'debit' ? roundToCurrency(balance.balance, ccy) : 0,
+      credit: balance.balanceType === 'credit' ? roundToCurrency(balance.balance, ccy) : 0,
+      currency: ccy,
+      ...(balance.dimensions && { dimensions: balance.dimensions }),
+    }));
+    // optional per-ccy plugs
+    if (policy?.autoBalanceSmallResidual) {
+      const maxResidual = policy.autoBalanceMaxResidual ?? policy.balanceTolerance ?? DEFAULT_POLICY.balanceTolerance;
+      appendPerCurrencyPlugs({
+        lines,
+        entryPrefix: 'P0',
+        accountCode: (policy?.autoBalanceAccountCode ?? DEFAULT_POLICY.autoBalanceAccountCode)!,
+        maxResidual,
+        periodId: period.id,
+      });
+    }
+    const totalDebits = lines.reduce((s, l) => s + l.debit, 0);
+    const totalCredits = lines.reduce((s, l) => s + l.credit, 0);
+    entries.push({
+      id: `P0-${period.id}-${ccy}-${Date.now()}`,
+      date: period.startDate,
+      reference: `P0-OPENING-${ccy}`,
+      description: `Period 0 opening balances (${ccy})`,
+      lines,
+      totalDebits: roundToCurrency(totalDebits, ccy),
+      totalCredits: roundToCurrency(totalCredits, ccy),
+      currency: ccy,
+      status: 'draft',
+    });
+  }
+  return entries;
 }
 
 // ============================================================================
@@ -744,7 +1057,7 @@ export function openingBalanceToJournalLine(
 /**
  * Get opening balance summary
  */
-export function getOpeningBalanceSummary(balances: OpeningBalance[]): {
+export function getOpeningBalanceSummary(balances: OpeningBalance[], policy?: OpeningBalancePolicy): {
   totalAccounts: number;
   totalDebits: number;
   totalCredits: number;
@@ -753,6 +1066,7 @@ export function getOpeningBalanceSummary(balances: OpeningBalance[]): {
   currencies: SupportedCurrency[];
   balanceTypes: string[];
 } {
+  const cfg = { ...DEFAULT_POLICY, ...(policy ?? {}) };
   if (!balances || balances.length === 0) {
     return {
       totalAccounts: 0,
@@ -774,16 +1088,16 @@ export function getOpeningBalanceSummary(balances: OpeningBalance[]): {
     .reduce((sum, balance) => sum + balance.balance, 0);
 
   const netBalance = totalDebits - totalCredits;
-  const isBalanced = Math.abs(netBalance) <= 0.01;
+  const isBalanced = Math.abs(netBalance) <= cfg.balanceTolerance;
 
   const currencies = Array.from(new Set(balances.map(balance => balance.currency)));
   const balanceTypes = Array.from(new Set(balances.map(balance => balance.balanceType)));
 
   return {
     totalAccounts: balances.length,
-    totalDebits: roundToCurrency(totalDebits, 'MYR'),
-    totalCredits: roundToCurrency(totalCredits, 'MYR'),
-    netBalance: roundToCurrency(netBalance, 'MYR'),
+    totalDebits: roundToCurrency(totalDebits, cfg.baseCurrency),
+    totalCredits: roundToCurrency(totalCredits, cfg.baseCurrency),
+    netBalance: roundToCurrency(netBalance, cfg.baseCurrency),
     isBalanced,
     currencies,
     balanceTypes,

@@ -1,6 +1,6 @@
 # Accounting Utilities
 
-A comprehensive collection of utilities for the AIBOS ERP accounting system. This directory contains **50+ utility modules** providing essential functionality for accounting operations, data validation, performance monitoring, enterprise patterns, and **Single Source of Truth (SSOT) policies**.
+A comprehensive collection of utilities for the AIBOS ERP accounting system. This directory contains **57+ utility modules** providing essential functionality for accounting operations, data validation, performance monitoring, enterprise patterns, and **Single Source of Truth (SSOT) policies**.
 
 ## 🏗️ Architecture Overview
 
@@ -66,6 +66,15 @@ utils/
 ├── coa-governance-utilities.ts        # Chart of Accounts governance
 ├── posting-rules-utilities.ts         # Posting rules management
 │
+├── 📊 ADVANCED ACCOUNTING (MFRS COMPLIANCE)
+├── ownership-changes-utilities.ts      # NCI utilities (MFRS 10)
+├── deferred-tax-utilities.ts          # Deferred tax calculations (MFRS 112)
+├── hedge-accounting-utilities.ts      # Hedge accounting (MFRS 9)
+├── lease-accounting-utilities.ts      # Lease accounting (MFRS 16)
+├── provisions-contingencies-utilities.ts # Provisions & contingencies (MFRS 137)
+├── government-grants-utilities.ts     # Government grants (MFRS 120)
+├── budget-variance-utilities.ts       # Budget/forecast variance analysis
+│
 ├── 🔄 RECONCILIATION & MATCHING
 ├── bank-reconciliation-utilities.ts   # Bank reconciliation
 ├── dunning-utilities.ts               # Dunning management
@@ -107,7 +116,8 @@ utils/
     ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART1.md
     ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART2.md
     ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART3.md
-    └── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART4.md
+    ├── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART4.md
+    └── UTILITIES_EXTENSION_DEVELOPMENT_PLAN_PART5.md
 ```
 
 ## 🚀 Quick Start
@@ -144,9 +154,41 @@ import {
   
   // Formatting
   formatCurrency,
-  formatPercentage
+  formatPercentage,
+  
+  // Prefixed exports to avoid conflicts
+  transactionWithTimeout,  // From transaction-utilities
+  errorWithTimeout,        // From error-utilities
+  PerformanceCache,        // From performance-utilities
+  CachingCache,            // From caching-utilities
+  ValidationUtilitiesOptions,  // From validation-utilities
+  ServicePatternOptions,       // From service-pattern-utilities
+  RepositoryPatternOptions     // From repository-pattern-utilities
 } from './utils';
 ```
+
+### ⚠️ Important: Naming Conflicts
+
+Some utilities export types with the same names (e.g., `Transaction`, `ValidationResult`, etc.). When conflicts occur, use specific imports or aliases:
+
+```typescript
+// ✅ Good: Use aliased imports for conflicting types
+import { 
+  Transaction as BankTransaction,
+  ValidationResult as BankValidationResult 
+} from './bank-reconciliation-utilities';
+
+import { 
+  Transaction as ConsolidationTransaction,
+  ValidationResult as ConsolidationValidationResult 
+} from './consolidation-utilities';
+
+// ✅ Good: Import directly from specific modules
+import { Transaction } from './bank-reconciliation-utilities';
+import { ValidationResult } from './consolidation-mapping-utilities';
+```
+
+See [BARREL_EXPORT_CONFLICTS_RESOLUTION.md](./BARREL_EXPORT_CONFLICTS_RESOLUTION.md) for detailed conflict resolution strategies.
 
 ### Import SSOT Modules Directly
 
@@ -661,6 +703,41 @@ The SSOT architecture provides comprehensive anti-drift protection:
 - Comprehensive test suite validates SSOT implementation
 - Integration tests ensure cross-utility consistency
 - Backward compatibility tests maintain existing behavior
+
+## 🔧 Barrel Export Conflicts Resolution
+
+### Current Status
+
+✅ **Resolved Critical Conflicts:**
+- `withTimeout` conflict between `transaction-utilities` and `error-utilities`
+- `Cache` conflict between `performance-utilities` and `caching-utilities`
+- `ValidationOptions` conflict between `validation-utilities` and `validation-pipeline-utilities`
+- `ServiceOptions` conflict in `service-pattern-utilities`
+- `RepositoryOptions` and `QueryOptions` conflicts in `repository-pattern-utilities`
+
+⚠️ **Remaining Conflicts:**
+Some utilities export types with the same names (e.g., `Transaction`, `ValidationResult`, `DateRange`, etc.). These are documented with clear warnings and resolution strategies.
+
+### Resolution Strategy
+
+1. **Critical conflicts** are resolved with explicit re-exports and prefixed names
+2. **Common conflicts** are documented with clear warnings and import examples
+3. **Developer guidance** is provided for handling conflicts in their code
+
+### Import Best Practices
+
+```typescript
+// ✅ Best: Use specific imports
+import { normalizeAccountCode, validateEmail } from './utils';
+
+// ✅ Good: Use aliased imports for conflicts
+import { Transaction as BankTransaction } from './bank-reconciliation-utilities';
+
+// ✅ Good: Import directly from modules
+import { ValidationResult } from './consolidation-mapping-utilities';
+```
+
+See [BARREL_EXPORT_CONFLICTS_RESOLUTION.md](./BARREL_EXPORT_CONFLICTS_RESOLUTION.md) for comprehensive conflict resolution strategies.
 
 ## 📝 Contributing
 

@@ -17,7 +17,7 @@
  */
 
 import { type SupportedCurrency, getCurrencyDecimalsStrict, normalizeCurrency } from './index';
-import { round2HalfUp } from './safe-object';
+import { round2HalfUp } from './safe-object-utilities';
 import { createValidationError } from './error-utilities';
 import { validateAmount } from './validation-utilities';
 

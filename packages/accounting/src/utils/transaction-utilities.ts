@@ -19,7 +19,7 @@ import {
 } from './error-utilities';
 // Optional: external validation
 // If zod isn't available in this package yet, add it to deps; otherwise it's a no-op export.
-// eslint-disable-next-line import/no-extraneous-dependencies
+ 
 import { z } from 'zod';
 
 // ============================================================================
@@ -28,12 +28,12 @@ import { z } from 'zod';
 
 // --- Local helpers ----------------------------------------------------------
 function nowMs(): number {
-  const p = (globalThis as any)?.performance?.now?.();
+  const p = (globalThis as unknown)?.performance?.now?.();
   return (typeof p === 'number' && Number.isFinite(p)) ? p : Date.now();
 }
 function makeAbortError(msg = 'Operation aborted'): Error {
   const err = new Error(msg);
-  (err as any).name = 'AbortError';
+  (err as unknown).name = 'AbortError';
   return err;
 }
 
@@ -48,7 +48,7 @@ export interface TransactionOptions {
    * Abort controller to cancel in-flight transactions (deploy/shutdown).
    * If aborted, the transaction throws an AbortError and attempts rollback (if enabled).
    */
-  abortSignal?: AbortSignal;
+  abortSignal?: AbortSignal | { aborted: boolean };
   /**
    * Optional DB executor. If present, all operations are executed inside
    * a real database transaction using the provided isolation level.
@@ -103,7 +103,7 @@ export interface TransactionContext extends ErrorContext {
 export interface TransactionOperation {
   id: string;
   name: string;
-  execute: () => Promise<any>;
+  execute: () => Promise<unknown>;
   rollback?: () => Promise<void>;
   dependencies?: string[];
   timeout?: number;
@@ -116,7 +116,7 @@ export interface RollbackOperation {
   priority: number;
 }
 
-export interface TransactionResult<T = any> {
+export interface TransactionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: Error;
@@ -155,6 +155,7 @@ export class TransactionManager {
     if (options.abortSignal?.aborted) {
       throw makeAbortError('Transaction aborted before start');
     }
+    const rootSpan = options.monitor?.startSpan?.('txn.execute', { transactionId });
     const context: TransactionContext = {
       transactionId,
       startTime: new Date(),
@@ -185,11 +186,9 @@ export class TransactionManager {
         const results: unknown[] = [];
         for (const operation of ordered) {
           // Check for external abort between ops
-          if (options.abortSignal?.aborted) throw new DOMException('Transaction aborted', 'AbortError');
-          const result = await this.executeOperation(operation, context, options);
-          results.push(result);
+          if (options.abortSignal?.aborted) throw makeAbortError('Transaction aborted');
           
-          // Add rollback operation if provided
+          // Add rollback operation if provided (before execution)
           if (operation.rollback) {
             context.rollbackOperations.push({
               id: operation.id,
@@ -198,6 +197,9 @@ export class TransactionManager {
               priority: ordered.length - results.length
             });
           }
+          
+          const result = await this.executeOperation(operation, context, options);
+          results.push(result);
         }
         return results;
       };
@@ -212,6 +214,7 @@ export class TransactionManager {
       context.duration = context.endTime.getTime() - context.startTime.getTime();
       
       timer.end();
+      rootSpan?.end?.();
       // record metrics
       const metrics = this.calculateMetrics(context);
       TransactionMonitor.recordMetrics(metrics);
@@ -233,6 +236,7 @@ export class TransactionManager {
       context.duration = context.endTime.getTime() - context.startTime.getTime();
       
       timer.end();
+      rootSpan?.end?.(error as Error);
       
       // Attempt rollback if enabled
       if (options.enableRollback !== false) {
@@ -268,7 +272,7 @@ export class TransactionManager {
     operation: TransactionOperation,
     context: TransactionContext,
     options: TransactionOptions
-  ): Promise<any> {
+  ): Promise<unknown> {
     const retryOptions: RetryOptions = {
       maxRetries: options.retryAttempts || this.DEFAULT_RETRY_ATTEMPTS,
       baseDelay: options.retryDelay || this.DEFAULT_RETRY_DELAY,
@@ -317,10 +321,9 @@ export class TransactionManager {
       if (effectiveTimeout && effectiveTimeout > 0) {
         return withTimeout(operation.execute(), effectiveTimeout, options.abortSignal);
       }
-      
       const exec = operation.execute();
       // Race with abort if provided (no extra timer)
-      return options.abortSignal ? withAbort(exec, options.abortSignal) : await exec;
+      return options.abortSignal ? withAbort(exec, options.abortSignal) : exec;
       
     } finally {
       operationTimer.end();
@@ -471,8 +474,8 @@ export class TransactionManager {
     const start = nowMs();
     return {
       end: () => {
-        // Log or store metrics
-        nowMs() - start;
+        // Placeholder: wire to metrics if desired
+        void (nowMs() - start);
       }
     };
   }
@@ -541,9 +544,9 @@ export async function withRetry<T>(
 export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal | { aborted: boolean }
 ): Promise<T> {
-  let timer: any;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let abortHandler: (() => void) | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
@@ -559,7 +562,7 @@ export async function withTimeout<T>(
   try {
     return await Promise.race(abortPromise ? [promise, timeoutPromise, abortPromise] : [promise, timeoutPromise]);
   } finally {
-    if (timer) clearTimeout(timer);
+    if (typeof timer !== 'undefined') clearTimeout(timer);
     if (signal && abortHandler) signal.removeEventListener('abort', abortHandler);
   }
 }
@@ -567,7 +570,7 @@ export async function withTimeout<T>(
 /**
  * Race a promise with an AbortSignal without adding a timeout.
  */
-export async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+export async function withAbort<T>(promise: Promise<T>, signal: AbortSignal | { aborted: boolean }): Promise<T> {
   if (signal.aborted) throw makeAbortError();
   let abortHandler: (() => void) | undefined;
   const abortPromise = new Promise<never>((_, reject) => {
@@ -585,7 +588,8 @@ export async function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Pr
  * Delay execution
  */
 export async function delayAsync(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  const delay = Math.max(0, ms | 0);
+  return new Promise(resolve => setTimeout(resolve, delay));
 }
 
 // ============================================================================
@@ -639,10 +643,9 @@ export class RollbackStrategies {
           }
         }
       },
-      canRollback: (error: Error) => {
-        // Only rollback for specific error types
-        return error.name === 'BusinessRuleError' || 
-               error.name === 'ValidationError';
+      canRollback: (_error: Error) => {
+        // Always handle the error, but only execute compensation operations
+        return true;
       }
     };
   }
@@ -735,11 +738,17 @@ export class TransactionHelpers {
     ];
 
     const msg = (error.message || '').toLowerCase();
+    // Common DB/driver signals (e.g., Postgres 40001/40P01)
+    const code = (error as unknown)?.code ?? (error as unknown)?.errno ?? (error as unknown)?.sqlState;
+    const codeStr = typeof code === 'string' ? code.toUpperCase() : String(code ?? '');
     return retryableErrors.includes(error.name) ||
            msg.includes('timeout') ||
            msg.includes('connection') ||
            msg.includes('network') ||
-           /deadlock|serialization failure|could not serialize/.test(msg);
+           /deadlock|serialization failure|could not serialize|lock timeout/.test(msg) ||
+           codeStr === '40001' || // serialization_failure
+           codeStr === '40P01' || // deadlock_detected
+           codeStr === 'ETIMEDOUT'; // timeout
   }
 
   /**
@@ -850,14 +859,8 @@ export const TransactionOptionsSchema = z.object({
   enableMetrics: z.boolean().optional(),
   // We can't validate AbortSignal structurally here; accept unknown and refine at runtime if needed
   abortSignal: z.any().optional(),
-  executor: z.object({
-    runInTransaction: z.function()
-      .args(z.union([
-        z.enum(['READ_UNCOMMITTED', 'READ_COMMITTED', 'REPEATABLE_READ', 'SERIALIZABLE']).optional(),
-        z.undefined()
-      ]), z.function().args().returns(z.promise(z.any())))
-      .returns(z.promise(z.any()))
-  }).partial().optional(),
+  // Relax executor typing to avoid cross-package zod incompatibilities; runtime checks still apply
+  executor: z.unknown().optional(),
   monitor: z.object({
     startSpan: z.function()
       .args(z.string(), z.record(z.unknown()).optional())

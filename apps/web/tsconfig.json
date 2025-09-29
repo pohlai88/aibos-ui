@@ -1,9 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
+    "disableSourceOfProjectReferenceRedirect": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "./.next",
     "composite": true,
-    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -12,8 +14,6 @@
     ],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "declaration": true,
-    "emitDeclarationOnly": false,
     "target": "ES2017",
     "strict": false,
     "exactOptionalPropertyTypes": false,
@@ -24,5 +24,12 @@
     "emitDecoratorMetadata": false,
     "useDefineForClassFields": true
   },
-  "include": ["src/**/*", "next-env.d.ts", ".next/types/**/*.ts"]
+  "references": [
+    { "path": "../../packages/ui" },
+    { "path": "../../packages/accounting" },
+    { "path": "../../packages/eventsourcing" },
+    { "path": "../../packages/utils" }
+  ],
+  "include": ["next-env.d.ts", "src", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

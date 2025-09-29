@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-import { setIfAllowed, getIfAllowed as _getIfAllowed, type Whitelist, safeGet } from '@aibos/utils';
+import { setIfAllowed, getIfAllowed as _getIfAllowed, type Whitelist, safeGet } from '../utils/internal';
 import * as React from 'react';
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -76,17 +76,17 @@ function determineBreakpoint(matches: Record<string, boolean>): Breakpoint {
 }
 
 // Whitelist for safe object access
-const MEDIA_STATE_KEYS: Whitelist = {
-  width: true,
-  height: true,
-  query: true,
-  xs: true,
-  sm: true,
-  md: true,
-  lg: true,
-  xl: true,
-  '2xl': true,
-} as const;
+const MEDIA_STATE_KEYS: Whitelist = new Set([
+  'width',
+  'height', 
+  'query',
+  'xs',
+  'sm',
+  'md',
+  'lg',
+  'xl',
+  '2xl',
+]);
 
 export interface MediaQueryState {
   xs: boolean;
@@ -154,7 +154,7 @@ export function useMediaQueries(queries: Record<string, string>): Record<string,
 
     return Object.keys(queries).reduce(
       (accumulator, key) => {
-        const query = safeGet(queries, key, Object.keys(queries));
+        const query = safeGet(queries, key) as string | undefined;
         if (query) {
           setIfAllowed(accumulator, key, window.matchMedia(query).matches, MEDIA_STATE_KEYS);
         } else {
@@ -171,7 +171,7 @@ export function useMediaQueries(queries: Record<string, string>): Record<string,
 
     const mediaQueries = Object.keys(queries)
       .map((key) => {
-        const query = safeGet(queries, key, Object.keys(queries));
+        const query = safeGet(queries, key) as string | undefined;
         return {
           key,
           mediaQuery: query ? window.matchMedia(query) : undefined,
@@ -345,13 +345,13 @@ export function useResponsive(): {
       // Responsive class utilities
       getResponsiveClass: (_classes: Partial<Record<Breakpoint, string>>) => {
         const { currentBreakpoint } = breakpoints;
-        return (safeGet(_classes, currentBreakpoint, Object.keys(_classes)) as string) || '';
+        return (safeGet(_classes, currentBreakpoint) as string) || '';
       },
 
       // Responsive value utilities
       getResponsiveValue: <T,>(_values: Partial<Record<Breakpoint, T>>, _defaultValue: T): T => {
         const { currentBreakpoint } = breakpoints;
-        return (safeGet(_values, currentBreakpoint, Object.keys(_values)) as T) || _defaultValue;
+        return (safeGet(_values, currentBreakpoint) as T) || _defaultValue;
       },
 
       // Device type utilities

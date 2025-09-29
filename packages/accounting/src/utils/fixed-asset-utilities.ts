@@ -175,6 +175,25 @@ export interface DepreciationOptions {
   readonly includePartialPeriods?: boolean;
   readonly precision?: number;
   readonly currency?: SupportedCurrency;
+  /** Optional override for declining-balance annual rate (e.g. 2/usefulLife for 200% DB, 1.5/usefulLife for 150% DB) */
+  readonly decliningRate?: number;
+  /** Units-of-production inputs (typed). If present, used instead of ad-hoc fields. */
+  readonly units?: {
+    /** Units used in the (entire) requested period/slice (you can pass per-slice when calling repeatedly) */
+    readonly used?: number;
+    /** Total expected units over asset life */
+    readonly total: number;
+  };
+  /** Optional: month-keyed usage map (YYYY-MM) to auto-apply per-slice units in schedule generation */
+  readonly unitsByMonth?: Record<string, number>;
+}
+
+/** Raw usage record for building month buckets */
+export interface UsageRecord {
+  /** When the units were consumed/produced (any date within the month). */
+  date: Date;
+  /** Units consumed/produced on that date (will be summed per month). */
+  units: number;
 }
 
 /**
@@ -377,17 +396,28 @@ export function calculatePartialPeriodDepreciation(
   period: FiscalPeriod,
   method: DepreciationMethod
 ): PartialPeriodDepreciation {
-  // Calculate full period depreciation
+  // Full-year depreciation baseline (method-specific)
   const fullPeriodDepreciation = calculateAnnualDepreciation(asset, method);
-  
-  // Calculate partial factor based on days
-  const daysInPeriod = Math.ceil((period.endDate.getTime() - period.startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysUsed = Math.min(
-    Math.ceil((period.endDate.getTime() - asset.acquisitionDate.getTime()) / (1000 * 60 * 60 * 24)),
-    daysInPeriod
-  );
-  
-  const partialFactor = Math.max(0, Math.min(1, daysUsed / daysInPeriod));
+
+  // Overlap between [period.start, period.end] and [asset.acquisitionDate, +∞)
+  const start = new Date(Math.max(period.startDate.getTime(), asset.acquisitionDate.getTime()));
+  const end = new Date(period.endDate);
+  if (start > end) {
+    return {
+      asset,
+      period,
+      method,
+      partialDepreciation: 0,
+      fullPeriodDepreciation,
+      partialFactor: 0,
+      daysInPeriod: daysBetween(period.startDate, period.endDate),
+      daysUsed: 0,
+      calculatedAt: new Date()
+    };
+  }
+  const daysInPeriod = daysBetween(period.startDate, period.endDate);
+  const daysUsed = daysBetween(start, end);
+  const partialFactor = clamp(daysUsed / daysInPeriod, 0, 1);
   const partialDepreciation = fullPeriodDepreciation * partialFactor;
 
   return {
@@ -435,7 +465,7 @@ export function updateDepreciationSchedule(
   }
 
   // Recalculate schedule with updated asset
-  const newSchedule = generateDepreciationSchedule(
+  return generateDepreciationSchedule(
     updatedAsset,
     schedule.method,
     {
@@ -443,8 +473,6 @@ export function updateDepreciationSchedule(
       endDate: schedule.periods[schedule.periods.length - 1]?.period.endDate || new Date()
     }
   );
-
-  return newSchedule;
 }
 
 // ============================================================================
@@ -473,7 +501,7 @@ export function calculateDisposalGainLoss(
   disposalDate: Date,
   disposalProceeds: number
 ): DisposalResult {
-  // Calculate accumulated depreciation to date
+  // Calculate accumulated depreciation to date (method-aware)
   const accumulatedDepreciation = calculateAccumulatedDepreciation(asset, disposalDate);
   const bookValue = asset.cost - accumulatedDepreciation;
   
@@ -841,18 +869,18 @@ function calculateAnnualDepreciation(asset: FixedAsset, method: DepreciationMeth
       return (asset.cost - asset.salvageValue) / asset.usefulLife;
     
     case 'declining_balance':
-      // Use 200% declining balance
+      // Use 200% declining balance baseline (annualized); actual period calc uses beginning BV
       const rate = 2 / asset.usefulLife;
-      return asset.cost * rate;
+      return (asset.cost) * rate;
     
     case 'sum_of_years_digits':
-      // This would need current year to calculate properly
+      // Baseline annual quantum for first year (remaining life/useful-life sum applied in period calc)
       const sumOfYears = (asset.usefulLife * (asset.usefulLife + 1)) / 2;
-      return (asset.cost - asset.salvageValue) / sumOfYears;
+      return ((asset.cost - asset.salvageValue) * (asset.usefulLife / sumOfYears));
     
     case 'units_of_production':
-      // This would need production data
-      return (asset.cost - asset.salvageValue) / asset.usefulLife;
+      // Requires usage data (read from options in schedule). Annual baseline is not meaningful.
+      return 0;
     
     default:
       throw new Error(`Unsupported depreciation method: ${method}`);
@@ -867,10 +895,19 @@ function calculateAnnualDepreciation(asset: FixedAsset, method: DepreciationMeth
  * @returns Accumulated depreciation amount
  */
 function calculateAccumulatedDepreciation(asset: FixedAsset, asOfDate: Date): number {
-  const yearsElapsed = (asOfDate.getTime() - asset.acquisitionDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
-  const annualDepreciation = calculateAnnualDepreciation(asset, asset.depreciationMethod);
-  
-  return Math.min(annualDepreciation * yearsElapsed, asset.cost - asset.salvageValue);
+  if (asOfDate <= asset.acquisitionDate) return 0;
+  // Build periods from acquisition to asOf (cap at end of life)
+  const lifeEnd = addYears(asset.acquisitionDate, asset.usefulLife);
+  const end = new Date(Math.min(asOfDate.getTime(), lifeEnd.getTime()));
+  const sched = calculateDepreciationPeriods(asset, asset.depreciationMethod, {
+    startDate: asset.acquisitionDate,
+    endDate: end,
+    includePartialPeriods: true,
+    precision: 2,
+    currency: asset.currency
+  });
+  const total = sched.reduce((s, p) => s + p.depreciation, 0);
+  return Math.min(round(total, 2), asset.cost - asset.salvageValue);
 }
 
 /**
@@ -886,57 +923,156 @@ function calculateDepreciationPeriods(
   method: DepreciationMethod,
   options: DepreciationOptions
 ): readonly DepreciationPeriod[] {
+  const precision = options.precision ?? 2;
   const periods: DepreciationPeriod[] = [];
-  const annualDepreciation = calculateAnnualDepreciation(asset, method);
-  
-  // Calculate monthly periods
-  const startDate = new Date(options.startDate);
-  const endDate = new Date(options.endDate);
-  const currentDate = new Date(startDate);
-  
-  let accumulatedDepreciation = 0;
+
+  // Boundaries: start at max(acquisition, options.startDate); end at min(endDate, end-of-life)
+  const lifeEnd = addYears(asset.acquisitionDate, asset.usefulLife);
+  const start = new Date(Math.max(options.startDate.getTime(), asset.acquisitionDate.getTime()));
+  const hardEnd = new Date(Math.min(options.endDate.getTime(), lifeEnd.getTime()));
+  if (start > hardEnd) return periods;
+
+  // Iterate monthly periods [inclusive]
+  let cursor = startOfDay(start);
   let beginningValue = asset.cost;
-  
-  while (currentDate <= endDate) {
-    const periodEndDate = new Date(currentDate);
-    periodEndDate.setMonth(periodEndDate.getMonth() + 1);
-    periodEndDate.setDate(0); // Last day of month
-    
-    if (periodEndDate > endDate) {
-      periodEndDate.setTime(endDate.getTime());
+  let accumulated = 0;
+
+  while (cursor <= hardEnd && beginningValue > asset.salvageValue + 1e-9) {
+    const pStart = new Date(cursor);
+    const pEnd = minDate(endOfMonth(pStart), hardEnd);
+
+    const days = daysBetween(pStart, pEnd);
+    const yearDays = 365;
+    const fraction = days / yearDays;
+
+    // Method-specific depreciation for this slice
+    let dep = 0;
+    switch (method) {
+      case 'straight_line': {
+        const annual = (asset.cost - asset.salvageValue) / asset.usefulLife;
+        dep = annual * fraction;
+        break;
+      }
+      case 'declining_balance': {
+        // Use provided decliningRate if any; else default to 200% DB
+        const rate = (options.decliningRate ?? (2 / asset.usefulLife));
+        const annual = beginningValue * rate;
+        const db = annual * fraction;
+        // Optional SL catch-up to avoid undershoot near the end
+        const remainingYears = yearsBetween(pStart, hardEnd);
+        const slAnnual = remainingYears > 0 ? (beginningValue - asset.salvageValue) / remainingYears : (beginningValue - asset.salvageValue);
+        dep = Math.max(Math.min(db, beginningValue - asset.salvageValue), 0);
+        // If straight-line yields higher, switch
+        if (slAnnual * fraction > dep) dep = Math.min(slAnnual * fraction, beginningValue - asset.salvageValue);
+        break;
+      }
+      case 'sum_of_years_digits': {
+        const n = asset.usefulLife;
+        const S = (n * (n + 1)) / 2;
+        // Elapsed years since acquisition at period start (fractional)
+        const elapsed = yearsBetween(asset.acquisitionDate, pStart);
+        const remaining = Math.max(n - elapsed, 0);
+        const weight = remaining / S; // annual weight at this slice
+        dep = (asset.cost - asset.salvageValue) * weight * fraction;
+        dep = Math.min(dep, beginningValue - asset.salvageValue);
+        break;
+      }
+      case 'units_of_production': {
+        // Prefer typed options.units & unitsByMonth; fall back to legacy ad-hoc fields
+        const anyOpts = options as unknown; // legacy shim
+        let unitsUsed = Number(options.units?.used ?? anyOpts?.unitsUsedInPeriod ?? 0);
+        // If unitsByMonth is provided, use the month key for this slice
+        if (options.unitsByMonth) {
+          const key = ymKey(pStart);
+          if (options.unitsByMonth[key] != null) unitsUsed = Number(options.unitsByMonth[key]);
+        }
+        const totalUnits = Number(options.units?.total ?? anyOpts?.totalUnits ?? 0);
+        if (unitsUsed > 0 && totalUnits > 0) {
+          dep = (asset.cost - asset.salvageValue) * (unitsUsed / totalUnits);
+          dep = Math.min(dep, beginningValue - asset.salvageValue);
+        } else {
+          dep = 0;
+        }
+        break;
+      }
+      default:
+        dep = 0;
     }
-    
-    // Calculate depreciation for this period
-    const daysInPeriod = Math.ceil((periodEndDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
-    const daysInYear = 365;
-    const periodDepreciation = annualDepreciation * (daysInPeriod / daysInYear);
-    
-    const endingValue = beginningValue - periodDepreciation;
-    accumulatedDepreciation += periodDepreciation;
-    
+
+    dep = round(Math.min(dep, beginningValue - asset.salvageValue), precision);
+    const ending = round(beginningValue - dep, precision);
+    accumulated = round(accumulated + dep, precision);
+
     periods.push({
       period: {
         id: `period-${periods.length + 1}`,
-        year: periodEndDate.getFullYear(),
+        year: pEnd.getFullYear(),
         period: periods.length + 1,
         name: `Period ${periods.length + 1}`,
-        startDate: new Date(currentDate),
-        endDate: new Date(periodEndDate),
+        startDate: pStart,
+        endDate: pEnd,
         status: { status: 'open' },
         backdateWindow: 30
       },
-      beginningValue,
-      depreciation: periodDepreciation,
-      endingValue,
-      accumulatedDepreciation,
-      isPartialPeriod: daysInPeriod < 30,
-      partialPeriodFactor: daysInPeriod / daysInYear,
+      beginningValue: round(beginningValue, precision),
+      depreciation: dep,
+      endingValue: ending,
+      accumulatedDepreciation: accumulated,
+      isPartialPeriod: (periods.length === 0 && pStart.getTime() > startOfMonth(pStart).getTime()) || pEnd.getTime() < endOfMonth(pStart).getTime(),
+      partialPeriodFactor: fraction,
       calculatedAt: new Date()
     });
-    
-    beginningValue = endingValue;
-    currentDate.setTime(periodEndDate.getTime() + 1);
+
+    beginningValue = ending;
+    cursor = addDays(pEnd, 1);
   }
-  
+
   return periods;
+}
+
+// ============================================================================
+// Local utilities (pure)
+// ============================================================================
+function ymKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  return `${y}-${m.toString().padStart(2, '0')}`;
+}
+
+function daysBetween(a: Date, b: Date): number {
+  // inclusive of end day for financial calendars; align with original ceil intent
+  const ms = endOfDay(b).getTime() - startOfDay(a).getTime();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+function startOfDay(d: Date): Date { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function endOfDay(d: Date): Date { const x = new Date(d); x.setHours(23,59,59,999); return x; }
+function startOfMonth(d: Date): Date { const x = new Date(d); x.setDate(1); return startOfDay(x); }
+function endOfMonth(d: Date): Date { const x = new Date(d); x.setMonth(x.getMonth()+1,0); return endOfDay(x); }
+function addDays(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function addYears(d: Date, n: number): Date { const x = new Date(d); x.setFullYear(x.getFullYear()+n); return x; }
+function minDate(a: Date, b: Date): Date { return a <= b ? a : b; }
+function yearsBetween(a: Date, b: Date): number {
+  return (b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24 * 365);
+}
+function clamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)); }
+function round(n: number, p: number): number {
+  const f = Math.pow(10, p);
+  return Math.round((n + Number.EPSILON) * f) / f;
+}
+
+// ============================================================================
+// Public helper: build month-keyed usage map (YYYY-MM)
+// ============================================================================
+/**
+ * Aggregate raw usage records into a month-keyed map (YYYY-MM -> units).
+ * Pass the result as `options.unitsByMonth` to auto-apply per-slice usage.
+ */
+export function buildUnitsByMonth(records: readonly UsageRecord[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const r of records) {
+    if (!r?.date || !isFinite(r.units as number)) continue;
+    const key = ymKey(r.date);
+    out[key] = (out[key] ?? 0) + Number(r.units);
+  }
+  return out;
 }

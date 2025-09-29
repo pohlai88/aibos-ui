@@ -7,14 +7,185 @@
  * @fileoverview Dunning rules, fee calculations, escalation management, and collection integration
  */
 
-import {
+import type {
   SupportedCurrency,
-  roundToCurrency,
 } from './accounting-utilities';
+import { roundToCurrency } from './accounting-utilities';
 import { createValidationError } from './error-utilities';
 import { type ValidationIssue, type BusinessValidationResult, type ValidationCode } from './validation-utilities';
 import { isValidDate } from './date-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
+import { z } from 'zod';
+
+// ============================================================================
+// Zod Schemas (exported) — validate config at module boundaries
+// ============================================================================
+
+export const LogicalOperatorSchema = z.enum(['and', 'or']);
+export const ConditionOperatorSchema = z.enum([
+  'equals', 'not_equals', 'greater_than', 'less_than',
+  'contains', 'starts_with', 'ends_with', 'between', 'regex'
+] as [ConditionOperator, ...ConditionOperator[]] as unknown as [string, ...string[]]);
+
+export const DunningConditionSchema = z.object({
+  field: z.string().min(1),
+  operator: ConditionOperatorSchema as unknown as z.ZodType<ConditionOperator>,
+  value: z.unknown().optional(),
+  logicalOperator: LogicalOperatorSchema.optional() as unknown as z.ZodType<LogicalOperator | undefined>,
+});
+
+export const DunningActionSchema = z.object({
+  type: z.enum(['sendLetter', 'chargeFee', 'calculateInterest', 'escalate', 'suspendAccount', 'sendToCollection']) as unknown as z.ZodType<ActionType>,
+  parameters: z.record(z.unknown()),
+  delay: z.number().int().nonnegative().optional(),
+});
+
+export const DunningRuleSchema = z.object({
+  id: z.string().min(1),
+  level: z.enum(['reminder', 'warning', 'final_notice', 'collection', 'legal']) as unknown as z.ZodType<DunningLevel>,
+  name: z.string().min(1),
+  description: z.string().min(1),
+  conditions: z.array(DunningConditionSchema).min(1),
+  actions: z.array(DunningActionSchema).min(1),
+  active: z.boolean(),
+  priority: z.number().int().min(0),
+}) as unknown as z.ZodType<DunningRule>;
+
+export const EscalationRuleSchema = z.object({
+  id: z.string().min(1),
+  fromLevel: z.enum(['reminder', 'warning', 'final_notice', 'collection', 'legal']) as unknown as z.ZodType<DunningLevel>,
+  toLevel: z.enum(['reminder', 'warning', 'final_notice', 'collection', 'legal']) as unknown as z.ZodType<DunningLevel>,
+  conditions: z.array(DunningConditionSchema).optional().default([]),
+  delay: z.number().int(),
+  active: z.boolean(),
+}) as unknown as z.ZodType<EscalationRule>;
+
+/**
+ * Validate dunning rule using Zod schema
+ */
+export function validateDunningRule(rule: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedRule = DunningRuleSchema.parse(rule);
+    return { isValid: true, errors: [], data: validatedRule };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
+
+/**
+ * Validate dunning rule with business logic and Zod schema validation
+ */
+export function validateDunningRuleWithSchema(rule: DunningRule): BusinessValidationResult {
+  const issues: ValidationIssue[] = [];
+
+  // ---------------------------------------------------------------------------
+  // Zod schema validation (adds guardrails without breaking existing API)
+  // ---------------------------------------------------------------------------
+  const zres = DunningRuleSchema.safeParse(rule);
+  if (!zres.success) {
+    for (const err of zres.error.issues) {
+      issues.push({
+        code: 'FORMAT' as ValidationCode,
+        message: `Schema: ${err.message}`,
+        path: err.path.join('.') || 'rule',
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Business logic validation (existing logic)
+  // ---------------------------------------------------------------------------
+  if (!rule.id) {
+    issues.push({
+      code: 'REQUIRED' as ValidationCode,
+      message: 'Rule ID is required',
+      path: 'id',
+    });
+  }
+  
+  if (!rule.level) {
+    issues.push({
+      code: 'REQUIRED' as ValidationCode,
+      message: 'Dunning level is required',
+      path: 'level',
+    });
+  }
+  
+  if (!rule.name) {
+    issues.push({
+      code: 'REQUIRED' as ValidationCode,
+      message: 'Rule name is required',
+      path: 'name',
+    });
+  }
+  
+  if (!rule.conditions || rule.conditions.length === 0) {
+    issues.push({
+      code: 'REQUIRED' as ValidationCode,
+      message: 'At least one condition is required',
+      path: 'conditions',
+    });
+  }
+  
+  if (!rule.actions || rule.actions.length === 0) {
+    issues.push({
+      code: 'REQUIRED' as ValidationCode,
+      message: 'At least one action is required',
+      path: 'actions',
+    });
+  }
+  
+  if (rule.priority < 0) {
+    issues.push({
+      code: 'RANGE' as ValidationCode,
+      message: 'Priority cannot be negative',
+      path: 'priority',
+    });
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    errors: issues.filter(i => i.severity !== 'warning').map(i => i.message),
+    warnings: issues.filter(i => i.severity === 'warning').map(i => i.message),
+    issues,
+  };
+}
+
+/**
+ * Validate escalation rule using Zod schema
+ */
+export function validateEscalationRule(rule: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedRule = EscalationRuleSchema.parse(rule);
+    return { isValid: true, errors: [], data: validatedRule };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
+
+/**
+ * Validate dunning condition using Zod schema
+ */
+export function validateDunningCondition(condition: unknown): { isValid: boolean; errors: string[]; data?: unknown } {
+  try {
+    const validatedCondition = DunningConditionSchema.parse(condition);
+    return { isValid: true, errors: [], data: validatedCondition };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      return { isValid: false, errors };
+    }
+    return { isValid: false, errors: ['Unknown validation error'] };
+  }
+}
 
 // ============================================================================
 // Types & Interfaces
@@ -34,13 +205,13 @@ export interface DunningRule {
 export interface DunningCondition {
   field: string;
   operator: ConditionOperator;
-  value: any;
+  value: unknown;
   logicalOperator?: LogicalOperator;
 }
 
 export interface DunningAction {
   type: ActionType;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   delay?: number; // days
 }
 
@@ -202,73 +373,16 @@ export function defineDunningRule(
 }
 
 /**
- * Validate dunning rule
- */
-export function validateDunningRule(rule: DunningRule): BusinessValidationResult {
-  const issues: ValidationIssue[] = [];
-  
-  if (!rule.id) {
-    issues.push({
-      code: 'REQUIRED' as ValidationCode,
-      message: 'Rule ID is required',
-      path: 'id',
-    });
-  }
-  
-  if (!rule.level) {
-    issues.push({
-      code: 'REQUIRED' as ValidationCode,
-      message: 'Dunning level is required',
-      path: 'level',
-    });
-  }
-  
-  if (!rule.name) {
-    issues.push({
-      code: 'REQUIRED' as ValidationCode,
-      message: 'Rule name is required',
-      path: 'name',
-    });
-  }
-  
-  if (!rule.conditions || rule.conditions.length === 0) {
-    issues.push({
-      code: 'REQUIRED' as ValidationCode,
-      message: 'At least one condition is required',
-      path: 'conditions',
-    });
-  }
-  
-  if (!rule.actions || rule.actions.length === 0) {
-    issues.push({
-      code: 'REQUIRED' as ValidationCode,
-      message: 'At least one action is required',
-      path: 'actions',
-    });
-  }
-  
-  if (rule.priority < 0) {
-    issues.push({
-      code: 'RANGE' as ValidationCode,
-      message: 'Priority cannot be negative',
-      path: 'priority',
-    });
-  }
-  
-  return {
-    isValid: issues.length === 0,
-    errors: issues.filter(i => i.severity !== 'warning').map(i => i.message),
-    warnings: issues.filter(i => i.severity === 'warning').map(i => i.message),
-    issues,
-  };
-}
-
-/**
  * Evaluate dunning rules
  */
 export function evaluateDunningRules(
   customer: string,
-  asOfDate: Date
+  asOfDate: Date,
+  /**
+   * Optional condition context used by the evaluator.
+   * Provide any fields referenced by DunningCondition.field (e.g., "daysOverdue", "balance", "segment", etc.)
+   */
+  context: Record<string, unknown> = {}
 ): DunningEvaluation {
   if (!isValidDate(asOfDate)) {
     throw createValidationError(
@@ -292,7 +406,7 @@ export function evaluateDunningRules(
     const rules = dunningRules.get(level) || [];
     
     for (const rule of rules) {
-      if (rule.active && evaluateConditions(rule.conditions, customer, asOfDate)) {
+      if (rule.active && evaluateConditions(rule.conditions, customer, asOfDate, context)) {
         applicableRules.push(rule);
         recommendedActions.push(...rule.actions);
         escalationLevel = level;
@@ -331,7 +445,11 @@ export function calculateLatePaymentFee(
   amount: number,
   daysOverdue: number,
   feeRate: number,
-  method: FeeMethod
+  method: FeeMethod,
+  /**
+   * Currency used for rounding the computed fee. Defaults to 'USD' to preserve existing behavior.
+   */
+  currency: SupportedCurrency = 'USD'
 ): FeeCalculation {
   if (amount < 0) {
     throw createValidationError(
@@ -364,9 +482,11 @@ export function calculateLatePaymentFee(
   
   switch (method) {
     case 'fixed':
+      // feeRate represents a fixed amount when method === 'fixed'
       feeAmount = feeRate;
       break;
     case 'percentage':
+      // feeRate is interpreted as a percentage (e.g., 2.5 means 2.5%)
       feeAmount = amount * (feeRate / 100);
       break;
     case 'tiered':
@@ -395,7 +515,7 @@ export function calculateLatePaymentFee(
     principal: amount,
     feeRate,
     daysOverdue,
-    feeAmount: roundToCurrency(feeAmount, 'USD'),
+    feeAmount: roundToCurrency(feeAmount, currency),
     method,
     calculationDate: new Date(),
   };
@@ -408,7 +528,11 @@ export function calculateInterest(
   principal: number,
   rate: number,
   days: number,
-  method: InterestMethod
+  method: InterestMethod,
+  /**
+   * Currency used for rounding the computed interest. Defaults to 'USD' to preserve existing behavior.
+   */
+  currency: SupportedCurrency = 'USD'
 ): InterestCalculation {
   if (principal < 0) {
     throw createValidationError(
@@ -441,6 +565,7 @@ export function calculateInterest(
   
   switch (method) {
     case 'simple':
+      // 'rate' is expected as a decimal per annum (e.g., 0.06 for 6%)
       interestAmount = principal * rate * (days / 365);
       break;
     case 'compound':
@@ -465,7 +590,7 @@ export function calculateInterest(
     principal,
     rate,
     days,
-    interestAmount: roundToCurrency(interestAmount, 'USD'),
+    interestAmount: roundToCurrency(interestAmount, currency),
     method,
     calculationDate: new Date(),
   };
@@ -478,7 +603,11 @@ export function calculateCompoundInterest(
   principal: number,
   rate: number,
   periods: number,
-  frequency: InterestFrequency
+  frequency: InterestFrequency,
+  /**
+   * Currency used for rounding the computed amounts. Defaults to 'USD' to preserve existing behavior.
+   */
+  currency: SupportedCurrency = 'USD'
 ): CompoundInterestResult {
   if (principal < 0) {
     throw createValidationError(
@@ -505,6 +634,10 @@ export function calculateCompoundInterest(
       periods,
       { operation: 'calculate-compound-interest' }
     );
+  }
+  // Guard against non-integer periods that can creep in from upstream math.
+  if (!Number.isFinite(periods) || Math.floor(periods) !== periods) {
+    periods = Math.floor(periods);
   }
   
   let periodsPerYear: number;
@@ -542,8 +675,8 @@ export function calculateCompoundInterest(
     rate,
     periods,
     frequency,
-    compoundAmount: roundToCurrency(compoundAmount, 'USD'),
-    interestAmount: roundToCurrency(interestAmount, 'USD'),
+    compoundAmount: roundToCurrency(compoundAmount, currency),
+    interestAmount: roundToCurrency(interestAmount, currency),
     calculationDate: new Date(),
   };
 }
@@ -578,11 +711,15 @@ export function escalateDunningLevel(
     );
   }
   
+  // Honor the rule's delay in days when computing the escalation date.
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const escalationDate = new Date(Date.now() + (Math.max(0, escalationRule.delay) * DAY_MS));
+
   return {
     customer,
     fromLevel: currentLevel,
     toLevel: escalationRule.toLevel,
-    escalationDate: new Date(),
+    escalationDate,
     reason: 'Automatic escalation based on rule',
     applicableRule: escalationRule,
   };
@@ -645,9 +782,27 @@ export function validateEscalation(escalation: EscalationResult): BusinessValida
 /**
  * Track escalation history
  */
-export function trackEscalationHistory(customer: string, escalation: EscalationResult): void {
-  // This would typically store in database
-  console.log(`Tracking escalation for customer ${customer}:`, escalation);
+export function trackEscalationHistory(_customer: string, escalation: EscalationResult): void {
+  // In a real implementation, this would persist to database/event store
+  // For now, we'll use a structured logging approach
+  const escalationEvent = {
+    type: 'dunning.escalation',
+    timestamp: new Date().toISOString(),
+    customer: escalation.customer,
+    fromLevel: escalation.fromLevel,
+    toLevel: escalation.toLevel,
+    escalationDate: escalation.escalationDate.toISOString(),
+    reason: escalation.reason,
+    ruleId: escalation.applicableRule.id,
+    metadata: {
+      ruleId: escalation.applicableRule.id,
+      delay: escalation.applicableRule.delay,
+    }
+  };
+
+  // TODO: Replace with actual persistence mechanism
+  // Examples: EventStore, Database, Message Queue, etc.
+  console.log('DUNNING_ESCALATION_EVENT:', JSON.stringify(escalationEvent, null, 2));
 }
 
 // ============================================================================
@@ -694,9 +849,27 @@ export function generateDunningLetter(
 /**
  * Track dunning activity
  */
-export function trackDunningActivity(customer: string, activity: DunningActivity): void {
-  // This would typically store in database
-  console.log(`Tracking dunning activity for customer ${customer}:`, activity);
+export function trackDunningActivity(_customer: string, activity: DunningActivity): void {
+  // In a real implementation, this would persist to database/event store
+  // For now, we'll use a structured logging approach
+  const activityEvent = {
+    type: 'dunning.activity',
+    timestamp: new Date().toISOString(),
+    customer: activity.customer,
+    activityType: activity.type,
+    description: activity.description,
+    amount: activity.amount,
+    currency: activity.currency,
+    date: activity.date.toISOString(),
+    metadata: {
+      status: activity.status,
+      followUpDate: activity.followUpDate?.toISOString(),
+    }
+  };
+
+  // TODO: Replace with actual persistence mechanism
+  // Examples: EventStore, Database, Message Queue, etc.
+  console.log('DUNNING_ACTIVITY_EVENT:', JSON.stringify(activityEvent, null, 2));
 }
 
 /**
@@ -731,16 +904,75 @@ export function calculateDunningEffectiveness(
 // ============================================================================
 
 /**
- * Evaluate conditions
+ * Minimal, dependency-light condition evaluator
+ * - Evaluates left-to-right, honoring condition.logicalOperator (default AND)
+ * - Works against a provided context object
+ * - Supported operators (string-based): eq, neq, gt, gte, lt, lte, in, nin, contains, starts_with, ends_with, is_set, is_not_set, between
+ * - You can feed any domain values into 'context' when calling evaluateDunningRules(..., context)
  */
-function evaluateConditions(
-  _conditions: DunningCondition[],
-  _customer: string,
-  _asOfDate: Date
+export function evaluateConditions(
+  conditions: DunningCondition[],
+  customer: string,
+  asOfDate: Date,
+  context: Record<string, unknown> = {}
 ): boolean {
-  // Simplified condition evaluation
-  // In a real implementation, this would check customer data against conditions
-  return true;
+  if (!conditions || conditions.length === 0) return true;
+
+  // Merge default implicit context
+  const ctx: Record<string, unknown> = {
+    customer,
+    asOfDate,
+    ...context,
+  };
+
+  const get = (path: string): unknown => ctx[path];
+
+  const ops: Record<string, (fieldVal: unknown, condVal: unknown) => boolean> = {
+    eq: (a, b) => a === b,
+    neq: (a, b) => a !== b,
+    gt: (a, b) => toNum(a) > toNum(b),
+    gte: (a, b) => toNum(a) >= toNum(b),
+    lt: (a, b) => toNum(a) < toNum(b),
+    lte: (a, b) => toNum(a) <= toNum(b),
+    in: (a, b) => Array.isArray(b) && b.includes(a as never),
+    nin: (a, b) => Array.isArray(b) && !b.includes(a as never),
+    contains: (a, b) => String(a ?? '').includes(String(b ?? '')),
+    starts_with: (a, b) => String(a ?? '').startsWith(String(b ?? '')),
+    ends_with: (a, b) => String(a ?? '').endsWith(String(b ?? '')),
+    is_set: (a) => a !== undefined && a !== null,
+    is_not_set: (a) => a === undefined || a === null,
+    between: (a, b) => {
+      if (!Array.isArray(b) || b.length !== 2) return false;
+      const [min, max] = b;
+      const n = toNum(a);
+      return n >= toNum(min) && n <= toNum(max);
+    },
+  };
+
+  let acc = true;
+  let first = true;
+
+  for (const cond of conditions) {
+    const fieldVal = get(cond.field);
+    const op = ops[String(cond.operator)];
+    const result = op ? op(fieldVal, cond.value) : false;
+
+    if (first) {
+      acc = result;
+      first = false;
+    } else {
+      const logic: LogicalOperator = (cond.logicalOperator as LogicalOperator) || ('and' as LogicalOperator);
+      acc = logic === 'or' ? (acc || result) : (acc && result);
+    }
+  }
+
+  return acc;
+}
+
+function toNum(v: unknown): number {
+  if (typeof v === 'number') return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 /**

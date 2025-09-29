@@ -25,6 +25,28 @@ import {
 import { createValidationError } from './error-utilities';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Error messages
+const ERROR_MESSAGES = {
+  COST_CANNOT_BE_NEGATIVE: 'Cost cannot be negative',
+  MARKUP_RATE_CANNOT_BE_NEGATIVE: 'Markup rate cannot be negative',
+  INVESTMENT_MUST_BE_POSITIVE: 'Investment must be positive',
+  CASH_FLOWS_ARRAY_CANNOT_BE_EMPTY: 'Cash flows array cannot be empty',
+} as const;
+
+// Operation types
+const OPERATION_TYPES = {
+  CALCULATE_PERCENTAGE_CHANGE: 'calculate-percentage-change',
+  CALCULATE_MARKUP: 'calculate-markup',
+  CALCULATE_MARGIN: 'calculate-margin',
+  CALCULATE_ROI: 'calculate-roi',
+  CALCULATE_NPV: 'calculate-npv',
+  FINANCIAL_OPERATION: 'financial-operation',
+} as const;
+
+// ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
 
@@ -198,7 +220,7 @@ export function calculateDiscountRate(
         'INVALID_FINANCIAL_INPUT',
         'Original amount must be positive',
         originalAmount,
-        { operation: 'calculate-percentage-change' }
+        { operation: OPERATION_TYPES.CALCULATE_PERCENTAGE_CHANGE }
       );
   }
   if (finalAmount < 0) {
@@ -206,7 +228,7 @@ export function calculateDiscountRate(
         'INVALID_FINANCIAL_INPUT',
         'Final amount cannot be negative',
         finalAmount,
-        { operation: 'calculate-percentage-change' }
+        { operation: OPERATION_TYPES.CALCULATE_PERCENTAGE_CHANGE }
       );
   }
   if (finalAmount > originalAmount) {
@@ -214,7 +236,7 @@ export function calculateDiscountRate(
         'INVALID_FINANCIAL_INPUT',
         'Final amount cannot be greater than original amount',
         finalAmount,
-        { operation: 'calculate-percentage-change' }
+        { operation: OPERATION_TYPES.CALCULATE_PERCENTAGE_CHANGE }
       );
   }
 
@@ -236,17 +258,17 @@ export function calculateMarkup(
   if (cost < 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cost cannot be negative',
+        ERROR_MESSAGES.COST_CANNOT_BE_NEGATIVE,
         cost,
-        { operation: 'calculate-markup' }
+        { operation: OPERATION_TYPES.CALCULATE_MARKUP }
       );
   }
   if (markupRate < 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Markup rate cannot be negative',
+        ERROR_MESSAGES.MARKUP_RATE_CANNOT_BE_NEGATIVE,
         markupRate,
-        { operation: 'calculate-markup' }
+        { operation: OPERATION_TYPES.CALCULATE_MARKUP }
       );
   }
 
@@ -275,7 +297,7 @@ export function calculateMarkupRate(
         'INVALID_FINANCIAL_INPUT',
         'Cost must be positive',
         cost,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
   if (sellingPrice < 0) {
@@ -283,7 +305,7 @@ export function calculateMarkupRate(
         'INVALID_FINANCIAL_INPUT',
         'Selling price cannot be negative',
         sellingPrice,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
 
@@ -306,15 +328,15 @@ export function calculateMargin(
         'INVALID_FINANCIAL_INPUT',
         'Selling price cannot be negative',
         sellingPrice,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
   if (cost < 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cost cannot be negative',
+        ERROR_MESSAGES.COST_CANNOT_BE_NEGATIVE,
         cost,
-        { operation: 'calculate-markup' }
+        { operation: OPERATION_TYPES.CALCULATE_MARKUP }
       );
   }
   if (sellingPrice < cost) {
@@ -322,7 +344,7 @@ export function calculateMargin(
         'INVALID_FINANCIAL_INPUT',
         'Selling price cannot be less than cost',
         sellingPrice,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
 
@@ -347,9 +369,9 @@ export function calculateSellingPriceFromMargin(
   if (cost < 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cost cannot be negative',
+        ERROR_MESSAGES.COST_CANNOT_BE_NEGATIVE,
         cost,
-        { operation: 'calculate-markup' }
+        { operation: OPERATION_TYPES.CALCULATE_MARKUP }
       );
   }
   if (marginPercentage < 0 || marginPercentage >= 1) {
@@ -357,7 +379,7 @@ export function calculateSellingPriceFromMargin(
         'INVALID_FINANCIAL_INPUT',
         'Margin percentage must be between 0 and 1',
         marginPercentage,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
 
@@ -379,9 +401,9 @@ export function calculateROI(
   if (investment <= 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Investment must be positive',
+        ERROR_MESSAGES.INVESTMENT_MUST_BE_POSITIVE,
         investment,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
   if (period <= 0) {
@@ -389,7 +411,7 @@ export function calculateROI(
         'INVALID_FINANCIAL_INPUT',
         'Period must be positive',
         period,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
 
@@ -414,9 +436,9 @@ export function calculateAnnualizedROI(
   if (investment <= 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Investment must be positive',
+        ERROR_MESSAGES.INVESTMENT_MUST_BE_POSITIVE,
         investment,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
   if (period <= 0) {
@@ -424,7 +446,7 @@ export function calculateAnnualizedROI(
         'INVALID_FINANCIAL_INPUT',
         'Period must be positive',
         period,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
 
@@ -446,9 +468,9 @@ export function calculateNPV(
   if (isEmpty(cashFlows)) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cash flows array cannot be empty',
+        ERROR_MESSAGES.CASH_FLOWS_ARRAY_CANNOT_BE_EMPTY,
         cashFlows,
-        { operation: 'calculate-npv' }
+        { operation: OPERATION_TYPES.CALCULATE_NPV }
       );
   }
   if (discountRate < 0) {
@@ -456,7 +478,7 @@ export function calculateNPV(
         'INVALID_FINANCIAL_INPUT',
         'Discount rate cannot be negative',
         discountRate,
-        { operation: 'calculate-npv' }
+        { operation: OPERATION_TYPES.CALCULATE_NPV }
       );
   }
 
@@ -605,9 +627,9 @@ export function calculatePaybackPeriod(
   if (investment <= 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Investment must be positive',
+        ERROR_MESSAGES.INVESTMENT_MUST_BE_POSITIVE,
         investment,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
   if (annualCashFlow <= 0) {
@@ -640,17 +662,17 @@ export function calculatePaybackPeriodVariable(
   if (investment <= 0) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Investment must be positive',
+        ERROR_MESSAGES.INVESTMENT_MUST_BE_POSITIVE,
         investment,
-        { operation: 'calculate-roi' }
+        { operation: OPERATION_TYPES.CALCULATE_ROI }
       );
   }
   if (isEmpty(cashFlows)) {
     throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cash flows array cannot be empty',
+        ERROR_MESSAGES.CASH_FLOWS_ARRAY_CANNOT_BE_EMPTY,
         cashFlows,
-        { operation: 'calculate-npv' }
+        { operation: OPERATION_TYPES.CALCULATE_NPV }
       );
   }
 
@@ -705,7 +727,7 @@ export function calculateSumOfYearsDepreciation(
         'INVALID_FINANCIAL_INPUT',
         'Cost must be positive',
         cost,
-        { operation: 'calculate-margin' }
+        { operation: OPERATION_TYPES.CALCULATE_MARGIN }
       );
   }
   if (salvageValue < 0) {
@@ -792,7 +814,7 @@ export function calculatePresentValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Payment must be positive',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
   if (rate < 0) {
@@ -800,7 +822,7 @@ export function calculatePresentValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Rate cannot be negative',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
   if (periods <= 0) {
@@ -808,7 +830,7 @@ export function calculatePresentValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Periods must be positive',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
 
@@ -832,7 +854,7 @@ export function calculateFutureValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Payment must be positive',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
   if (rate < 0) {
@@ -840,7 +862,7 @@ export function calculateFutureValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Rate cannot be negative',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
   if (periods <= 0) {
@@ -848,7 +870,7 @@ export function calculateFutureValueAnnuity(
         'INVALID_FINANCIAL_INPUT',
         'Periods must be positive',
         { payment, rate, periods },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   }
 
@@ -873,13 +895,13 @@ export function calcTaxTupleMinorFromNet(
         'INVALID_FINANCIAL_INPUT',
         'netMinor cannot be negative',
         { netMinor, rate, currency },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   if (rate < 0 || rate > 1) throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
         'Rate must be between 0 and 1',
         { netMinor, rate, currency },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   const current = normalizeCurrency(currency)!;
   const net = fromMinor(netMinor, current);
@@ -904,13 +926,13 @@ export function calcTaxTupleMinorFromGross(
         'INVALID_FINANCIAL_INPUT',
         'grossMinor cannot be negative',
         { grossMinor, rate, currency },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   if (rate < 0 || rate >= 1) throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
         'Rate must be between 0 and 1 (exclusive)',
         { grossMinor, rate, currency },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   const current = normalizeCurrency(currency)!;
   const gross = fromMinor(grossMinor, current);
@@ -938,7 +960,7 @@ export function allocateTaxAcrossLinesMinor(
         'INVALID_FINANCIAL_INPUT',
         'Rate must be between 0 and 1',
         { lineNetMinors, rate, currency },
-        { operation: 'financial-operation' }
+        { operation: OPERATION_TYPES.FINANCIAL_OPERATION }
       );
   const current = normalizeCurrency(currency)!;
   const sumNetMinor = lineNetMinors.reduce((a, v) => a + v, 0);
@@ -981,15 +1003,15 @@ export function generateNPVSchedule(
 ): { npv: number; rows: NPVScheduledRow[] } {
   if (cashFlows.length === 0) throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
-        'Cash flows array cannot be empty',
+        ERROR_MESSAGES.CASH_FLOWS_ARRAY_CANNOT_BE_EMPTY,
         cashFlows,
-        { operation: 'calculate-npv' }
+        { operation: OPERATION_TYPES.CALCULATE_NPV }
       );
   if (discountRate < 0) throw createValidationError(
         'INVALID_FINANCIAL_INPUT',
         'Discount rate cannot be negative',
         discountRate,
-        { operation: 'calculate-npv' }
+        { operation: OPERATION_TYPES.CALCULATE_NPV }
       );
   const rows: NPVScheduledRow[] = [];
   let cumulative = 0;

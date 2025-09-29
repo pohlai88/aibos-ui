@@ -6,7 +6,7 @@
  */
 
 import '@testing-library/jest-dom';
-import { createSafeSet } from '@aibos/utils/code-quality';
+import { createSafeSet } from '../utils/internal';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 

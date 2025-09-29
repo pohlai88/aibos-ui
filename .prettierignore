@@ -8,6 +8,8 @@ coverage/
 # Dependencies
 node_modules/
 pnpm-lock.yaml
+package-lock.json
+yarn.lock
 
 # Generated files
 *.gen.ts
@@ -28,14 +30,14 @@ pnpm-lock.yaml
 **/*.story.*
 **/*.snap
 
-# Config files that should not be formatted
+# Config files (excluded from formatting)
 *.config.js
 *.config.ts
 vitest.config.*
 playwright.config.*
 tsconfig.*.json
 
-# Scripts with syntax issues
+# Scripts with known syntax issues
 scripts/guard-dynamic-keys.js
 scripts/validate-phase1.js
 scripts/validate-ui-ecosystem-only.js
@@ -43,7 +45,3 @@ scripts/validate-ui-ecosystem-only.js
 # Documentation
 *.md
 *.mdx
-
-# Lock files
-package-lock.json
-yarn.lock

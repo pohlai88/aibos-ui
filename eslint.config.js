@@ -12,7 +12,6 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
 import jsoncParser from 'jsonc-eslint-parser';
 import jsonc from 'eslint-plugin-jsonc';
-import noNpmUsage from './scripts/eslint-rules/no-npm-usage.js';
 // import aibosUi from './packages/ui/eslint-plugin/index.js'; // REMOVED - custom plugin deleted
 // import nextPlugin from 'eslint-config-next'; // Temporarily disabled due to ESLint compatibility issues
 
@@ -28,15 +27,26 @@ export default [
       'dist/',
       'build/',
       '.next/',
+      '.turbo/',
+      '.vercel/',
       'coverage/',
       '**/*.gen.ts',
       '**/*.generated.ts',
+      '**/*.tsbuildinfo',
+      '**/.tsbuildinfo',
+      '**/.cache/**',
+      '**/.turbo/**',
+      '**/.vercel/**',
       '**/dist/**',
       '**/build/**',
       '**/apps/web/.next/**',
       '**/apps/web/.next/types/**',
       '**/apps/web/.next/static/**',
       '**/apps/web/.next/server/**',
+      // lock/state
+      'pnpm-lock.yaml',
+      'package-lock.json',
+      'yarn.lock',
       
       // Test files and related content - SINGLE SOURCE OF TRUTH
       '**/*.test.*',
@@ -51,7 +61,6 @@ export default [
       '**/*.stories.*',
       '**/*.story.*',
       '**/*.snap',
-      'coverage/**',
     ],
   },
 
@@ -89,33 +98,8 @@ export default [
         sessionStorage: 'readonly',
         fetch: 'readonly',
         performance: 'readonly',
-        // DOM element types
-        HTMLElement: 'readonly',
-        HTMLInputElement: 'readonly',
-        HTMLAnchorElement: 'readonly',
-        HTMLOListElement: 'readonly',
-        HTMLLIElement: 'readonly',
-        HTMLParagraphElement: 'readonly',
-        HTMLLabelElement: 'readonly',
-        HTMLSpanElement: 'readonly',
-        HTMLButtonElement: 'readonly',
-        HTMLDivElement: 'readonly',
-        HTMLHeadingElement: 'readonly',
-        Element: 'readonly',
-        Event: 'readonly',
-        MouseEvent: 'readonly',
-        // SVG types
-        SVGElement: 'readonly',
-        SVGSVGElement: 'readonly',
-        // Media query and resize observer
-        ResizeObserver: 'readonly',
-        ResizeObserverEntry: 'readonly',
-        MediaQueryList: 'readonly',
-        MediaQueryListEvent: 'readonly',
-        DOMRectReadOnly: 'readonly',
-        IntersectionObserver: 'readonly',
-        IntersectionObserverEntry: 'readonly',
-        Window: 'readonly',
+        // (drop type-only DOM names; avoid masking undefined identifiers at runtime)
+        // If you truly need any as runtime globals, re-add them surgically.
         // React/JSX globals
         JSX: 'readonly',
         React: 'readonly',
@@ -157,7 +141,6 @@ export default [
       security,
       'jsx-a11y': jsxA11y,
       'react-hooks': reactHooks,
-      'no-npm-usage': noNpmUsage,
       jsonc,
       // 'aibos-ui': aibosUi, // REMOVED - custom plugin deleted
     },
@@ -170,7 +153,15 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/consistent-type-imports': [
         'error',
-        { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+        { 
+          prefer: 'type-imports', 
+          fixStyle: 'inline-type-imports',
+          disallowTypeAnnotations: false
+        },
+      ],
+      '@typescript-eslint/consistent-type-exports': [
+        'error',
+        { fixMixedExportsWithInlineTypeSpecifier: true }
       ],
       'no-unused-vars': 'off', // ← CRITICAL: Disable base rule first
       '@typescript-eslint/no-unused-vars': [
@@ -187,13 +178,19 @@ export default [
       'boundaries/element-types': 'off',
       'boundaries/no-unknown-files': 'off',
 
-      // Import hygiene - simplified approach
-      'import/order': 'off',
-      // Removed perfectionist/sort-imports - too strict for development workflow
-      // Use Prettier or IDE auto-formatting for consistent import ordering
+      // Imports: resolve strictly with TS + node
+      'import/no-unresolved': ['error', { ignore: ['^node:'] }],
+      // Don't force extensions in TS imports
+      'import/extensions': ['off'],
       'import/no-extraneous-dependencies': [
         'error',
         {
+          packageDir: [
+            '.',                  // repo root
+            'packages/*',
+            'apps/*',
+            'services/*'
+          ],
           devDependencies: [
             '**/*.test.ts',
             '**/*.spec.ts',
@@ -239,15 +236,6 @@ export default [
       'sonarjs/prefer-single-boolean-return': 'error',
       'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
 
-      // NPM blocking rules
-      'no-npm-usage/no-npm-usage': 'error',
-      'no-npm-usage/no-npm-scripts': 'error',
-      'no-npm-usage/no-npm-install': 'error',
-      'no-npm-usage/no-npm-run': 'error',
-      'no-npm-usage/no-npm-add': 'error',
-      'no-npm-usage/no-npm-remove': 'error',
-      'no-npm-usage/no-npm-update': 'error',
-      'no-npm-usage/no-npm-publish': 'error',
 
       // Local policies
       'no-restricted-imports': [
@@ -273,8 +261,20 @@ export default [
     settings: {
       'import/resolver': {
         node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] },
+        // Resolve TS path aliases per-package
+        typescript: {
+          project: [
+            './tsconfig.json',
+            './packages/*/tsconfig.json',
+            './apps/*/tsconfig.json',
+            './services/*/tsconfig.json'
+          ]
+        }
       },
-      'import/internal-regex': '^(@aibos|~)/',
+      // Make import plugin parse TS files with the TS parser
+      'import/parsers': {
+        '@typescript-eslint/parser': ['.ts', '.tsx']
+      },
       'boundaries/elements': [
         { type: 'packages', pattern: 'packages/*/src/**/*' },
         { type: 'apps', pattern: 'apps/*/src/**/*' },
@@ -407,8 +407,6 @@ export default [
 
       // Keep complexity realistic, fail egregious cases - Temporarily disabled
       'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      // Disable perfectionist import sorting for UI package (too strict)
-      'perfectionist/sort-imports': 'off',
       // Handle unused vars in UI package
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
@@ -423,19 +421,6 @@ export default [
     },
   },
 
-  // Next.js app specific configuration
-  {
-    files: ['apps/web/**/*.{ts,tsx}'],
-    rules: {
-      // Next.js specific rules - manually configured due to ESLint compatibility issues
-      // These rules are equivalent to what eslint-config-next would provide
-      'react-hooks/exhaustive-deps': 'warn',
-      'react-hooks/rules-of-hooks': 'error',
-      // Disable some rules that conflict with Next.js patterns
-      'jsx-a11y/anchor-is-valid': 'off', // Next.js Link component handles this
-      'import/no-anonymous-default-export': 'off', // Next.js pages use default exports
-    },
-  },
 
   // BFF package (NestJS) - handle injected dependencies
   {
@@ -505,10 +490,16 @@ export default [
     },
   },
 
-  // Web app - handle unused vars and restricted imports
+  // Web app - combine Next.js specifics + local relaxations
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     rules: {
+      // Next.js-like expectations without eslint-config-next
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
+      'jsx-a11y/anchor-is-valid': 'off', // handled by next/link
+      'import/no-anonymous-default-export': 'off', // Next pages/components often default-export
+
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',

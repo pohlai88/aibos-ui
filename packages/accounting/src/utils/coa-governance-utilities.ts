@@ -7,13 +7,13 @@
  * @fileoverview COA tree operations, rollups, normal balance validation, and posting flags
  */
 
-import {
+import type {
   SupportedCurrency,
   AccountType,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { DateRange } from './date-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { DateRange } from './date-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
 
 // ============================================================================
 // Types & Interfaces
@@ -58,7 +58,9 @@ export interface RollupResult {
   account: Account;
   children: Account[];
   childBalances: AccountBalance[];
-  rolledUpBalance: number;
+  rolledUpBalance: number;              // raw (debit_positive) sum
+  presentedRolledUpBalance: number;     // after sign policy
+  signPolicy: SignPolicy;
   rollupMethod: RollupMethod;
   calculationDate: Date;
   isValid: boolean;
@@ -135,7 +137,9 @@ export interface AccountPath {
 
 export interface RollupBalance {
   account: Account;
-  balance: number;
+  balance: number;                       // raw (debit_positive)
+  presentedBalance: number;              // after sign policy
+  signPolicy: SignPolicy;
   method: RollupMethod;
   children: AccountBalance[];
   calculatedAt: Date;
@@ -143,7 +147,9 @@ export interface RollupBalance {
 
 export interface ParentBalance {
   parent: Account;
-  balance: number;
+  balance: number;                       // raw (debit_positive)
+  presentedBalance: number;              // after sign policy
+  signPolicy: SignPolicy;
   children: AccountBalance[];
   rollupMethod: RollupMethod;
   calculatedAt: Date;
@@ -223,6 +229,9 @@ export interface ReportingPath {
   mappings: MappingRule[];
   isValid: boolean;
   issues: ValidationIssue[];
+  // Optional display helpers (not required for existing callers)
+  presentedCategoryTotals?: Record<string, number>; // categoryId -> presented total
+  signPolicy?: SignPolicy;
 }
 
 export interface Transaction {
@@ -260,6 +269,79 @@ export type TransactionType = 'journal' | 'payment' | 'receipt' | 'adjustment' |
 export type ActionType = 'validate' | 'transform' | 'block' | 'approve' | 'notify';
 
 // ============================================================================
+// Sign Policy SSOT (Single Source of Truth)
+// ============================================================================
+
+export type SignPolicy = 'debit_positive' | 'natural_positive';
+export const DEFAULT_SIGN_POLICY: SignPolicy = 'debit_positive';
+
+/**
+ * Expected "natural" sign multiplier for reporting:
+ * - asset/expense shown positive (multiplier = 1)
+ * - liability/equity/revenue shown positive (multiplier = -1, flip accounting sign)
+ */
+function naturalSignMultiplierByClass(class_: AccountClass): 1 | -1 {
+  switch (class_) {
+    case 'asset':
+    case 'expense':
+      return 1;
+    case 'liability':
+    case 'equity':
+    case 'revenue':
+      return -1;
+  }
+}
+
+/**
+ * Apply a sign policy to a raw accounting balance (debit - credit).
+ */
+export function applySignPolicy(
+  account: Account,
+  rawBalance: number,
+  policy: SignPolicy = DEFAULT_SIGN_POLICY
+): number {
+  if (policy === 'debit_positive') return rawBalance;
+  // 'natural_positive'
+  return rawBalance * naturalSignMultiplierByClass(account.class);
+}
+
+/**
+ * Validate a balance against a sign policy (useful for reports/audits).
+ */
+export function validateSignPolicy(
+  account: Account,
+  rawBalance: number,
+  policy: SignPolicy = DEFAULT_SIGN_POLICY
+): BusinessValidationResult {
+  const issues: ValidationIssue[] = [];
+  const presented = applySignPolicy(account, rawBalance, policy);
+  
+  // For natural_positive we expect "presented" to be >= 0 unless true negative (e.g., contra or overdraft)
+  if (policy === 'natural_positive' && presented < 0) {
+    issues.push({
+      path: 'signPolicy',
+      message: `Balance for ${account.code} appears negative under natural_positive policy; verify contra/overdraft classification`,
+      severity: 'warning',
+      code: 'BALANCE',
+    });
+  }
+  
+  return {
+    isValid: issues.filter(i => i.severity === 'error').length === 0, // Only errors make it invalid, warnings don't
+    issues,
+    warnings: issues.filter(i => i.severity === 'warning').map(i => i.message),
+    errors: issues.filter(i => i.severity === 'error').map(i => i.message),
+  };
+}
+
+/**
+ * Convenience: produce an absolute amount for reporting under natural_positive
+ */
+export function toNaturalPositive(account: Account, rawBalance: number): number {
+  return Math.abs(applySignPolicy(account, rawBalance, 'natural_positive'));
+}
+
+// ============================================================================
 // COA Tree Operations
 // ============================================================================
 
@@ -293,6 +375,9 @@ export function buildCOATree(accounts: Account[]): COATree {
         throw new Error(`Parent account ${account.parentCode} not found for account ${account.code}`);
       }
     } else {
+      if (root) {
+        throw new Error(`Multiple root accounts detected: '${root.code}' and '${account.code}'`);
+      }
       root = account;
       account.level = 0;
       account.path = account.code;
@@ -321,6 +406,25 @@ export function buildCOATree(accounts: Account[]): COATree {
  */
 export function validateCOAHierarchy(tree: COATree): BusinessValidationResult {
   const issues: ValidationIssue[] = [];
+  
+  // --- Single root check
+  const roots: Account[] = [];
+  tree.accounts.forEach(acc => { if (!acc.parentCode) roots.push(acc); });
+  if (roots.length === 0) {
+    issues.push({
+      path: 'hierarchy',
+      message: 'No root account found',
+      severity: 'error',
+      code: 'REQUIRED',
+    });
+  } else if (roots.length > 1) {
+    issues.push({
+      path: 'hierarchy',
+      message: `Multiple root accounts detected: ${roots.map(r => r.code).join(', ')}`,
+      severity: 'error',
+      code: 'CONSISTENCY',
+    });
+  }
   
   // Check for circular references
   const visited = new Set<string>();
@@ -365,6 +469,36 @@ export function validateCOAHierarchy(tree: COATree): BusinessValidationResult {
         message: `Account ${accountCode} references non-existent parent ${account.parentCode}`,
         severity: 'error',
         code: 'REQUIRED',
+      });
+    }
+  });
+  
+  // Level and path integrity
+  tree.accounts.forEach((account) => {
+    const parent = account.parentCode ? tree.accounts.get(account.parentCode) : undefined;
+    const expectedLevel = parent ? parent.level + 1 : 0;
+    if (account.level !== expectedLevel) {
+      issues.push({
+        path: 'level',
+        message: `Account ${account.code} has level ${account.level} but expected ${expectedLevel}`,
+        severity: 'error',
+        code: 'CONSISTENCY',
+      });
+    }
+    // Recompute expected path from ancestors
+    const chain: string[] = [];
+    let cur: Account | undefined = account;
+    while (cur) {
+      chain.unshift(cur.code);
+      cur = cur.parentCode ? tree.accounts.get(cur.parentCode) : undefined;
+    }
+    const expectedPath = chain.join('.');
+    if (account.path !== expectedPath) {
+      issues.push({
+        path: 'path',
+        message: `Account ${account.code} has path "${account.path}" but expected "${expectedPath}"`,
+        severity: 'error',
+        code: 'CONSISTENCY',
       });
     }
   });
@@ -458,7 +592,11 @@ export function getAccountParents(tree: COATree, accountCode: string): Account[]
 /**
  * Calculate account rollups from child account balances
  */
-export function calculateAccountRollups(tree: COATree, balances: AccountBalance[]): RollupResult {
+export function calculateAccountRollupsAll(
+  tree: COATree,
+  balances: AccountBalance[],
+  signPolicy: SignPolicy = DEFAULT_SIGN_POLICY
+): RollupResult[] {
   const issues: ValidationIssue[] = [];
   const rollupResults: RollupResult[] = [];
   
@@ -476,7 +614,7 @@ export function calculateAccountRollups(tree: COATree, balances: AccountBalance[
     }
     
     const childBalances: AccountBalance[] = [];
-    let rolledUpBalance = 0;
+    let rolledUpBalance = 0; // raw (debit_positive)
     
     // Collect child balances
     children.forEach(child => {
@@ -499,6 +637,8 @@ export function calculateAccountRollups(tree: COATree, balances: AccountBalance[
       children,
       childBalances,
       rolledUpBalance,
+      presentedRolledUpBalance: applySignPolicy(account, rolledUpBalance, signPolicy),
+      signPolicy,
       rollupMethod: 'sum',
       calculationDate: new Date(),
       isValid: issues.length === 0,
@@ -506,32 +646,44 @@ export function calculateAccountRollups(tree: COATree, balances: AccountBalance[
     });
   });
   
-  // Return the first rollup result (or create a summary)
-  if (rollupResults.length === 0) {
-    throw new Error('No rollup calculations performed');
-  }
-  
-  return rollupResults[0]!;
+  return rollupResults;
+}
+
+// Back-compat wrapper (returns first rollup, previous behavior)
+export function calculateAccountRollups(
+  tree: COATree,
+  balances: AccountBalance[],
+  signPolicy: SignPolicy = DEFAULT_SIGN_POLICY
+): RollupResult {
+  const all = calculateAccountRollupsAll(tree, balances, signPolicy);
+  if (all.length === 0) throw new Error('No rollup calculations performed');
+  return all[0]!;
 }
 
 /**
  * Rollup account balances using specified method
  */
-export function rollupAccountBalances(account: Account, children: Account[]): RollupBalance {
+export function rollupAccountBalances(
+  account: Account,
+  children: Account[],
+  opts?: { childBalances?: AccountBalance[]; signPolicy?: SignPolicy }
+): RollupBalance {
   // This is a simplified implementation - in practice, you'd need actual balance data
-  const childBalances: AccountBalance[] = children.map(child => ({
+  const signPolicy = opts?.signPolicy ?? DEFAULT_SIGN_POLICY;
+  const childBalances: AccountBalance[] = opts?.childBalances ?? children.map(child => ({
     accountCode: child.code,
-    balance: 0, // Would be populated from actual data
+    balance: 0,
     currency: 'USD' as SupportedCurrency,
     period: { start: new Date(), end: new Date() },
     lastUpdated: new Date(),
   }));
-  
-  const balance = childBalances.reduce((sum, cb) => sum + cb.balance, 0);
+  const balance = childBalances.reduce((sum, cb) => sum + cb.balance, 0); // raw
   
   return {
     account,
     balance,
+    presentedBalance: applySignPolicy(account, balance, signPolicy),
+    signPolicy,
     method: 'sum',
     children: childBalances,
     calculatedAt: new Date(),
@@ -563,7 +715,17 @@ export function validateRollupCalculation(rollup: RollupResult): BusinessValidat
       path: 'childBalances',
       message: `Expected ${rollup.children.length} child balances, found ${rollup.childBalances.length}`,
       severity: 'warning',
-        code: 'FORMAT',
+      code: 'FORMAT',
+    });
+  }
+  
+  // Presentation sanity check under policy
+  if (rollup.signPolicy === 'natural_positive' && rollup.presentedRolledUpBalance < 0) {
+    issues.push({
+      path: 'signPolicy',
+      message: `Presented rollup for ${rollup.account.code} is negative under natural_positive policy; review contra/structure`,
+      severity: 'warning',
+      code: 'BALANCE',
     });
   }
   
@@ -578,7 +740,11 @@ export function validateRollupCalculation(rollup: RollupResult): BusinessValidat
 /**
  * Calculate parent balances for all accounts in the tree
  */
-export function calculateParentBalances(tree: COATree, balances: AccountBalance[]): ParentBalance[] {
+export function calculateParentBalances(
+  tree: COATree,
+  balances: AccountBalance[],
+  signPolicy: SignPolicy = DEFAULT_SIGN_POLICY
+): ParentBalance[] {
   const parentBalances: ParentBalance[] = [];
   const balanceMap = new Map<string, AccountBalance>();
   
@@ -595,7 +761,7 @@ export function calculateParentBalances(tree: COATree, balances: AccountBalance[
     }
     
     const childBalances: AccountBalance[] = [];
-    let totalBalance = 0;
+    let totalBalance = 0; // raw (debit_positive)
     
     children.forEach(child => {
       const balance = balanceMap.get(child.code);
@@ -608,6 +774,8 @@ export function calculateParentBalances(tree: COATree, balances: AccountBalance[
     parentBalances.push({
       parent: account,
       balance: totalBalance,
+      presentedBalance: applySignPolicy(account, totalBalance, signPolicy),
+      signPolicy,
       children: childBalances,
       rollupMethod: 'sum',
       calculatedAt: new Date(),
@@ -719,13 +887,14 @@ export function validatePostingFlags(account: Account, transaction: Transaction)
     requiredApprovals.push(`Account ${account.code} requires approval`);
   }
   
-  // Check posting restrictions
+  // Only consider lines that hit THIS account
+  const accountLines = transaction.lines.filter(l => l.accountCode === account.code);
   account.postingFlags.postingRestrictions.forEach(restriction => {
     restrictions.push(restriction);
     
     switch (restriction) {
       case 'debit_only':
-        if (transaction.lines.some(line => line.credit > 0)) {
+        if (accountLines.some(line => line.credit > 0)) {
           issues.push({
             path: 'posting',
             message: `Account ${account.code} only allows debit postings`,
@@ -735,7 +904,7 @@ export function validatePostingFlags(account: Account, transaction: Transaction)
         }
         break;
       case 'credit_only':
-        if (transaction.lines.some(line => line.debit > 0)) {
+        if (accountLines.some(line => line.debit > 0)) {
           issues.push({
             path: 'posting',
             message: `Account ${account.code} only allows credit postings`,
@@ -771,10 +940,11 @@ export function validatePostingFlags(account: Account, transaction: Transaction)
 export function checkPostingPermissions(account: Account, user: User, transaction: Transaction): PermissionResult {
   const missingPermissions: Permission[] = [];
   const restrictions: string[] = [];
+  const now = new Date();
   
   // Check user permissions
-  const hasWritePermission = user.permissions.some(p => 
-    p.type === 'write' && (p.scope === 'all' || p.scope === 'account')
+  const hasWritePermission = user.permissions.some(p =>
+    (p.type === 'write' || p.type === 'post') && (p.scope === 'all' || p.scope === 'account')
   );
   
   if (!hasWritePermission) {
@@ -787,10 +957,14 @@ export function checkPostingPermissions(account: Account, user: User, transactio
   // Check account-specific permissions
   const accountPermission = account.postingFlags.userPermissions.find(up => up.userId === user.id);
   if (accountPermission) {
-    const hasAccountPermission = accountPermission.permissions.some(p => p.type === 'write');
+    // respect effective/expiry windows if present
+    const inWindow =
+      accountPermission.effectiveDate <= now &&
+      (!accountPermission.expiryDate || accountPermission.expiryDate > now);
+    const hasAccountPermission = inWindow && accountPermission.permissions.some(p => p.type === 'write' || p.type === 'post');
     if (!hasAccountPermission) {
       missingPermissions.push({
-        type: 'write',
+        type: 'post',
         scope: 'account',
       });
     }
@@ -825,19 +999,20 @@ export function validatePostingRestrictions(account: Account, transaction: Trans
   let isRestricted = false;
   let canProceed = true;
   
+  const accountLines = transaction.lines.filter(l => l.accountCode === account.code);
   account.postingFlags.postingRestrictions.forEach(restriction => {
     restrictions.push(restriction);
     
     switch (restriction) {
       case 'debit_only':
-        if (transaction.lines.some(line => line.credit > 0)) {
+        if (accountLines.some(line => line.credit > 0)) {
           isRestricted = true;
           canProceed = false;
           requiredActions.push('Remove credit entries');
         }
         break;
       case 'credit_only':
-        if (transaction.lines.some(line => line.debit > 0)) {
+        if (accountLines.some(line => line.debit > 0)) {
           isRestricted = true;
           canProceed = false;
           requiredActions.push('Remove debit entries');
@@ -1027,22 +1202,19 @@ export function enforceAccountRules(account: Account, rules: AccountRule[]): Bus
  * Map account to reporting category
  */
 export function mapAccountToReportingCategory(account: Account, rules: MappingRule[]): ReportingCategory {
-  // Find applicable mapping rule
-  const applicableRule = rules.find(rule => {
-    if (!rule.active) {
-      return false;
-    }
-    
-    // Check if account code matches pattern
-    if (!account.code.match(new RegExp(rule.accountPattern))) {
-      return false;
-    }
-    
-    // Check additional conditions
-    return rule.conditions.every(condition => {
-      return evaluateCondition(account, condition);
-    });
-  });
+  // Pick the highest-priority applicable rule
+  const applicableRule = rules
+    .filter(rule => {
+      if (!rule.active) return false;
+      try {
+        if (!new RegExp(rule.accountPattern).test(account.code)) return false;
+      } catch {
+        return false; // invalid pattern treated as non-match
+      }
+      return rule.conditions.every(condition => evaluateCondition(account, condition));
+    })
+    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+    [0];
   
   if (!applicableRule) {
     throw new Error(`No mapping rule found for account ${account.code}`);
@@ -1116,23 +1288,36 @@ export function validateReportingMapping(mapping: MappingRule): BusinessValidati
 /**
  * Get reporting category path for an account
  */
-export function getReportingCategoryPath(account: Account, mappings: MappingRule[]): ReportingPath {
+export function getReportingCategoryPath(
+  account: Account,
+  mappings: MappingRule[],
+  signPolicy: SignPolicy = DEFAULT_SIGN_POLICY,
+  opts?: { balancesByAccount?: Map<string, number> } // raw debit-positive balances
+): ReportingPath {
   const path: string[] = [];
   const categories: ReportingCategory[] = [];
   const applicableMappings: MappingRule[] = [];
   const issues: ValidationIssue[] = [];
+  const presentedCategoryTotals: Record<string, number> = {};
   
   try {
     const category = mapAccountToReportingCategory(account, mappings);
     path.push(category.id);
     categories.push(category);
     applicableMappings.push(...category.mappingRules);
-  } catch (error) {
+    
+    // If balances are provided, compute a category total (presented)
+    if (opts?.balancesByAccount) {
+      const raw = opts.balancesByAccount.get(account.code) ?? 0;
+      const presented = applySignPolicy(account, raw, signPolicy);
+      presentedCategoryTotals[category.id] = (presentedCategoryTotals[category.id] ?? 0) + presented;
+    }
+  } catch (_error) {
     issues.push({
       path: 'mapping',
       message: `Failed to map account ${account.code} to reporting category`,
       severity: 'error',
-        code: 'FORMAT',
+      code: 'FORMAT',
     });
   }
   
@@ -1143,7 +1328,47 @@ export function getReportingCategoryPath(account: Account, mappings: MappingRule
     mappings: applicableMappings,
     isValid: issues.length === 0,
     issues,
+    ...(Object.keys(presentedCategoryTotals).length > 0 && { presentedCategoryTotals }),
+    signPolicy,
   };
+}
+
+/**
+ * Aggregate account balances into reporting categories under a given sign policy.
+ * @param tree COA tree
+ * @param balances list of raw debit-positive balances by account
+ * @param mappings reporting mapping rules
+ * @param signPolicy 'debit_positive' | 'natural_positive'
+ * @returns categoryId -> presented total
+ */
+export function computeCategoryTotals(
+  tree: COATree,
+  balances: AccountBalance[],
+  mappings: MappingRule[],
+  signPolicy: SignPolicy = DEFAULT_SIGN_POLICY
+): Record<string, number> {
+  const byAccount = new Map<string, number>(
+    balances.map(b => [b.accountCode, b.balance])
+  );
+  const totals: Record<string, number> = {};
+
+  // Only leaf accounts typically map; if parents can map too, this still works.
+  tree.accounts.forEach(acc => {
+    const raw = byAccount.get(acc.code);
+    if (raw === undefined) return;
+
+    let category: ReportingCategory | null = null;
+    try {
+      category = mapAccountToReportingCategory(acc, mappings);
+    } catch {
+      // unmapped -> skip
+      return;
+    }
+    const presented = applySignPolicy(acc, raw, signPolicy);
+    totals[category.id] = (totals[category.id] ?? 0) + presented;
+  });
+
+  return totals;
 }
 
 // ============================================================================

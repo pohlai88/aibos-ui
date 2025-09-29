@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-assertions */
+ 
 /**
  * Object Utilities (Strict & Safe)
  *
@@ -108,7 +108,7 @@ export function deepClone<T>(value: T, options: CloneOptions = {}): T {
 
     // Typed arrays & ArrayBuffer/DataView
     if (ArrayBuffer.isView(v)) {
-      return new (v as any).constructor((v as any).buffer.slice(0));
+      return new (v as unknown).constructor((v as unknown).buffer.slice(0));
     }
     if (v instanceof ArrayBuffer) return v.slice(0);
     if (v instanceof DataView) return new DataView(v.buffer.slice(0), v.byteOffset, v.byteLength);
@@ -129,7 +129,7 @@ export function deepClone<T>(value: T, options: CloneOptions = {}): T {
       return s;
     }
     if (v instanceof Error) {
-      const e = new (v as any).constructor(v.message);
+      const e = new (v as unknown).constructor(v.message);
       e.name = v.name;
       e.stack = v.stack;
       seen.set(v, e);
@@ -312,7 +312,7 @@ export function omit<T extends object, K extends keyof T>(obj: T, keys: readonly
     ? Object.fromEntries((obj as unknown[]).map((v, i) => [i, v])) 
     : { ...(obj as Record<string, unknown>) };
   for (const k of keys) {
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+     
     delete out[k as unknown as PropertyKey];
   }
   return out as Omit<T, K>;
@@ -448,7 +448,7 @@ export function isEqual(a: unknown, b: unknown): boolean {
     if (xKeys.length !== yKeys.length) return false;
     for (const k of xKeys) {
       if (!hasOwn(y, k)) return false;
-      if (!eq((x as any)[k], (y as any)[k])) return false;
+      if (!eq((x as unknown)[k], (y as unknown)[k])) return false;
     }
     return true;
   };
@@ -530,7 +530,7 @@ export function hasPath(obj: unknown, path: string): boolean {
   let cur: unknown = obj;
   for (const k of segs) {
     if (cur == null || typeof cur !== 'object' || !hasOwn(cur, k)) return false;
-    cur = (cur as any)[k];
+    cur = (cur as unknown)[k];
   }
   return true;
 }
@@ -540,7 +540,7 @@ export function getPath<T = unknown>(obj: unknown, path: string, defaultValue?: 
   let cur: unknown = obj;
   for (const k of segs) {
     if (cur == null || typeof cur !== 'object') return defaultValue;
-    cur = (cur as any)[k];
+    cur = (cur as unknown)[k];
   }
   return (cur === undefined ? defaultValue : (cur as T));
 }

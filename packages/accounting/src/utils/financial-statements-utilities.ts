@@ -7,14 +7,14 @@
  * @fileoverview P&L, Balance Sheet, Cash Flow statement generation and mapping
  */
 
-import {
+import type {
   SupportedCurrency,
   AccountType,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { DateRange } from './date-utilities';
-import { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { DateRange } from './date-utilities';
+import type { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
 
 // ============================================================================
 // Types & Interfaces
@@ -237,7 +237,7 @@ export function buildProfitLossStatement(trialBalance: TrialBalance, mapping: St
       return;
     }
     
-    const amount = applySignConventions(account.closingBalance, account.accountType);
+    const amount = normalizePresentationSigned(account.closingBalance, account.accountType);
     const line: StatementLine = {
       id: `pl_${account.accountCode}`,
       lineNumber: accountMapping.lineNumber,
@@ -265,15 +265,15 @@ export function buildProfitLossStatement(trialBalance: TrialBalance, mapping: St
   allLines.sort((a, b) => a.lineNumber - b.lineNumber);
   
   // Calculate subtotals
-  const grossProfit = calculateSubtotal(revenueLines) - calculateSubtotal(expenseLines.filter(line => 
-    line.description.toLowerCase().includes('cost') || line.description.toLowerCase().includes('cogs')
-  ));
-  
-  const operatingExpenses = expenseLines.filter(line => 
-    !line.description.toLowerCase().includes('cost') && !line.description.toLowerCase().includes('cogs')
-  );
-  const operatingIncome = grossProfit - calculateSubtotal(operatingExpenses);
-  
+  const cogs = pickByKeywords(expenseLines, ['cost', 'cogs', 'cost of sales', 'cost of goods']);
+  const opex = expenseLines.filter(l => !cogs.includes(l));
+  const grossProfit = calculateSubtotal(revenueLines) - calculateSubtotal(cogs);
+  const operatingIncome = grossProfit - calculateSubtotal(opex);
+
+  // EBITDA = Operating Income + D&A (if tagged; else keyword fallback)
+  const da = pickByKeywords(expenseLines, ['depreciation', 'amortization']);
+  const ebitda = operatingIncome + calculateSubtotal(da);
+
   const netIncome = calculateSubtotal(revenueLines) - calculateSubtotal(expenseLines);
   
   return {
@@ -292,7 +292,7 @@ export function buildProfitLossStatement(trialBalance: TrialBalance, mapping: St
     grossProfit,
     operatingIncome,
     netIncome,
-    ebitda: operatingIncome, // Simplified - would need depreciation/amortization data
+    ebitda,
   };
 }
 
@@ -312,7 +312,7 @@ export function buildBalanceSheet(trialBalance: TrialBalance, mapping: Statement
       return;
     }
     
-    const amount = applySignConventions(account.closingBalance, account.accountType);
+    const amount = normalizePresentationSigned(account.closingBalance, account.accountType);
     const line: StatementLine = {
       id: `bs_${account.accountCode}`,
       lineNumber: accountMapping.lineNumber,
@@ -351,12 +351,10 @@ export function buildBalanceSheet(trialBalance: TrialBalance, mapping: Statement
   const totalEquity = calculateSubtotal(equityLines);
   
   // Calculate working capital (current assets - current liabilities)
-  const currentAssets = assetLines.filter(line => 
-    line.description.toLowerCase().includes('current') || line.description.toLowerCase().includes('cash')
-  );
-  const currentLiabilities = liabilityLines.filter(line => 
-    line.description.toLowerCase().includes('current') || line.description.toLowerCase().includes('payable')
-  );
+  const currentAssets = preferMappingGroup(assetLines, mapping, 'current_assets')
+    ?? assetLines.filter(l => hasAny(l.description, ['current', 'cash', 'bank']));
+  const currentLiabilities = preferMappingGroup(liabilityLines, mapping, 'current_liabilities')
+    ?? liabilityLines.filter(l => hasAny(l.description, ['current', 'payable', 'overdraft']));
   const workingCapital = calculateSubtotal(currentAssets) - calculateSubtotal(currentLiabilities);
   
   return {
@@ -396,7 +394,7 @@ export function buildCashFlowStatement(trialBalance: TrialBalance, mapping: Stat
       return;
     }
     
-    const amount = applySignConventions(account.closingBalance, account.accountType);
+    const amount = normalizePresentationSigned(account.closingBalance, account.accountType);
     const line: StatementLine = {
       id: `cf_${account.accountCode}`,
       lineNumber: accountMapping.lineNumber,
@@ -431,9 +429,13 @@ export function buildCashFlowStatement(trialBalance: TrialBalance, mapping: Stat
   const financingCashFlow = calculateSubtotal(financingLines);
   const netCashFlow = operatingCashFlow + investingCashFlow + financingCashFlow;
   
-  // Get opening and closing cash (simplified)
-  const cashAccount = trialBalance.accounts.find(acc => acc.accountCode.startsWith('1000'));
-  const openingCash = cashAccount?.openingBalance || 0;
+  // Opening & closing cash: prefer mapping group 'cash', else keyword fallback
+  const cashMappedCodes = mapping
+    .filter(m => m.statementType === 'cash_flow' && (m.subtotalGroup === 'cash' || /cash|bank/i.test(m.lineDescription)))
+    .map(m => m.accountCode);
+  const cashAccounts = trialBalance.accounts.filter(a =>
+    cashMappedCodes.includes(a.accountCode) || /cash|bank|overdraft/i.test(a.accountCode + ' ' + (a as unknown).description || ''));
+  const openingCash = sumOpeningCash(cashAccounts);
   const closingCash = openingCash + netCashFlow;
   
   return {
@@ -475,7 +477,7 @@ export function buildStatementOfEquity(trialBalance: TrialBalance, mapping: Stat
       return;
     }
     
-    const amount = applySignConventions(account.closingBalance, account.accountType);
+    const amount = normalizePresentationSigned(account.closingBalance, account.accountType);
     const line: StatementLine = {
       id: `eq_${account.accountCode}`,
       lineNumber: accountMapping.lineNumber,
@@ -610,18 +612,8 @@ export function validateStatementMapping(mapping: StatementMapping): BusinessVal
  * Apply sign conventions to amounts
  */
 export function applySignConventions(amount: number, accountType: AccountType): number {
-  // Apply natural sign convention based on account type
-  switch (accountType) {
-    case 'ASSET':
-    case 'EXPENSE':
-      return Math.abs(amount); // Assets and expenses are typically positive
-    case 'LIABILITY':
-    case 'EQUITY':
-    case 'REVENUE':
-      return Math.abs(amount); // Liabilities, equity, and revenue are typically positive
-    default:
-      return amount;
-  }
+  // Kept for backward compatibility; now routes to normalized helper
+  return normalizePresentationSigned(amount, accountType);
 }
 
 /**
@@ -645,7 +637,7 @@ export function calculateStatementTotals(statement: FinancialStatement): Stateme
   
   // Calculate subtotals
   statement.subtotals.forEach(subtotal => {
-    const subtotalAmount = calculateSubtotalForGroup(statement.lines, subtotal);
+    const subtotalAmount = calculateSubtotalByMethod(statement.lines, subtotal);
     subtotals.set(subtotal.id, subtotalAmount);
   });
   
@@ -699,7 +691,7 @@ export function calculateSubtotals(statement: FinancialStatement, groups: Subtot
       group.lineNumbers.includes(line.lineNumber)
     );
     
-    const amount = calculateSubtotalForGroup(statement.lines, group);
+    const amount = calculateSubtotalByMethod(statement.lines, group);
     const issues: ValidationIssue[] = [];
     
     // Validate subtotal calculation
@@ -739,7 +731,7 @@ export function validateSubtotalCalculation(subtotal: SubtotalResult): BusinessV
   }
   
   // Validate calculation method
-  const expectedAmount = calculateSubtotal(subtotal.lines);
+  const expectedAmount = subtotalByMethod(subtotal.group.calculationMethod, subtotal.lines);
   if (Math.abs(subtotal.amount - expectedAmount) > 0.01) {
     issues.push({
       path: 'amount',
@@ -956,18 +948,17 @@ export function checkStatementBalances(statement: FinancialStatement): BalanceCh
   }
   
   // Check subtotals
-  statement.subtotals.forEach(subtotal => {
-    const subtotalAmount = calculateSubtotalForGroup(statement.lines, subtotal);
-    const expectedAmount = subtotalAmount;
-    
-    if (Math.abs(subtotalAmount - expectedAmount) > 0.01) {
+  statement.subtotals.forEach(group => {
+    const actual = calculateSubtotalByMethod(statement.lines, group);
+    const expected = subtotalByMethod(group.calculationMethod, statement.lines.filter(l => group.lineNumbers.includes(l.lineNumber)));
+    if (Math.abs(actual - expected) > 0.01) {
       differences.push({
         type: 'subtotal',
-        expected: expectedAmount,
-        actual: subtotalAmount,
-        difference: subtotalAmount - expectedAmount,
+        expected,
+        actual,
+        difference: actual - expected,
         tolerance: 0.01,
-        withinTolerance: false,
+        withinTolerance: Math.abs(actual - expected) <= 0.01,
       });
     }
   });
@@ -1032,11 +1023,6 @@ function calculateSubtotal(lines: StatementLine[]): number {
   }, 0);
 }
 
-function calculateSubtotalForGroup(lines: StatementLine[], group: SubtotalGroup): number {
-  const groupLines = lines.filter(line => group.lineNumbers.includes(line.lineNumber));
-  return calculateSubtotal(groupLines);
-}
-
 function getLineFieldValue(line: StatementLine, field: string): unknown {
   switch (field) {
     case 'lineNumber':
@@ -1077,8 +1063,79 @@ function evaluateFormatValidation(value: unknown, rule: string): boolean {
     case 'positive_number':
       return typeof value === 'number' && value > 0;
     case 'valid_currency':
-      return typeof value === 'string' && ['USD', 'EUR', 'GBP'].includes(value);
+      return typeof value === 'string' && value.length >= 3; // defer strict check to SSOT
     default:
       return true;
   }
+}
+
+// ============================================================================
+// Internal helpers (pure)
+// ============================================================================
+
+function normalizePresentationSigned(closingBalance: number, accountType: AccountType): number {
+  // Trial balance: debit-positive/credit-negative (typical). Present as:
+  // ASSET/EXPENSE positive, LIABILITY/EQUITY/REVENUE negative.
+  const creditNaturals = new Set<AccountType>(['LIABILITY','EQUITY','REVENUE'] as unknown);
+  const magnitude = Math.abs(closingBalance);
+  return creditNaturals.has(accountType) ? -magnitude : magnitude;
+}
+
+function hasAny(s: string, keys: string[]): boolean {
+  const lower = s.toLowerCase();
+  return keys.some(k => lower.includes(k));
+}
+
+function pickByKeywords(lines: StatementLine[], keys: string[]): StatementLine[] {
+  return lines.filter(l => hasAny(l.description, keys));
+}
+
+function preferMappingGroup(lines: StatementLine[], mapping: StatementMapping[], groupName: string): StatementLine[] | null {
+  const set = new Set(
+    mapping.filter(m => m.subtotalGroup === groupName).map(m => m.lineNumber)
+  );
+  const picked = lines.filter(l => set.has(l.lineNumber));
+  return picked.length ? picked : null;
+}
+
+function sumOpeningCash(accounts: TrialBalanceAccount[]): number {
+  return accounts.reduce((s, a) => s + (a.openingBalance ?? 0), 0);
+}
+
+function subtotalByMethod(method: SubtotalMethod, lines: StatementLine[]): number {
+  switch (method) {
+    case 'sum': return calculateSubtotal(lines);
+    case 'difference': {
+      if (lines.length === 0) return 0;
+      const first = lines[0];
+      if (!first) return 0;
+      const rest = lines.slice(1);
+      return (first.sign === 'positive' ? first.amount : -first.amount) -
+             rest.reduce((acc, l) => acc + (l.sign === 'positive' ? l.amount : -l.amount), 0);
+    }
+    case 'ratio': {
+      if (lines.length < 2) return 0;
+      const first = lines[0];
+      const second = lines[1];
+      if (!first || !second) return 0;
+      const a = calculateSubtotal([first]);
+      const b = calculateSubtotal([second]);
+      return b === 0 ? 0 : a / b;
+    }
+    case 'percentage': {
+      if (lines.length < 2) return 0;
+      const first = lines[0];
+      const second = lines[1];
+      if (!first || !second) return 0;
+      const a = calculateSubtotal([first]);
+      const b = calculateSubtotal([second]);
+      return b === 0 ? 0 : (a / b) * 100;
+    }
+    default: return calculateSubtotal(lines);
+  }
+}
+
+function calculateSubtotalByMethod(lines: StatementLine[], group: SubtotalGroup): number {
+  const groupLines = lines.filter(l => group.lineNumbers.includes(l.lineNumber));
+  return subtotalByMethod(group.calculationMethod, groupLines);
 }

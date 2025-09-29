@@ -6,33 +6,30 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/types/src/index.d.ts",
-      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs",
-      "default": "./dist/index.mjs"
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/types/src/index.d.ts",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "pnpm run build:types && pnpm run build:js",
-    "build:js": "tsup",
-    "build:types": "tsc -p tsconfig.types.json",
-    "clean": "rimraf dist",
-    "dep:check": "depcruise --validate --config ../../.dependency-cruiser.js --output-type text src",
-    "dev": "tsup --watch",
+    "build": "tsc -b",
+    "clean": "rimraf dist .tsbuildinfo",
+    "dev": "tsc -b --watch",
     "format": "prettier -w .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "echo 'No tests yet'",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
     "@aibos/utils": "workspace:*",
@@ -42,7 +39,6 @@
     "@types/node": "22.18.6",
     "eslint": "9.36.0",
     "prettier": "3.6.2",
-    "tsup": "8.5.0",
     "typescript": "5.9.2"
   },
   "engines": {

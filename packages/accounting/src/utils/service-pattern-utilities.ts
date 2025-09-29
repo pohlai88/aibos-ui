@@ -87,7 +87,7 @@ function toLogCtx(ctx?: ErrorContext | Record<string, unknown>): string | undefi
 
 function nowMsMonotonic(): number {
   // Prefer monotonic, high-resolution clock to avoid wallclock skew
-  const p = (globalThis as any)?.performance?.now?.();
+  const p = (globalThis as unknown)?.performance?.now?.();
   if (typeof p === 'number' && Number.isFinite(p)) return p;
   return Date.now();
 }
@@ -154,11 +154,11 @@ export abstract class ServiceBase {
 
     try {
       // Optional cooperative cancellation if caller passed a signal in context
-      const signal = (context as any)?.signal as AbortSignal | undefined;
+      const signal = (context as unknown)?.signal as AbortSignal | { aborted: boolean } | undefined;
       if (signal?.aborted) {
         throw createBusinessError(
           'OPERATION_ABORTED',
-          `${operation} aborted${(signal as any)?.reason ? `: ${(signal as any).reason}` : ''}`,
+          `${operation} aborted${(signal as unknown)?.reason ? `: ${(signal as unknown).reason}` : ''}`,
           this.serviceName,
           operationContext
         );
@@ -341,14 +341,14 @@ export abstract class ServiceBase {
     context?: ErrorContext
   ): Error {
     // If it's already a business or validation error, just add context (duck-typed)
-    const e: any = error;
+    const e: unknown = error;
     const isKnown =
       error instanceof BusinessRuleError ||
       error instanceof ValidationError ||
       (e && typeof e === 'object' && typeof e.name === 'string' &&
         (e.name === 'BusinessRuleError' || e.name === 'ValidationError' || typeof e.code === 'string'));
     if (isKnown) {
-      if (context) (error as any).context = { ...(error as any).context, ...context };
+      if (context) (error as unknown).context = { ...(error as unknown).context, ...context };
       return error;
     }
 
@@ -408,7 +408,7 @@ export abstract class ServiceBase {
   /**
    * Get performance metrics for the service
    */
-  protected getPerformanceMetrics(): any {
+  protected getPerformanceMetrics(): unknown {
     return this.profiler.getMetrics();
   }
 

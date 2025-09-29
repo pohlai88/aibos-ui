@@ -38,7 +38,7 @@ export interface OperationMetrics {
   duration?: number;
   success: boolean;
   error?: Error;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   tags?: Record<string, string>;
 }
 
@@ -72,7 +72,7 @@ export interface HealthCheck {
   name: string;
   status: 'healthy' | 'unhealthy' | 'degraded';
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: Date;
   duration?: number;
 }
@@ -88,7 +88,7 @@ export interface Alert {
   timestamp: Date;
   resolved?: boolean;
   resolvedAt?: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface TraceContext {
@@ -104,7 +104,7 @@ export interface TraceContext {
     timestamp: Date;
     level: string;
     message: string;
-    fields?: Record<string, any>;
+    fields?: Record<string, unknown>;
   }>;
 }
 
@@ -148,10 +148,10 @@ export interface TracingExporter {
 }
 
 export interface Logger {
-  info(...args: any[]): void;
-  warn(...args: any[]): void;
-  error(...args: any[]): void;
-  debug?(...args: any[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  debug?(...args: unknown[]): void;
 }
 
 // ============================================================================
@@ -296,7 +296,7 @@ export class MonitoringHelper {
   static async shutdown(): Promise<void> {
     try { await this.flushMetrics(); } catch {}
     try { await this.metricsExporter?.shutdown?.(); } catch {}
-    if (this.flushTimer) { clearInterval(this.flushTimer); this.flushTimer = undefined as any; }
+    if (this.flushTimer) { clearInterval(this.flushTimer); this.flushTimer = undefined as unknown; }
   }
 
   /**
@@ -670,7 +670,7 @@ export class MonitoringHelper {
     title: string,
     message: string,
     source: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Alert {
     const alert: Alert = {
       id: this.generateAlertId(),

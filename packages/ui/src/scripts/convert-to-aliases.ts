@@ -7,7 +7,6 @@
  * following the standardized alias pattern.
  */
 
-import { safeJoin } from '@aibos/utils';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -139,7 +138,7 @@ function findTsFiles(dir: string): string[] {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      const fullPath = safeJoin(dir, entry.name);
+      const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
         // Skip node_modules, dist, .git, etc.
@@ -168,7 +167,7 @@ async function convertAllFiles(): Promise<void> {
   console.log('🔄 Converting relative imports to alias imports...\n');
 
   // Find all TypeScript/TSX files
-  const files = findTsFiles(safeJoin(process.cwd(), 'src'));
+  const files = findTsFiles(path.join(process.cwd(), 'src'));
 
   console.log(`📁 Found ${files.length} TypeScript/TSX files to process`);
 

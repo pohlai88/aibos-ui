@@ -458,7 +458,8 @@ export class ResilienceManager {
 
     // Check for open circuit breakers
     for (const [name, circuitBreakerMetrics] of toPairs(metrics.circuitBreakers)) {
-      if (circuitBreakerMetrics.circuitBreakerState === CircuitBreakerState.OPEN) {
+      const metrics = circuitBreakerMetrics as unknown;
+      if (metrics.circuitBreakerState === CircuitBreakerState.OPEN) {
         issues.push(`Circuit breaker '${name}' is OPEN`);
       }
     }

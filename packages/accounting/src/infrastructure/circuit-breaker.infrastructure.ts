@@ -1,5 +1,5 @@
 // Re-export from resilience-manager for backward compatibility
-export {
+export type {
   CircuitBreakerOptions,
   CircuitBreakerState,
   CircuitBreaker,

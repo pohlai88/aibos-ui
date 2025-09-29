@@ -7,13 +7,13 @@
  * @fileoverview Trial balance to cash flow mapping and statement consistency
  */
 
-import {
+import type {
   AccountType,
 } from './accounting-utilities';
-import { ValidationIssue } from './validation-utilities';
-import { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
-import { CashFlowStatement, StatementLine } from './financial-statements-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import type { ValidationIssue } from './validation-utilities';
+import type { TrialBalance, TrialBalanceAccount } from './trial-balance-utilities';
+import type { CashFlowStatement, StatementLine } from './financial-statements-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
 
 // ============================================================================
 // Types & Interfaces
@@ -28,6 +28,10 @@ export interface TBCFMapping {
   cfSubcategory: string;
   mappingType: MappingType;
   conditions: MappingCondition[];
+  /** How to derive the amount to map (default: closingBalance for backward compat) */
+  amountSource?: AmountSource;
+  /** How to set the CF sign/direction (default: natural) */
+  signStrategy?: SignStrategy;
   priority: number;
   active: boolean;
   effectiveDate: Date;
@@ -177,6 +181,8 @@ export type MappingType = 'direct' | 'calculated' | 'derived' | 'manual';
 export type DifferenceType = 'amount' | 'category' | 'timing' | 'classification';
 export type ConsistencyType = 'amount' | 'category' | 'timing' | 'classification' | 'completeness';
 export type AuditAction = 'create' | 'update' | 'delete' | 'activate' | 'deactivate';
+export type AmountSource = 'closingBalance' | 'movement';
+export type SignStrategy = 'natural' | 'invert' | 'byCategory';
 
 export interface MappingCondition {
   field: string;
@@ -204,6 +210,8 @@ export function createTBCFMapping(accountCode: string, cfCategory: CFCategory, m
     cfSubcategory: cfCategory.name,
     mappingType,
     conditions: [],
+    amountSource: 'closingBalance',
+    signStrategy: 'natural',
     priority: 1,
     active: true,
     effectiveDate: new Date(),
@@ -439,7 +447,12 @@ export function buildCashFlowFromTrialBalance(trialBalance: TrialBalance, mappin
 /**
  * Reconcile trial balance with cash flow statement
  */
-export function reconcileTBCF(trialBalance: TrialBalance, cashFlowStatement: CashFlowStatement, mappings: TBCFMapping[]): CFReconciliation {
+export function reconcileTBCF(
+  trialBalance: TrialBalance,
+  cashFlowStatement: CashFlowStatement,
+  mappings: TBCFMapping[],
+  opts: { tolerance?: number } = {}
+): CFReconciliation {
   const mappingResults = applyTBCFMapping(trialBalance, mappings);
   const differences: ReconciliationDifference[] = [];
   
@@ -470,7 +483,7 @@ export function reconcileTBCF(trialBalance: TrialBalance, cashFlowStatement: Cas
   const financingDiff = Math.abs(tbFinancing - cfFinancing);
   const netDiff = Math.abs(tbNetCashFlow - cfNetCashFlow);
   
-  const tolerance = 0.01;
+  const tolerance = opts.tolerance ?? 0.01;
   
   if (operatingDiff > tolerance) {
     differences.push({
@@ -548,7 +561,12 @@ export function reconcileTBCF(trialBalance: TrialBalance, cashFlowStatement: Cas
 /**
  * Validate cash flow statement consistency
  */
-export function validateCFConsistency(statement: CashFlowStatement, trialBalance: TrialBalance, mappings: TBCFMapping[]): CFConsistencyCheck {
+export function validateCFConsistency(
+  statement: CashFlowStatement,
+  trialBalance: TrialBalance,
+  mappings: TBCFMapping[],
+  _opts: { tolerance?: number } = {}
+): CFConsistencyCheck {
   const inconsistencies: ConsistencyIssue[] = [];
   const recommendations: string[] = [];
   
@@ -733,29 +751,34 @@ function createCFStatementLine(account: TrialBalanceAccount, _mapping: TBCFMappi
 }
 
 function calculateCFAmount(account: TrialBalanceAccount, mapping: TBCFMapping): number {
-  // Apply mapping conditions and calculate amount
-  let amount = account.closingBalance;
-  
-  // Apply conditions if any
-  mapping.conditions.forEach(condition => {
-    if (evaluateCondition(account, condition)) {
-      // Apply condition-specific logic
+  // 1) choose source
+  const amountSource = mapping.amountSource ?? 'closingBalance';
+  const raw =
+    amountSource === 'movement'
+      ? computeAccountMovement(account)
+      : account.closingBalance;
+
+  // 2) apply condition chain (doesn't mutate by default, but allows capping via greater_than/less_than)
+  let amount = raw;
+  const matches = evaluateConditionsChain(account, mapping.conditions);
+  if (matches) {
+    for (const condition of mapping.conditions) {
       switch (condition.operator) {
         case 'greater_than':
-          if (typeof condition.value === 'number' && amount > condition.value) {
-            amount = condition.value;
-          }
+          if (typeof condition.value === 'number' && amount > condition.value) amount = condition.value;
           break;
         case 'less_than':
-          if (typeof condition.value === 'number' && amount < condition.value) {
-            amount = condition.value;
-          }
+          if (typeof condition.value === 'number' && amount < condition.value) amount = condition.value;
+          break;
+        default:
+          // no-op for non-mutating operators
           break;
       }
     }
-  });
-  
-  return amount;
+  }
+
+  // 3) normalize sign
+  return applySignStrategy(amount, mapping.signStrategy ?? 'natural', mapping.cfCategory);
 }
 
 function calculateMappingConfidence(account: TrialBalanceAccount, mapping: TBCFMapping): number {
@@ -793,9 +816,9 @@ function calculateMappingConfidence(account: TrialBalanceAccount, mapping: TBCFM
   return Math.max(0, Math.min(1, confidence));
 }
 
-function getCFCategoryById(categoryId: string): CFCategory | undefined {
-  // In practice, this would query a category registry
-  // For now, return a default category
+function getCFCategoryById(categoryId: string, registry?: Record<string, CFCategory>): CFCategory | undefined {
+  if (registry && registry[categoryId]) return registry[categoryId];
+  // Fallback: default to operating but keep id/name (upgrade path keeps API stable)
   return {
     id: categoryId,
     name: categoryId,
@@ -833,6 +856,24 @@ function evaluateCondition(account: TrialBalanceAccount, condition: MappingCondi
     default:
       return false;
   }
+}
+
+/** Evaluate conditions with left-to-right logical chaining using condition.logicalOperator (default 'and') */
+function evaluateConditionsChain(account: TrialBalanceAccount, conditions: MappingCondition[]): boolean {
+  if (conditions.length === 0) return true;
+  const firstCondition = conditions[0];
+  if (!firstCondition) return true;
+  let acc = evaluateCondition(account, firstCondition);
+  for (let i = 1; i < conditions.length; i++) {
+    const condition = conditions[i];
+    if (!condition) continue;
+    const op = condition.logicalOperator ?? 'and';
+    const cur = evaluateCondition(account, condition);
+    if (op === 'or') acc = acc || cur;
+    else if (op === 'not') acc = acc && !cur;
+    else acc = acc && cur; // 'and' default
+  }
+  return acc;
 }
 
 function getAccountFieldValue(account: TrialBalanceAccount, field: string): unknown {
@@ -896,4 +937,31 @@ function findConflictingMappings(mappings: TBCFMapping[]): TBCFMapping[] {
   });
   
   return conflicts;
+}
+
+// =========================
+// Amount helpers
+// =========================
+function computeAccountMovement(account: TrialBalanceAccount): number {
+  // Uses Δbalance for now (closing - opening). If you prefer debits/credits, swap logic later.
+  if (typeof account.openingBalance === 'number' && typeof account.closingBalance === 'number') {
+    return account.closingBalance - account.openingBalance;
+  }
+  // Fallback to period debits/credits if balances unavailable
+  if (typeof account.periodDebits === 'number' && typeof account.periodCredits === 'number') {
+    return account.periodDebits - account.periodCredits;
+  }
+  return account.closingBalance ?? 0;
+}
+
+function applySignStrategy(amount: number, strategy: SignStrategy, _cfCategoryId: string): number {
+  if (strategy === 'invert') return -amount;
+  if (strategy === 'byCategory') {
+    // Conventional: positive = cash inflow, negative = outflow
+    // Operating: ↑assets => outflow; ↑liabilities => inflow (handled upstream by choosing movement sign)
+    // Keep simple here; caller chooses movement; byCategory can be extended later with a registry.
+    return amount;
+  }
+  // 'natural'
+  return amount;
 }

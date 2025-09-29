@@ -1,8 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
+  "references": [
+    { "path": "../accounting" },
+    { "path": "../accounting-contracts" },
+    { "path": "../ui" },
+    { "path": "../ui-business" },
+    { "path": "../utils" }
+  ],
   "compilerOptions": {
     "composite": true,
-    "jsx": "react-jsx"
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "jsx": "react-jsx",
+    "disableSourceOfProjectReferenceRedirect": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src"],
+  "exclude": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "dist", "node_modules", ".next"]
 }

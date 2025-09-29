@@ -7,11 +7,11 @@
  * @fileoverview Central rounding policy registry and consistency validation
  */
 
-import {
+import type {
   SupportedCurrency,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import type { ConditionOperator, LogicalOperator } from './shared-operators';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { ConditionOperator, LogicalOperator } from './shared-operators-utilities';
 import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
@@ -384,8 +384,9 @@ export function validateRoundingConsistency(amounts: number[], context: Rounding
     });
   }
   
-  // Check for excessive rounding differences
-  const excessiveDifferences = roundedAmounts.filter(ra => Math.abs(ra.difference) > 0.01);
+  // Check for excessive rounding differences (precision-aware)
+  const unit = Math.pow(10, - (roundedAmounts[0]?.precision ?? 2));
+  const excessiveDifferences = roundedAmounts.filter(ra => Math.abs(ra.difference) > unit + 1e-12);
   if (excessiveDifferences.length > 0) {
     issues.push({
         path: 'difference',
@@ -406,11 +407,11 @@ export function validateRoundingConsistency(amounts: number[], context: Rounding
 /**
  * Calculate rounding difference
  */
-export function calculateRoundingDifference(original: number, rounded: number): RoundingDifference {
+export function calculateRoundingDifference(original: number, rounded: number, precision: number = 2): RoundingDifference {
   const difference = rounded - original;
   const percentage = original !== 0 ? (difference / original) * 100 : 0;
-  const tolerance = 0.01; // 1 cent tolerance
-  const withinTolerance = Math.abs(difference) <= tolerance;
+  const tolerance = Math.pow(10, -precision);
+  const withinTolerance = Math.abs(difference) <= tolerance + 1e-12;
   
   return {
     original,
@@ -665,14 +666,44 @@ export function auditRoundingDecision(amount: number, context: RoundingContext, 
 function applyRoundingMethod(amount: number, method: RoundingMethod, precision: number): number {
   const factor = Math.pow(10, precision);
   const scaled = amount * factor;
-  
+  const EPS = 1e-10; // tie tolerance for FP
+
+  // Helper to split integer & fractional parts with sign safety
+  const split = (x: number) => {
+    const sign = x < 0 ? -1 : 1;
+    const ax = Math.abs(x);
+    const int = Math.floor(ax);
+    const frac = ax - int;
+    return { sign, int, frac };
+  };
+
   switch (method) {
-    case RoundingMethod.HALF_UP:
-      return Math.round(scaled) / factor;
-    case RoundingMethod.HALF_DOWN:
-      return Math.floor(scaled + 0.5) / factor;
-    case RoundingMethod.HALF_EVEN:
-      return Math.round(scaled) / factor; // Simplified - would implement proper banker's rounding
+    case RoundingMethod.HALF_UP: {
+      // ties (.5) go AWAY from zero
+      const { sign, int, frac } = split(scaled);
+      if (frac > 0.5 + EPS) return (sign * (int + 1)) / factor;
+      if (frac < 0.5 - EPS) return (sign * int) / factor;
+      // tie
+      return (sign * (int + 1)) / factor;
+    }
+    case RoundingMethod.HALF_DOWN: {
+      // ties (.5) go TOWARD zero
+      const { sign, int, frac } = split(scaled);
+      if (frac > 0.5 + EPS) return (sign * (int + 1)) / factor;
+      if (frac < 0.5 - EPS) return (sign * int) / factor;
+      // tie
+      return (sign * int) / factor;
+    }
+    case RoundingMethod.HALF_EVEN: {
+      // banker's rounding: ties (.5) to nearest EVEN integer
+      const { sign, int, frac } = split(scaled);
+      if (frac > 0.5 + EPS) return (sign * (int + 1)) / factor;
+      if (frac < 0.5 - EPS) return (sign * int) / factor;
+      // tie: choose even neighbor
+      const up = int + 1;
+      const chosen = up % 2 === 0 ? up : int; // if up is even, go up; else stay
+      return (sign * chosen) / factor;
+    }
     case RoundingMethod.CEILING:
       return Math.ceil(scaled) / factor;
     case RoundingMethod.FLOOR:
@@ -680,7 +711,11 @@ function applyRoundingMethod(amount: number, method: RoundingMethod, precision: 
     case RoundingMethod.TRUNCATE:
       return Math.trunc(scaled) / factor;
     default:
-      return Math.round(scaled) / factor;
+      // Sensible default is HALF_UP
+      const { sign, int, frac } = split(scaled);
+      if (frac > 0.5 + EPS) return (sign * (int + 1)) / factor;
+      if (frac < 0.5 - EPS) return (sign * int) / factor;
+      return (sign * (int + 1)) / factor;
   }
 }
 

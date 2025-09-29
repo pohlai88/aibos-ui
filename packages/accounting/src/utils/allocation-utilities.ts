@@ -16,6 +16,7 @@ import {
   type SupportedCurrency,
   roundToCurrency,
   RoundingMethod,
+  DEFAULT_CURRENCY,
 } from './accounting-utilities';
 import { createValidationError } from './error-utilities';
 
@@ -51,14 +52,14 @@ export interface AllocationRule {
 
 export interface AllocationMethod {
   type: 'percentage' | 'driver' | 'fixed' | 'proportional';
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
 }
 
 export interface AllocationContext {
   period: string;
   currency: SupportedCurrency;
   dimensions?: Record<string, string>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AllocationResult {
@@ -312,31 +313,32 @@ export function executeAllocation(
 
   // Execute allocation based on method
   let result: AllocationResult;
+  const currency = context.currency ?? DEFAULT_CURRENCY;
   
   switch (rule.method.type) {
     case 'percentage':
       result = allocateByPercentage(amount, rule.targets.map(target => ({
         target,
         percentage: target.percentage || 0,
-      })));
+      })), currency);
       break;
     case 'driver':
       result = allocateByDriver(amount, rule.targets.map(target => ({
         target,
         driverValue: parseFloat(target.driver || '0'),
-      })));
+      })), currency);
       break;
     case 'fixed':
       result = allocateByFixedAmount(amount, rule.targets.map(target => ({
         target,
         fixedAmount: target.fixedAmount || 0,
-      })));
+      })), currency);
       break;
     case 'proportional':
       result = allocateByPercentage(amount, rule.targets.map(target => ({
         target,
         percentage: 100 / rule.targets.length, // Equal distribution
-      })));
+      })), currency);
       break;
     default:
       throw createValidationError(
@@ -362,7 +364,8 @@ export function executeAllocation(
  */
 export function allocateByPercentage(
   amount: number,
-  percentages: AllocationPercentage[]
+  percentages: AllocationPercentage[],
+  currency: SupportedCurrency = DEFAULT_CURRENCY
 ): AllocationResult {
   if (typeof amount !== 'number' || amount <= 0) {
     throw createValidationError(
@@ -398,7 +401,7 @@ export function allocateByPercentage(
 
   for (const percentage of percentages) {
     const allocationAmount = (amount * percentage.percentage) / 100;
-    const roundedAmount = roundToCurrency(allocationAmount, 'MYR'); // Default currency
+    const roundedAmount = roundToCurrency(allocationAmount, currency);
     
     allocations.push({
       target: percentage.target,
@@ -425,7 +428,8 @@ export function allocateByPercentage(
  */
 export function allocateByDriver(
   amount: number,
-  drivers: AllocationDriver[]
+  drivers: AllocationDriver[],
+  currency: SupportedCurrency = DEFAULT_CURRENCY
 ): AllocationResult {
   if (typeof amount !== 'number' || amount <= 0) {
     throw createValidationError(
@@ -462,7 +466,7 @@ export function allocateByDriver(
   for (const driver of drivers) {
     const percentage = (driver.driverValue / totalDriverValue) * 100;
     const allocationAmount = (amount * percentage) / 100;
-    const roundedAmount = roundToCurrency(allocationAmount, 'MYR'); // Default currency
+    const roundedAmount = roundToCurrency(allocationAmount, currency);
     
     allocations.push({
       target: driver.target,
@@ -490,7 +494,8 @@ export function allocateByDriver(
  */
 export function allocateByFixedAmount(
   amount: number,
-  fixedAmounts: AllocationFixed[]
+  fixedAmounts: AllocationFixed[],
+  currency: SupportedCurrency = DEFAULT_CURRENCY
 ): AllocationResult {
   if (typeof amount !== 'number' || amount <= 0) {
     throw createValidationError(
@@ -535,14 +540,16 @@ export function allocateByFixedAmount(
 
   for (const fixed of fixedAmounts) {
     const percentage = (fixed.fixedAmount / amount) * 100;
+    const rounded = roundToCurrency(fixed.fixedAmount, currency);
     
     allocations.push({
       target: fixed.target,
-      amount: roundToCurrency(fixed.fixedAmount, 'MYR'), // Default currency
+      amount: rounded,
       percentage,
     });
     
-    allocatedAmount += fixed.fixedAmount;
+    // Sum **rounded** amounts to avoid false rounding differences
+    allocatedAmount += rounded;
   }
 
   const roundingDifference = amount - allocatedAmount;
@@ -583,9 +590,7 @@ export function applyRoundingGovernance(
 
   // Apply rounding difference distribution
   const distributionMethod: RoundingDistributionMethod = { type: 'largest' };
-  const updatedResult = distributeRoundingDifference(result, distributionMethod);
-
-  return updatedResult;
+  return distributeRoundingDifference(result, distributionMethod);
 }
 
 /**
@@ -780,9 +785,9 @@ export function getAllocationSummary(result: AllocationResult): {
     totalAllocations: result.allocations.length,
     roundingDifference: result.roundingDifference,
     isBalanced: result.isBalanced,
-    averageAllocation: roundToCurrency(averageAllocation, 'MYR'),
-    largestAllocation: roundToCurrency(largestAllocation, 'MYR'),
-    smallestAllocation: roundToCurrency(smallestAllocation, 'MYR'),
+    averageAllocation: roundToCurrency(averageAllocation, DEFAULT_CURRENCY),
+    largestAllocation: roundToCurrency(largestAllocation, DEFAULT_CURRENCY),
+    smallestAllocation: roundToCurrency(smallestAllocation, DEFAULT_CURRENCY),
   };
 }
 

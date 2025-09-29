@@ -22,6 +22,36 @@ import type { FiscalPeriod } from './fiscal-period-utilities';
 import { addDaysFns, addMonthsFns, addYearsFns, isAfterFns, isBeforeFns, isSameDate } from './date-utilities';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Error messages
+const ERROR_MESSAGES = {
+  ACCRUAL_SCHEDULE_REQUIRED: 'Accrual schedule is required',
+  TRANSACTION_ID_REQUIRED: 'Transaction ID is required',
+  DESCRIPTION_REQUIRED: 'Description is required',
+  TOTAL_AMOUNT_POSITIVE: 'Total amount must be a positive number',
+  CURRENCY_REQUIRED: 'Currency is required',
+  START_END_DATES_REQUIRED: 'Start and end dates are required',
+  START_DATE_BEFORE_END_DATE: 'Start date must be before end date',
+  ACCOUNT_CODE_REQUIRED: 'Account code is required',
+  OFFSET_ACCOUNT_CODE_REQUIRED: 'Offset account code is required',
+} as const;
+
+// Operation types
+const OPERATION_TYPES = {
+  CREATE_ACCRUAL_SCHEDULE: 'create-accrual-schedule',
+  CREATE_DEFERRAL_SCHEDULE: 'create-deferral-schedule',
+  GENERATE_REVERSING_ENTRIES: 'generate-reversing-entries',
+  UPDATE_ACCRUAL_SCHEDULE: 'update-accrual-schedule',
+  CALCULATE_ACCRUAL_AMOUNT: 'calculate-accrual-amount',
+  GENERATE_ACCRUAL_ENTRY: 'generate-accrual-entry',
+  GENERATE_DEFERRAL_ENTRY: 'generate-deferral-entry',
+  GENERATE_REVERSING_ENTRY: 'generate-reversing-entry',
+  GET_SCHEDULE_SUMMARY: 'get-schedule-summary',
+} as const;
+
+// ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
 
@@ -125,7 +155,7 @@ export function createAccrualSchedule(
       'INVALID_ACCOUNTING_INPUT',
       'Accrual transaction is required',
       transaction,
-      { operation: 'create-accrual-schedule' }
+      { operation: OPERATION_TYPES.CREATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -134,7 +164,7 @@ export function createAccrualSchedule(
       'INVALID_ACCOUNTING_INPUT',
       'Accrual options are required',
       options,
-      { operation: 'create-accrual-schedule' }
+      { operation: OPERATION_TYPES.CREATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -145,7 +175,7 @@ export function createAccrualSchedule(
       'INVALID_ACCOUNTING_INPUT',
       `Invalid accrual transaction: ${transactionValidation.errors.join(', ')}`,
       transaction,
-      { operation: 'create-accrual-schedule' }
+      { operation: OPERATION_TYPES.CREATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -186,7 +216,7 @@ export function createDeferralSchedule(
       'INVALID_ACCOUNTING_INPUT',
       'Deferral transaction is required',
       transaction,
-      { operation: 'create-deferral-schedule' }
+      { operation: OPERATION_TYPES.CREATE_DEFERRAL_SCHEDULE }
     );
   }
 
@@ -195,7 +225,7 @@ export function createDeferralSchedule(
       'INVALID_ACCOUNTING_INPUT',
       'Deferral options are required',
       options,
-      { operation: 'create-deferral-schedule' }
+      { operation: OPERATION_TYPES.CREATE_DEFERRAL_SCHEDULE }
     );
   }
 
@@ -206,7 +236,7 @@ export function createDeferralSchedule(
       'INVALID_ACCOUNTING_INPUT',
       `Invalid deferral transaction: ${transactionValidation.errors.join(', ')}`,
       transaction,
-      { operation: 'create-deferral-schedule' }
+      { operation: OPERATION_TYPES.CREATE_DEFERRAL_SCHEDULE }
     );
   }
 
@@ -242,9 +272,9 @@ export function generateReversingEntries(schedule: AccrualSchedule): JournalEntr
   if (!schedule) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Accrual schedule is required',
+      ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED,
       schedule,
-      { operation: 'generate-reversing-entries' }
+      { operation: OPERATION_TYPES.GENERATE_REVERSING_ENTRIES }
     );
   }
 
@@ -278,9 +308,9 @@ export function updateAccrualSchedule(
   if (!schedule) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Accrual schedule is required',
+      ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED,
       schedule,
-      { operation: 'update-accrual-schedule' }
+      { operation: OPERATION_TYPES.UPDATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -289,7 +319,7 @@ export function updateAccrualSchedule(
       'INVALID_ACCOUNTING_INPUT',
       'Updates are required',
       updates,
-      { operation: 'update-accrual-schedule' }
+      { operation: OPERATION_TYPES.UPDATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -302,7 +332,7 @@ export function updateAccrualSchedule(
       'INVALID_ACCOUNTING_INPUT',
       `Invalid updated schedule: ${validation.errors.join(', ')}`,
       updatedSchedule,
-      { operation: 'update-accrual-schedule' }
+      { operation: OPERATION_TYPES.UPDATE_ACCRUAL_SCHEDULE }
     );
   }
 
@@ -317,7 +347,7 @@ export function validateAccrualSchedule(schedule: AccrualSchedule): ValidationRe
   const warnings: string[] = [];
 
   if (!schedule) {
-    errors.push('Accrual schedule is required');
+    errors.push(ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED);
     return { isValid: false, errors, warnings };
   }
 
@@ -327,35 +357,35 @@ export function validateAccrualSchedule(schedule: AccrualSchedule): ValidationRe
   }
 
   if (!schedule.transactionId) {
-    errors.push('Transaction ID is required');
+    errors.push(ERROR_MESSAGES.TRANSACTION_ID_REQUIRED);
   }
 
   if (!schedule.description) {
-    errors.push('Description is required');
+    errors.push(ERROR_MESSAGES.DESCRIPTION_REQUIRED);
   }
 
   if (typeof schedule.totalAmount !== 'number' || schedule.totalAmount <= 0) {
-    errors.push('Total amount must be a positive number');
+    errors.push(ERROR_MESSAGES.TOTAL_AMOUNT_POSITIVE);
   }
 
   if (!schedule.currency) {
-    errors.push('Currency is required');
+    errors.push(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!schedule.startDate || !schedule.endDate) {
-    errors.push('Start and end dates are required');
+    errors.push(ERROR_MESSAGES.START_END_DATES_REQUIRED);
   }
 
   if (schedule.startDate && schedule.endDate && isAfterFns(schedule.startDate, schedule.endDate)) {
-    errors.push('Start date must be before end date');
+    errors.push(ERROR_MESSAGES.START_DATE_BEFORE_END_DATE);
   }
 
   if (!schedule.accountCode) {
-    errors.push('Account code is required');
+    errors.push(ERROR_MESSAGES.ACCOUNT_CODE_REQUIRED);
   }
 
   if (!schedule.offsetAccountCode) {
-    errors.push('Offset account code is required');
+    errors.push(ERROR_MESSAGES.OFFSET_ACCOUNT_CODE_REQUIRED);
   }
 
   // Validate entries
@@ -400,9 +430,9 @@ export function calculateAccrualAmount(schedule: AccrualSchedule, asOfDate: Date
   if (!schedule) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Accrual schedule is required',
+      ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED,
       schedule,
-      { operation: 'calculate-accrual-amount' }
+      { operation: OPERATION_TYPES.CALCULATE_ACCRUAL_AMOUNT }
     );
   }
 
@@ -411,14 +441,16 @@ export function calculateAccrualAmount(schedule: AccrualSchedule, asOfDate: Date
       'INVALID_ACCOUNTING_INPUT',
       'As of date is required',
       asOfDate,
-      { operation: 'calculate-accrual-amount' }
+      { operation: OPERATION_TYPES.CALCULATE_ACCRUAL_AMOUNT }
     );
   }
 
-  // Find entries up to the as of date
-  const applicableEntries = schedule.entries.filter(entry => 
-    entry.period && isBeforeFns(entry.period.endDate, asOfDate) || isSameDate(entry.period.endDate, asOfDate)
-  );
+  // Find entries up to the as-of date (inclusive)
+  const applicableEntries = schedule.entries.filter((entry) => {
+    if (!entry.period) return false;
+    const end = entry.period.endDate;
+    return isBeforeFns(end, asOfDate) || isSameDate(end, asOfDate);
+  });
 
   // Calculate total accrued amount
   const totalAccrued = applicableEntries.reduce((sum, entry) => sum + entry.amount, 0);
@@ -440,9 +472,9 @@ export function generateAccrualEntry(
   if (!schedule) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Accrual schedule is required',
+      ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED,
       schedule,
-      { operation: 'generate-accrual-entry' }
+      { operation: OPERATION_TYPES.GENERATE_ACCRUAL_ENTRY }
     );
   }
 
@@ -451,7 +483,7 @@ export function generateAccrualEntry(
       'INVALID_ACCOUNTING_INPUT',
       'Fiscal period is required',
       period,
-      { operation: 'generate-accrual-entry' }
+      { operation: OPERATION_TYPES.GENERATE_ACCRUAL_ENTRY }
     );
   }
 
@@ -465,7 +497,7 @@ export function generateAccrualEntry(
       'INVALID_ACCOUNTING_INPUT',
       `No accrual entry found for period ${period.id}`,
       { schedule: schedule.id, period: period.id },
-      { operation: 'generate-accrual-entry' }
+      { operation: OPERATION_TYPES.GENERATE_ACCRUAL_ENTRY }
     );
   }
 
@@ -519,7 +551,7 @@ export function generateDeferralEntry(
       'INVALID_ACCOUNTING_INPUT',
       'Deferral schedule is required',
       schedule,
-      { operation: 'generate-deferral-entry' }
+      { operation: OPERATION_TYPES.GENERATE_DEFERRAL_ENTRY }
     );
   }
 
@@ -528,7 +560,7 @@ export function generateDeferralEntry(
       'INVALID_ACCOUNTING_INPUT',
       'Fiscal period is required',
       period,
-      { operation: 'generate-deferral-entry' }
+      { operation: OPERATION_TYPES.GENERATE_DEFERRAL_ENTRY }
     );
   }
 
@@ -542,7 +574,7 @@ export function generateDeferralEntry(
       'INVALID_ACCOUNTING_INPUT',
       `No deferral entry found for period ${period.id}`,
       { schedule: schedule.id, period: period.id },
-      { operation: 'generate-deferral-entry' }
+      { operation: OPERATION_TYPES.GENERATE_DEFERRAL_ENTRY }
     );
   }
 
@@ -597,16 +629,16 @@ export function generateReversingEntry(
       'INVALID_ACCOUNTING_INPUT',
       'Original entry is required',
       originalEntry,
-      { operation: 'generate-reversing-entry' }
+      { operation: OPERATION_TYPES.GENERATE_REVERSING_ENTRY }
     );
   }
 
   if (!schedule) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
-      'Accrual schedule is required',
+      ERROR_MESSAGES.ACCRUAL_SCHEDULE_REQUIRED,
       schedule,
-      { operation: 'generate-reversing-entry' }
+      { operation: OPERATION_TYPES.GENERATE_REVERSING_ENTRY }
     );
   }
 
@@ -615,7 +647,7 @@ export function generateReversingEntry(
       'INVALID_ACCOUNTING_INPUT',
       'Reverse date is required',
       reverseDate,
-      { operation: 'generate-reversing-entry' }
+      { operation: OPERATION_TYPES.GENERATE_REVERSING_ENTRY }
     );
   }
 
@@ -674,35 +706,35 @@ function validateAccrualTransaction(transaction: AccrualTransaction): Validation
   }
 
   if (!transaction.id) {
-    errors.push('Transaction ID is required');
+    errors.push(ERROR_MESSAGES.TRANSACTION_ID_REQUIRED);
   }
 
   if (!transaction.description) {
-    errors.push('Description is required');
+    errors.push(ERROR_MESSAGES.DESCRIPTION_REQUIRED);
   }
 
   if (typeof transaction.totalAmount !== 'number' || transaction.totalAmount <= 0) {
-    errors.push('Total amount must be a positive number');
+    errors.push(ERROR_MESSAGES.TOTAL_AMOUNT_POSITIVE);
   }
 
   if (!transaction.currency) {
-    errors.push('Currency is required');
+    errors.push(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!transaction.startDate || !transaction.endDate) {
-    errors.push('Start and end dates are required');
+    errors.push(ERROR_MESSAGES.START_END_DATES_REQUIRED);
   }
 
   if (transaction.startDate && transaction.endDate && isAfterFns(transaction.startDate, transaction.endDate)) {
-    errors.push('Start date must be before end date');
+    errors.push(ERROR_MESSAGES.START_DATE_BEFORE_END_DATE);
   }
 
   if (!transaction.accountCode) {
-    errors.push('Account code is required');
+    errors.push(ERROR_MESSAGES.ACCOUNT_CODE_REQUIRED);
   }
 
   if (!transaction.offsetAccountCode) {
-    errors.push('Offset account code is required');
+    errors.push(ERROR_MESSAGES.OFFSET_ACCOUNT_CODE_REQUIRED);
   }
 
   return {
@@ -725,35 +757,35 @@ function validateDeferralTransaction(transaction: DeferralTransaction): Validati
   }
 
   if (!transaction.id) {
-    errors.push('Transaction ID is required');
+    errors.push(ERROR_MESSAGES.TRANSACTION_ID_REQUIRED);
   }
 
   if (!transaction.description) {
-    errors.push('Description is required');
+    errors.push(ERROR_MESSAGES.DESCRIPTION_REQUIRED);
   }
 
   if (typeof transaction.totalAmount !== 'number' || transaction.totalAmount <= 0) {
-    errors.push('Total amount must be a positive number');
+    errors.push(ERROR_MESSAGES.TOTAL_AMOUNT_POSITIVE);
   }
 
   if (!transaction.currency) {
-    errors.push('Currency is required');
+    errors.push(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!transaction.startDate || !transaction.endDate) {
-    errors.push('Start and end dates are required');
+    errors.push(ERROR_MESSAGES.START_END_DATES_REQUIRED);
   }
 
   if (transaction.startDate && transaction.endDate && isAfterFns(transaction.startDate, transaction.endDate)) {
-    errors.push('Start date must be before end date');
+    errors.push(ERROR_MESSAGES.START_DATE_BEFORE_END_DATE);
   }
 
   if (!transaction.accountCode) {
-    errors.push('Account code is required');
+    errors.push(ERROR_MESSAGES.ACCOUNT_CODE_REQUIRED);
   }
 
   if (!transaction.offsetAccountCode) {
-    errors.push('Offset account code is required');
+    errors.push(ERROR_MESSAGES.OFFSET_ACCOUNT_CODE_REQUIRED);
   }
 
   return {
@@ -790,69 +822,67 @@ function generateAccrualEntries(
   _options: AccrualOptions,
   frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually'
 ): AccrualEntry[] {
-  const entries: AccrualEntry[] = [];
-  const totalDays = Math.ceil((transaction.endDate.getTime() - transaction.startDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  let currentDate = new Date(transaction.startDate);
-  let periodNumber = 1;
-  
-  while (isBeforeFns(currentDate, transaction.endDate) || isSameDate(currentDate, transaction.endDate)) {
-    let periodEndDate: Date;
-    let periodAmount: number;
-    
+  // 1) Build calendar-aware, gap-free periods with inclusive [start, end] ranges.
+  const periods: Array<{ start: Date; end: Date }> = [];
+  let start = new Date(transaction.startDate);
+  const hardEnd = new Date(transaction.endDate);
+
+  const advance = (d: Date): Date => {
     switch (frequency) {
-      case 'daily':
-        periodEndDate = addDaysFns(currentDate, 1);
-        periodAmount = transaction.totalAmount / totalDays;
-        break;
-      case 'weekly':
-        periodEndDate = addDaysFns(currentDate, 7);
-        periodAmount = transaction.totalAmount / Math.ceil(totalDays / 7);
-        break;
-      case 'monthly':
-        periodEndDate = addMonthsFns(currentDate, 1);
-        periodAmount = transaction.totalAmount / Math.ceil(totalDays / 30);
-        break;
-      case 'quarterly':
-        periodEndDate = addMonthsFns(currentDate, 3);
-        periodAmount = transaction.totalAmount / Math.ceil(totalDays / 90);
-        break;
-      case 'annually':
-        periodEndDate = addYearsFns(currentDate, 1);
-        periodAmount = transaction.totalAmount / Math.ceil(totalDays / 365);
-        break;
-      default:
-        periodEndDate = addDaysFns(currentDate, 1);
-        periodAmount = transaction.totalAmount / totalDays;
+      case 'daily': return addDaysFns(d, 1);
+      case 'weekly': return addDaysFns(d, 7);
+      case 'monthly': return addMonthsFns(d, 1);
+      case 'quarterly': return addMonthsFns(d, 3);
+      case 'annually': return addYearsFns(d, 1);
+      default: return addDaysFns(d, 1);
     }
-    
-    // Ensure we don't exceed the end date
-    if (isAfterFns(periodEndDate, transaction.endDate)) {
-      periodEndDate = new Date(transaction.endDate);
-    }
-    
-    // Create a mock fiscal period for the entry
-    const mockPeriod: FiscalPeriod = {
-      id: `P${periodNumber}`,
-      year: currentDate.getFullYear(),
-      period: periodNumber,
-      name: `Period ${periodNumber}`,
-      startDate: new Date(currentDate),
-      endDate: new Date(periodEndDate),
+  };
+
+  let _periodNo = 1;
+  while (isBeforeFns(start, hardEnd) || isSameDate(start, hardEnd)) {
+    // Compute next period's *start* then back up one day for inclusive end
+    const nextStart = advance(start);
+    let end = addDaysFns(nextStart, -1);
+    if (isAfterFns(end, hardEnd)) end = new Date(hardEnd);
+    periods.push({ start, end });
+    start = addDaysFns(end, 1); // next period starts the day after this inclusive end
+    _periodNo++;
+  }
+
+  // 2) Split totalAmount across the number of periods with guaranteed reconciliation.
+  const n = periods.length || 1;
+  const rawShare = transaction.totalAmount / n;
+  const amounts: number[] = [];
+  let running = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const amt = roundToCurrency(rawShare, transaction.currency);
+    amounts.push(amt);
+    running += amt;
+  }
+  // Last amount absorbs any rounding residue to ensure sum equals total
+  const last = roundToCurrency(transaction.totalAmount - running, transaction.currency);
+  amounts.push(last);
+
+  // 3) Materialize entries
+  const entries: AccrualEntry[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = periods[i]!;
+    const mock: FiscalPeriod = {
+      id: `P${i + 1}`,
+      year: p.end.getFullYear(),
+      period: i + 1,
+      name: `Period ${i + 1}`,
+      startDate: new Date(p.start),
+      endDate: new Date(p.end),
       status: { status: 'open' },
       backdateWindow: 30,
     };
-    
     entries.push({
-      period: mockPeriod,
-      amount: roundToCurrency(periodAmount, transaction.currency),
+      period: mock,
+      amount: amounts[i]!,
       posted: false,
     });
-    
-    currentDate = addDaysFns(periodEndDate, 1);
-    periodNumber++;
   }
-  
   return entries;
 }
 
@@ -864,7 +894,7 @@ function generateDeferralEntries(
   options: DeferralOptions,
   frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually'
 ): AccrualEntry[] {
-  // Deferral entries are similar to accrual entries but with different accounting treatment
+  // Deferral entries mirror accrual schedule amounts/timing; accounting treatment differs at posting time.
   return generateAccrualEntries(transaction as AccrualTransaction, options as AccrualOptions, frequency);
 }
 
@@ -938,7 +968,7 @@ export function getScheduleSummary(schedule: AccrualSchedule | DeferralSchedule)
       'INVALID_ACCOUNTING_INPUT',
       'Schedule is required',
       schedule,
-      { operation: 'get-schedule-summary' }
+      { operation: OPERATION_TYPES.GET_SCHEDULE_SUMMARY }
     );
   }
 

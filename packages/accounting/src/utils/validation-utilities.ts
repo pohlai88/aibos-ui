@@ -15,10 +15,78 @@
  */
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const VALIDATION_CONSTANTS = {
+  REQUIRED_FIELD: 'is required',
+  INVALID_FORMAT: 'Invalid format',
+  UNSUPPORTED_COUNTRY: 'validation not supported for country',
+  INVALID_LENGTH: 'length seems unusual',
+  CHECKSUM_INVALID: 'Invalid checksum',
+  CARD_EXPIRED: 'Card is expired',
+  EXPIRY_FUTURE: 'Expiry is unusually far in the future',
+} as const;
+
+// ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
 
 export type ValidationCode =
+  | 'INVALID_CODE_FORMAT'
+  | 'INVALID_CODE_PATTERN'
+  | 'MISSING_NAME'
+  | 'NAME_TOO_LONG'
+  | 'NEGATIVE_AMOUNT'
+  | 'INVALID_PRECISION'
+  | 'INVALID_DATE'
+  | 'MISSING_DESCRIPTION'
+  | 'UNBALANCED_ENTRY'
+  | 'INVALID_RATE'
+  | 'MISSING_TYPE'
+  | 'VALIDATION_FAILED'
+  | 'MISSING_PERIOD'
+  | 'INVALID_PERIOD'
+  | 'INVALID_VARIANCE_THRESHOLD'
+  | 'MISSING_ACCOUNT_CODE'
+  | 'MISSING_ACCOUNT_NAME'
+  | 'MISSING_ACCOUNT_TYPE'
+  | 'INVALID_BALANCE_TYPE'
+  | 'NEGATIVE_PERIOD_DEBITS'
+  | 'NEGATIVE_PERIOD_CREDITS'
+  | 'NO_ACCOUNTS_OF_TYPE'
+  | 'NEGATIVE_ASSET_BALANCE'
+  | 'NEGATIVE_LIABILITY_BALANCE'
+  | 'AMOUNT_BELOW_MINIMUM'
+  | 'AMOUNT_ABOVE_MAXIMUM'
+  | 'RULE_INACTIVE'
+  | 'RULE_NOT_EFFECTIVE'
+  | 'RULE_EXPIRED'
+  | 'INVALID_RATE_FOR_GROSS_UP'
+  | 'INVALID_GROSS_UP_METHOD'
+  | 'MISSING_RULE_ID'
+  | 'MISSING_JURISDICTION'
+  | 'INVALID_TAX_TYPE'
+  | 'INVALID_MINIMUM_AMOUNT'
+  | 'INVALID_MAXIMUM_AMOUNT'
+  | 'INVALID_EFFECTIVE_DATE'
+  | 'INVALID_EXPIRY_DATE'
+  | 'INVALID_DATE_RANGE'
+  | 'MISSING_TRANSACTION_ID'
+  | 'MISSING_VENDOR'
+  | 'MISSING_CURRENCY'
+  | 'INVALID_TRANSACTION_DATE'
+  | 'INVALID_VENDOR_TYPE'
+  | 'MISSING_PAYABLE_ID'
+  | 'NEGATIVE_WITHHOLDING'
+  | 'INVALID_STATUS'
+  | 'INVALID_DUE_DATE'
+  | 'INVALID_PAID_DATE'
+  | 'INVALID_PAID_DATE_RANGE'
+  | 'RULE_VALIDATION_ERROR'
+  | 'MISSING_CONDITION_FIELD'
+  | 'INVALID_CONDITION_OPERATOR'
+  | 'MISSING_CONDITION_VALUE'
   | 'REQUIRED'
   | 'FORMAT'
   | 'CHECKSUM'
@@ -34,6 +102,7 @@ export interface ValidationIssue {
   path: string;          // dot-path indicating where the issue occurred, e.g. "invoice.total"
   message: string;
   severity?: 'error' | 'warning';
+  value?: unknown;          // the actual value that caused the validation issue
 }
 
 export interface BusinessValidationResult {
@@ -162,8 +231,8 @@ const VALIDATION_PATTERNS = {
 } as const;
 
 // Supported countries
-const SUPPORTED_COUNTRIES = ['MY', 'SG', 'TH', 'ID', 'PH', 'VN'] as const;
-type SupportedCountry = typeof SUPPORTED_COUNTRIES[number];
+const _SUPPORTED_COUNTRIES = ['MY', 'SG', 'TH', 'ID', 'PH', 'VN'] as const;
+type SupportedCountry = typeof _SUPPORTED_COUNTRIES[number];
 
 // ============================================================================
 // EMAIL VALIDATION
@@ -177,15 +246,15 @@ export function validateEmail(email: string, options: ValidationOptions = {}): B
 
   if (!email) {
     if (!options.allowEmpty) {
-      err(r, 'email', 'REQUIRED', 'Email is required');
+      err(r, 'email', 'REQUIRED', `Email ${VALIDATION_CONSTANTS.REQUIRED_FIELD}`);
     }
     return r;
   }
 
-  // Basic email regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Basic email regex - safe pattern
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   
-  if (!emailRegex.test(email)) { err(r,'email','FORMAT','Invalid email format'); return r; }
+  if (!emailRegex.test(email)) { err(r,'email','FORMAT',`${VALIDATION_CONSTANTS.INVALID_FORMAT} email format`); return r; }
 
   // Additional checks for strict validation
   if (options.strict) {
@@ -226,17 +295,17 @@ export function validatePhone(
 
   if (!phone) {
     if (!options.allowEmpty) {
-      err(r,'phone','REQUIRED','Phone number is required');
+      err(r,'phone','REQUIRED',`Phone number ${VALIDATION_CONSTANTS.REQUIRED_FIELD}`);
     }
     return r;
   }
 
   // Clean phone number (remove spaces, dashes, parentheses)
-  const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+  const cleanPhone = phone.replace(/[\s\-()]/g, '');
   
   const pattern = VALIDATION_PATTERNS.PHONE[country];
   if (!pattern) {
-    err(r,'phone','UNSUPPORTED',`Phone validation not supported for country: ${country}`);
+    err(r,'phone','UNSUPPORTED',`Phone ${VALIDATION_CONSTANTS.UNSUPPORTED_COUNTRY}: ${country}`);
     return r;
   }
 
@@ -245,7 +314,7 @@ export function validatePhone(
   // Additional checks
   if (options.strict) {
     if (cleanPhone.length < 8 || cleanPhone.length > 15) {
-      warn(r,'phone','LENGTH','Phone number length seems unusual');
+      warn(r,'phone','LENGTH',`Phone number ${VALIDATION_CONSTANTS.INVALID_LENGTH}`);
     }
   }
 

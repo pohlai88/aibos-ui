@@ -31,7 +31,8 @@
 import type { 
   SupportedCurrency
 } from './accounting-utilities';
-import type { ConditionOperator } from './shared-operators';
+import type { ConditionOperator } from './shared-operators-utilities';
+import { differenceInCalendarDays as _diffDays } from 'date-fns';
 
 // ============================================================================
 // SHARED TYPES
@@ -453,6 +454,9 @@ export function matchBankTransactions(
     .filter(rule => rule.active)
     .sort((a, b) => b.priority - a.priority);
 
+  // Determine a global prefilter tolerance (max of active rules; fallback 0.01)
+  const prefilterTolerance = Math.max(0.01, ...sortedRules.map(r => r.tolerance ?? 0));
+
   for (const bankTransaction of bankTransactions) {
     let bestMatch: MatchingResult | undefined;
     let bestConfidence = 0;
@@ -460,9 +464,9 @@ export function matchBankTransactions(
     for (const glEntry of glEntries) {
       if (usedGLEntries.has(glEntry.id)) continue;
 
-      // Check if amounts match (considering transaction type)
+      // Quick prefilter: amount difference within broad tolerance and polarity sane
       const amountMatch = checkAmountMatch(bankTransaction, glEntry);
-      if (!amountMatch.matches) continue;
+      if (!(amountMatch.polarityOk && amountMatch.difference <= prefilterTolerance)) continue;
 
       // Apply matching rules
       for (const rule of sortedRules) {
@@ -526,10 +530,10 @@ export function validateMatching(matching: MatchingResult): ValidationResult {
     errors.push('Tolerance cannot be negative');
   }
 
-  // Validate amount consistency
+  // Validate amount consistency (use GL net and polarity)
   const bankAmount = Math.abs(matching.bankTransaction.amount);
-  const glAmount = matching.glEntry.debit + matching.glEntry.credit;
-  const amountDifference = Math.abs(bankAmount - glAmount);
+  const glNet = Math.abs((matching.glEntry.debit ?? 0) - (matching.glEntry.credit ?? 0));
+  const amountDifference = Math.abs(bankAmount - glNet);
 
   if (amountDifference > matching.tolerance) {
     errors.push('Amount difference exceeds tolerance');
@@ -585,7 +589,8 @@ export function autoMatchTransactions(
         {
           field: 'amount',
           operator: 'between',
-          value: { min: -tolerance, max: tolerance },
+          // interpret as *absolute* difference window 0..tolerance
+          value: { min: 0, max: tolerance },
           weight: 1.0
         }
       ],
@@ -708,7 +713,7 @@ export function applyToleranceRule(
       throw new Error(`Unsupported tolerance type: ${rule.toleranceType}`);
   }
 
-  const isWithinTolerance = difference <= toleranceAmount;
+  const isWithinTolerance = difference <= toleranceAmount + 1e-10; // Add small epsilon for floating point precision
 
   return {
     rule,
@@ -981,7 +986,7 @@ export function identifyReconciliationExceptions(
       exceptionType: 'amount_mismatch',
       description: `Balance difference: ${balanceDifference}`,
       amount: balanceDifference,
-      currency: 'USD', // Would be determined from reconciliation
+      currency: (reconciliation.adjustments[0]?.currency ?? reconciliation.exceptions[0]?.currency ?? 'USD') as SupportedCurrency,
       date: new Date(),
       status: 'open',
       createdAt: new Date(),
@@ -999,7 +1004,7 @@ export function identifyReconciliationExceptions(
       exceptionType: 'unmatched_transaction',
       description: 'Unmatched transactions found',
       amount: 0,
-      currency: 'USD',
+      currency: (reconciliation.adjustments[0]?.currency ?? 'USD') as SupportedCurrency,
       date: new Date(),
       status: 'open',
       createdAt: new Date(),
@@ -1089,14 +1094,29 @@ export function trackExceptionHistory(exception: ReconciliationException): void 
 function checkAmountMatch(
   bankTransaction: BankTransaction,
   glEntry: GLEntry
-): { matches: boolean; difference: number } {
-  const bankAmount = Math.abs(bankTransaction.amount);
-  const glAmount = glEntry.debit + glEntry.credit;
-  const difference = Math.abs(bankAmount - glAmount);
+): { matches: boolean; difference: number; polarityOk: boolean } {
+  // Normalize bank: positive magnitude, retain sign via type
+  const bankMagnitude = Math.abs(bankTransaction.amount);
+  const bankIsDebit = bankTransaction.type === 'debit' || bankTransaction.type === 'withdrawal' || bankTransaction.type === 'fee' || bankTransaction.type === 'check';
+  const bankIsCredit = bankTransaction.type === 'credit' || bankTransaction.type === 'deposit' || bankTransaction.type === 'interest';
+
+  // GL net amount and side
+  const glNet = Math.abs((glEntry.debit ?? 0) - (glEntry.credit ?? 0));
+  const glIsDebit = (glEntry.debit ?? 0) > (glEntry.credit ?? 0);
+  const glIsCredit = (glEntry.credit ?? 0) > (glEntry.debit ?? 0);
+
+  const difference = Math.abs(bankMagnitude - glNet);
+
+  // Polarity/side check (best-effort; transfers and others are neutral)
+  const polarityOk =
+    (bankIsDebit && glIsDebit) ||
+    (bankIsCredit && glIsCredit) ||
+    (!bankIsDebit && !bankIsCredit); // e.g., transfer/other
 
   return {
-    matches: difference < 0.01, // Allow for small rounding differences
-    difference
+    matches: difference <= 0.01 && polarityOk, // default tiny tolerance here; caller may layer larger tolerance
+    difference,
+    polarityOk,
   };
 }
 
@@ -1118,8 +1138,7 @@ function applyMatchingRule(
 
   for (const condition of rule.conditions) {
     totalWeight += condition.weight;
-    
-    if (evaluateCondition(bankTransaction, glEntry, condition)) {
+    if (evaluateCondition(bankTransaction, glEntry, condition, rule.tolerance)) {
       matchedWeight += condition.weight;
     }
   }
@@ -1127,10 +1146,19 @@ function applyMatchingRule(
   const confidence = totalWeight > 0 ? matchedWeight / totalWeight : 0;
   const matches = confidence >= 0.7; // Minimum confidence threshold
 
+  // Classify match type heuristically
+  const bankMag = Math.abs(bankTransaction.amount);
+  const glNet = Math.abs((glEntry.debit ?? 0) - (glEntry.credit ?? 0));
+  const amtDiff = Math.abs(bankMag - glNet);
+  const exact = amtDiff === 0 && bankTransaction.currency === glEntry.currency;
+  const withinTol = amtDiff <= (rule.tolerance ?? 0);
+
+  const matchType: MatchType = exact ? 'exact' : withinTol ? 'tolerance' : matches ? 'fuzzy' : 'manual';
+
   return {
     matches,
     confidence,
-    matchType: matches ? 'tolerance' : 'manual',
+    matchType,
     tolerance: rule.tolerance
   };
 }
@@ -1145,72 +1173,70 @@ function applyMatchingRule(
  */
 function evaluateCondition(
   bankTransaction: BankTransaction,
-  _glEntry: GLEntry,
-  condition: MatchingCondition
+  glEntry: GLEntry,
+  condition: MatchingCondition,
+  ruleTolerance: number
 ): boolean {
   const field = condition.field;
   const operator = condition.operator;
   const value = condition.value;
 
-  // Get field values
-  let bankValue: unknown;
+  // Pull both sides as needed
+  const bankAmount = Math.abs(bankTransaction.amount);
+  const glNet = Math.abs((glEntry.debit ?? 0) - (glEntry.credit ?? 0));
+  const bankDate = bankTransaction.transactionDate;
+  const glDate = glEntry.date;
+  const bankRef = bankTransaction.reference ?? '';
+  const glRef = glEntry.reference ?? '';
+  const bankDesc = bankTransaction.description ?? '';
+  const glDesc = glEntry.description ?? '';
 
+  // Evaluate condition by field
   switch (field) {
-    case 'amount':
-      bankValue = Math.abs(bankTransaction.amount);
-      break;
-    case 'date':
-      bankValue = bankTransaction.transactionDate;
-      break;
-    case 'reference':
-      bankValue = bankTransaction.reference;
-      break;
-    case 'description':
-      bankValue = bankTransaction.description;
-      break;
+    case 'amount': {
+      const diff = Math.abs(bankAmount - glNet);
+      if (operator === 'between') {
+        const r = value as { min: number; max: number };
+        return diff >= r.min && diff <= r.max;
+      }
+      if (operator === 'equals') return diff === 0;
+      if (operator === 'less_than') return diff < (typeof value === 'number' ? value : ruleTolerance);
+      if (operator === 'greater_than') return diff > (typeof value === 'number' ? value : ruleTolerance);
+      return diff <= ruleTolerance; // default to within tolerance
+    }
+    case 'date': {
+      const days = Math.abs(_diffDays(bankDate, glDate));
+      if (operator === 'between') {
+        const r = value as { min: number; max: number };
+        return days >= r.min && days <= r.max;
+      }
+      if (operator === 'equals') return days === 0;
+      if (operator === 'less_than') return days < (value as number);
+      if (operator === 'greater_than') return days > (value as number);
+      return days === 0;
+    }
+    case 'reference': {
+      return evaluateText(bankRef, glRef, operator, value);
+    }
+    case 'description': {
+      return evaluateText(bankDesc, glDesc, operator, value);
+    }
     default:
       return false;
   }
+}
 
-  // Evaluate condition
+function evaluateText(a: string, b: string, operator: ConditionOperator, value: unknown): boolean {
+  const val = typeof value === 'string' ? value : '';
   switch (operator) {
-    case 'equals':
-      return bankValue === value;
-    case 'not_equals':
-      return bankValue !== value;
-    case 'contains':
-      return typeof bankValue === 'string' && typeof value === 'string' && 
-             bankValue.includes(value);
-    case 'starts_with':
-      return typeof bankValue === 'string' && typeof value === 'string' && 
-             bankValue.startsWith(value);
-    case 'ends_with':
-      return typeof bankValue === 'string' && typeof value === 'string' && 
-             bankValue.endsWith(value);
-    case 'greater_than':
-      return typeof bankValue === 'number' && typeof value === 'number' && 
-             bankValue > value;
-    case 'less_than':
-      return typeof bankValue === 'number' && typeof value === 'number' && 
-             bankValue < value;
-    case 'between':
-      if (typeof bankValue === 'number' && typeof value === 'object' && value !== null) {
-        const range = value as { min: number; max: number };
-        return bankValue >= range.min && bankValue <= range.max;
-      }
-      return false;
+    case 'equals': return a === b || a === val || b === val;
+    case 'not_equals': return !(a === b || a === val || b === val);
+    case 'contains': return a.includes(val) || b.includes(val) || a.includes(b) || b.includes(a);
+    case 'starts_with': return a.startsWith(val) || b.startsWith(val);
+    case 'ends_with': return a.endsWith(val) || b.endsWith(val);
     case 'regex':
-      if (typeof bankValue === 'string' && typeof value === 'string') {
-        try {
-          const regex = new RegExp(value);
-          return regex.test(bankValue);
-        } catch {
-          return false;
-        }
-      }
-      return false;
-    default:
-      return false;
+      try { const re = new RegExp(val); return re.test(a) || re.test(b); } catch { return false; }
+    default: return false;
   }
 }
 

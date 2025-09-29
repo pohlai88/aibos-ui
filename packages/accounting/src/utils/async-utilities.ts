@@ -738,7 +738,7 @@ export async function withFallback<T>(
 ): Promise<T> {
   try {
     return await timeout(primaryFunction(), timeoutMs);
-  } catch (error) {
+  } catch (_error) {
     return await fallbackFunction();
   }
 }

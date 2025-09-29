@@ -555,7 +555,7 @@ export class DomainEventFactory {
       this.validatePayload(event.eventType, event.data);
       this.validateEvent(event);
       return event;
-    } catch (error) {
+    } catch (_error) {
       throw createValidationError('json', 'Invalid event JSON', json);
     }
   }
@@ -708,7 +708,7 @@ export class EventProcessor {
           // Backpressure-aware async handling via semaphore
           if (this.options.backpressureAsync) {
             // schedule but do not await; concurrency is bounded globally
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+             
             (async () => {
               this.pendingAsyncTasks++;
               try {
@@ -724,11 +724,11 @@ export class EventProcessor {
           } else {
             // Legacy fire-and-forget (no bound)
             const schedule = (fn: () => void) =>
-              (typeof queueMicrotask === 'function' ? queueMicrotask : (cb: any) => setTimeout(cb, 0))(fn);
+              (typeof (globalThis as unknown).queueMicrotask === 'function' ? (globalThis as unknown).queueMicrotask : (cb: unknown) => setTimeout(cb, 0))(fn);
             schedule(() => {
               const result = handler.handler(event, context);
               if (result && typeof (result as Promise<unknown>).catch === 'function') {
-                (result as Promise<unknown>).catch((error: any) => {
+                (result as Promise<unknown>).catch((error: unknown) => {
                   console.error(`Async handler failed for event ${event.eventType}:`, error);
                 });
               }

@@ -5,7 +5,7 @@
  * Provides tax compliance, regulatory reporting, and standards adherence.
  */
 
-import type { Router, RequestHandler } from 'express';
+import type { Router, RequestHandler, Request, Response, NextFunction } from 'express';
 import { Router as ExpressRouter } from 'express';
 import type { ComplianceController } from './compliance-controller.js';
 
@@ -38,7 +38,7 @@ export function createComplianceRoutes(
 
   // Async error wrapper: ensure thrown/rejected handlers reach error middleware
   const wrap =
-    (function_: (req: unknown, res: unknown, next: unknown) => unknown): RequestHandler =>
+    (function_: (req: Request, res: Response, next: NextFunction) => unknown): RequestHandler =>
     (req, res, next) =>
       Promise.resolve(function_(req, res, next)).catch(next);
 

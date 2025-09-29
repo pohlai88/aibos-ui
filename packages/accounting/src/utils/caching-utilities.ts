@@ -29,7 +29,7 @@ export interface CacheOptions {
   hooks?: Partial<CacheMetricHooks>;
 }
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   key: string;
   value: T;
   timestamp: Date;
@@ -104,7 +104,7 @@ export interface DistributedCacheOptions extends CacheOptions {
  * Centralized cache manager for all caching operations
  */
 export class CacheManager {
-  private static caches: Map<string, Cache<any>> = new Map();
+  private static caches: Map<string, Cache<unknown>> = new Map();
   private static globalStats: CacheStats = {
     totalRequests: 0,
     totalHits: 0,
@@ -229,7 +229,7 @@ export class CacheManager {
 /**
  * Generic cache implementation with multiple strategies
  */
-export class Cache<T = any> {
+export class Cache<T = unknown> {
   private entries: Map<string, CacheEntry<T>> = new Map();
   private accessOrder: string[] = [];
   private frequencyMap: Map<string, number> = new Map();
@@ -371,7 +371,7 @@ export class Cache<T = any> {
 
     const opts = (typeof a === 'object' && a !== null && !Array.isArray(a))
       ? (a as { ttl?: number | ((v: T) => number | undefined); tags?: string[]; windowMs?: number })
-      : ({ ttl: a as any, tags: b } as { ttl?: number | ((v: T) => number | undefined); tags?: string[]; windowMs?: number });
+      : ({ ttl: a as unknown, tags: b } as { ttl?: number | ((v: T) => number | undefined); tags?: string[]; windowMs?: number });
 
     // Join in-flight load if exists.
     const inflight = this.pendingLoads.get(key);
@@ -711,8 +711,8 @@ export class Cache<T = any> {
   }
 
   /** Safe hook invoker */
-  private hook<K extends keyof CacheMetricHooks>(kind: K, ...args: Parameters<Required<CacheMetricHooks>[K]> extends [any, ...infer R] ? R : any[]) {
-    const h = this.options.hooks?.[kind] as any;
+  private hook<K extends keyof CacheMetricHooks>(kind: K, ...args: Parameters<Required<CacheMetricHooks>[K]> extends [unknown, ...infer R] ? R : unknown[]) {
+    const h = this.options.hooks?.[kind] as unknown;
     try { if (typeof h === 'function') h(this.name, ...args); } catch { /* swallow */ }
   }
 }
@@ -725,20 +725,20 @@ export class Cache<T = any> {
  * A thin wrapper that prefixes keys for logical scoping while delegating
  * to the same underlying Cache<T>.
  */
-export class ScopedCache<T = any> {
+export class ScopedCache<T = unknown> {
   constructor(private readonly base: Cache<T>, private readonly prefix: string) {}
 
   private pk(key: string): string {
     return [this.prefix, key].join(':');
   }
 
-  get(key: string) { return this.base.get(this.pk(key)); }
-  set(key: string, value: T, ttl?: number, tags?: string[]) { this.base.set(this.pk(key), value, ttl, tags); }
-  async getOrLoad(key: string, loader: () => Promise<T>, ttl?: number, tags?: string[]) {
+  get(key: string): T | null { return this.base.get(this.pk(key)); }
+  set(key: string, value: T, ttl?: number, tags?: string[]): void { this.base.set(this.pk(key), value, ttl, tags); }
+  async getOrLoad(key: string, loader: () => Promise<T>, ttl?: number, tags?: string[]): Promise<T> {
     return this.base.getOrLoad(this.pk(key), loader, ttl, tags);
   }
-  delete(key: string) { return this.base.delete(this.pk(key)); }
-  has(key: string) { return this.base.has(this.pk(key)); }
+  delete(key: string): boolean { return this.base.delete(this.pk(key)); }
+  has(key: string): boolean { return this.base.has(this.pk(key)); }
 
   // Scoped utilities
   invalidateByPattern(suffixPattern: string): number {
@@ -763,7 +763,7 @@ export class CacheInvalidationUtilities {
    * Invalidate cache by pattern
    */
   static invalidateByPattern(
-    cache: Cache<any>,
+    cache: Cache<unknown>,
     pattern: string
   ): number {
     const regex = new RegExp(pattern);
@@ -783,7 +783,7 @@ export class CacheInvalidationUtilities {
    * Invalidate cache by tags
    */
   static invalidateByTags(
-    cache: Cache<any>,
+    cache: Cache<unknown>,
     tags: string[]
   ): number {
     let invalidatedCount = 0;

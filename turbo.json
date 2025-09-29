@@ -1,124 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [
-    "**/.env.*local",
-    "pnpm-lock.yaml",
-    "package.json",
-    "pnpm-workspace.yaml",
-    "turbo.json",
-    "tsconfig.json",
-    "tsconfig.base.json",
-    ".prettierrc*",
-    "prettier.config.*",
-    ".eslintrc*",
-    "eslint.config.*"
-  ],
-  "globalEnv": ["NODE_ENV", "CI"],
   "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true,
-      "dependsOn": ["^build"]
-    },
-    "format": {
-      "outputs": [],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "**/*.{md,markdown,json,yml,yaml,css,scss}",
-        "!**/dist/**",
-        "!**/build/**",
-        "!**/.next/**"
-      ]
-    },
     "lint": {
-      // lint should not depend on build; it only reads sources
-      "outputs": [],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "package.json",
-        ".eslintrc.*",
-        "eslint.config.*",
-        "!**/dist/**",
-        "!**/build/**",
-        "!**/.next/**"
-      ]
+      "outputs": []
     },
     "typecheck": {
-      "outputs": [],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "package.json",
-        "tsconfig.json",
-        "tsconfig.*.json",
-        "!**/dist/**",
-        "!**/build/**",
-        "!**/.next/**"
-      ]
-    },
-    "test": {
-      // typically doesn't need build; unit tests run on src
-      // outputs: [] for now since we only have echo commands
-      // TODO: add ["coverage/**", "junit/**"] when real tests are implemented
-      "outputs": [],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "tests/**/*",
-        "test/**/*",
-        "__tests__/**/*",
-        "package.json",
-        "!**/dist/**",
-        "!**/build/**",
-        "!**/.next/**"
-      ],
-      "env": ["CI"]
-    },
-    "dep:check": {
-      "outputs": [],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "package.json",
-        ".dependency-cruiser.js",
-        "dependency-cruiser.config.js",
-        "!**/dist/**",
-        "!**/build/**",
-        "!**/.next/**"
-      ]
-    },
-    "build:types": {
-      "dependsOn": ["^build:types"],
-      "outputs": ["dist/types/**"],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "package.json",
-        "tsconfig.json",
-        "tsconfig.*.json",
-        "!**/dist/**",
-        "!**/build/**"
-      ]
+      "outputs": []
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", ".next/**", "!.next/cache/**"],
-      "cache": true,
-      "inputs": [
-        "src/**/*",
-        "package.json",
-        "tsconfig.json",
-        "tsconfig.*.json",
-        "tsup.config.ts",
-        "rollup.config.*",
-        "vite.config.*",
-        "next.config.*",
-        "!**/dist/**",
-        "!**/build/**"
-      ],
-      "env": ["NODE_ENV", "NEXT_TELEMETRY_DISABLED", "CI"]
+      "outputs": ["dist/**", "build/**", ".next/**"]
+    },
+    "test": {
+      "outputs": ["coverage/**"]
     },
     "clean": {
       "cache": false

@@ -86,6 +86,48 @@ export interface ValidationIssue {
 }
 
 // ============================================================================
+// INTERNAL HELPERS (no export)
+// ============================================================================
+function assertSingleCurrency(lines: JournalLine[], op: string): SupportedCurrency {
+  if (!lines || lines.length === 0) {
+    throw createValidationError(
+      'INVALID_ACCOUNTING_INPUT',
+      'Journal lines are required',
+      lines,
+      { operation: op }
+    );
+  }
+  const currencies = new Set(lines.map(l => l.currency));
+  if (currencies.size > 1) {
+    throw createValidationError(
+      'INVALID_ACCOUNTING_INPUT',
+      'All lines must have the same currency',
+      { currencies: Array.from(currencies) },
+      { operation: op }
+    );
+  }
+  return lines[0]!.currency;
+}
+
+function sumLinesMinor(lines: JournalLine[], currency: SupportedCurrency) {
+  let debitMinor = 0;
+  let creditMinor = 0;
+  for (const l of lines) {
+    debitMinor += toMinor(l.debit, currency);
+    creditMinor += toMinor(l.credit, currency);
+  }
+  return { debitMinor, creditMinor };
+}
+
+function recomputeTotals(lines: JournalLine[], currency: SupportedCurrency) {
+  const { debitMinor, creditMinor } = sumLinesMinor(lines, currency);
+  return {
+    totalDebits: roundToCurrency(fromMinor(debitMinor, currency), currency),
+    totalCredits: roundToCurrency(fromMinor(creditMinor, currency), currency),
+  };
+}
+
+// ============================================================================
 // ENTRY BUILDING
 // ============================================================================
 
@@ -150,8 +192,7 @@ export function buildJournalEntry(transaction: BusinessTransaction): JournalEntr
     reference: transaction.reference,
     description: transaction.description,
     lines,
-    totalDebits: lines.reduce((sum, line) => sum + line.debit, 0),
-    totalCredits: lines.reduce((sum, line) => sum + line.credit, 0),
+    ...recomputeTotals(lines, transaction.currency),
     currency: transaction.currency,
     status: 'draft',
   };
@@ -166,29 +207,8 @@ export function buildBalancedEntry(
   lines: JournalLine[],
   options: BalanceOptions = {}
 ): JournalEntry {
-  if (!lines || lines.length === 0) {
-    throw createValidationError(
-      'INVALID_ACCOUNTING_INPUT',
-      'Journal lines are required',
-      lines,
-      { operation: 'build-balanced-entry' }
-    );
-  }
-
-  // Validate all lines have the same currency
-  const currencies = new Set(lines.map(line => line.currency));
-  if (currencies.size > 1) {
-    throw createValidationError(
-      'INVALID_ACCOUNTING_INPUT',
-      'All lines must have the same currency',
-      { currencies: Array.from(currencies) },
-      { operation: 'build-balanced-entry' }
-    );
-  }
-
-  const currency = lines[0]!.currency;
-  const totalDebits = lines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = lines.reduce((sum, line) => sum + line.credit, 0);
+  const currency = assertSingleCurrency(lines, 'build-balanced-entry');
+  const { totalDebits, totalCredits } = recomputeTotals(lines, currency);
 
   let balancedLines = [...lines];
 
@@ -206,8 +226,7 @@ export function buildBalancedEntry(
     reference: '',
     description: 'Balanced Journal Entry',
     lines: balancedLines,
-    totalDebits: balancedLines.reduce((sum, line) => sum + line.debit, 0),
-    totalCredits: balancedLines.reduce((sum, line) => sum + line.credit, 0),
+    ...recomputeTotals(balancedLines, currency),
     currency,
     status: 'draft',
   };
@@ -246,14 +265,13 @@ export function normalizeJournalEntry(entry: JournalEntry): JournalEntry {
     credit: roundToCurrency(line.credit, line.currency),
   }));
 
-  const totalDebits = normalizedLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = normalizedLines.reduce((sum, line) => sum + line.credit, 0);
+  const { totalDebits, totalCredits } = recomputeTotals(normalizedLines, entry.currency);
 
   return {
     ...entry,
     lines: normalizedLines,
-    totalDebits: roundToCurrency(totalDebits, entry.currency),
-    totalCredits: roundToCurrency(totalCredits, entry.currency),
+    totalDebits,
+    totalCredits,
   };
 }
 
@@ -279,10 +297,14 @@ export function validateEntryBalance(
 
   const issues: ValidationIssue[] = [];
 
+  // Recompute totals from lines to avoid stale header values
+  const { totalDebits, totalCredits } = recomputeTotals(entry.lines, entry.currency);
+  const safeTolerance = Math.max(0, tolerance);
+
   // Convert to minor units for precise comparison
-  const totalDebitsMinor = toMinor(entry.totalDebits, entry.currency);
-  const totalCreditsMinor = toMinor(entry.totalCredits, entry.currency);
-  const toleranceMinor = toMinor(tolerance, entry.currency);
+  const totalDebitsMinor = toMinor(totalDebits, entry.currency);
+  const totalCreditsMinor = toMinor(totalCredits, entry.currency);
+  const toleranceMinor = toMinor(safeTolerance, entry.currency);
 
   const difference = Math.abs(totalDebitsMinor - totalCreditsMinor);
   const isBalanced = difference === 0;
@@ -339,7 +361,7 @@ export function validateEntryBalance(
   return {
     isBalanced,
     difference: fromMinor(difference, entry.currency),
-    tolerance,
+    tolerance: safeTolerance,
     withinTolerance,
     issues,
   };
@@ -367,47 +389,28 @@ export function createSuspenseEntry(
   unbalancedLines: JournalLine[],
   suspenseAccount: string
 ): JournalLine {
-  if (!unbalancedLines || unbalancedLines.length === 0) {
-    throw createValidationError(
-      'INVALID_ACCOUNTING_INPUT',
-      'Unbalanced lines are required',
-      unbalancedLines,
-      { operation: 'create-suspense-entry' }
-    );
-  }
+  const currency = assertSingleCurrency(unbalancedLines, 'create-suspense-entry');
+  const { debitMinor, creditMinor } = sumLinesMinor(unbalancedLines, currency);
+  const diffMinor = debitMinor - creditMinor; // >0 means more debits than credits
 
-  // Validate all lines have the same currency
-  const currencies = new Set(unbalancedLines.map(line => line.currency));
-  if (currencies.size > 1) {
-    throw createValidationError(
-      'INVALID_ACCOUNTING_INPUT',
-      'All lines must have the same currency',
-      { currencies: Array.from(currencies) },
-      { operation: 'create-suspense-entry' }
-    );
-  }
-
-  const currency = unbalancedLines[0]!.currency;
-  const totalDebits = unbalancedLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = unbalancedLines.reduce((sum, line) => sum + line.credit, 0);
-  const difference = totalDebits - totalCredits;
-
-  if (difference === 0) {
+  if (diffMinor === 0) {
     throw createValidationError(
       'INVALID_ACCOUNTING_INPUT',
       'Lines are already balanced',
-      { totalDebits, totalCredits },
+      { totalDebits: fromMinor(debitMinor, currency), totalCredits: fromMinor(creditMinor, currency) },
       { operation: 'create-suspense-entry' }
     );
   }
+
+  const absDiffMajor = roundToCurrency(fromMinor(Math.abs(diffMinor), currency), currency);
 
   const suspenseLine: JournalLine = {
     id: `SUSPENSE-${Date.now()}`,
     accountCode: suspenseAccount,
-    description: `Suspense entry to balance difference of ${Math.abs(difference)} ${currency}`,
-    debit: difference > 0 ? 0 : Math.abs(difference),
-    credit: difference > 0 ? difference : 0,
-    currency,
+    description: `Suspense entry to balance difference of ${absDiffMajor} ${currency}`,
+    debit: diffMinor > 0 ? 0 : absDiffMajor,
+    credit: diffMinor > 0 ? absDiffMajor : 0,
+    currency
   };
 
   return suspenseLine;
@@ -437,14 +440,13 @@ export function autoBalanceEntry(
   const suspenseLine = createSuspenseEntry(entry.lines, suspenseAccount);
   const balancedLines = [...entry.lines, suspenseLine];
 
-  const totalDebits = balancedLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = balancedLines.reduce((sum, line) => sum + line.credit, 0);
+  const { totalDebits, totalCredits } = recomputeTotals(balancedLines, entry.currency);
 
   return {
     ...entry,
     lines: balancedLines,
-    totalDebits: roundToCurrency(totalDebits, entry.currency),
-    totalCredits: roundToCurrency(totalCredits, entry.currency),
+    totalDebits,
+    totalCredits,
   };
 }
 
@@ -495,14 +497,13 @@ export function addLineToEntry(entry: JournalEntry, line: JournalLine): JournalE
   }
 
   const newLines = [...entry.lines, line];
-  const totalDebits = newLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = newLines.reduce((sum, line) => sum + line.credit, 0);
+  const { totalDebits, totalCredits } = recomputeTotals(newLines, entry.currency);
 
   return {
     ...entry,
     lines: newLines,
-    totalDebits: roundToCurrency(totalDebits, entry.currency),
-    totalCredits: roundToCurrency(totalCredits, entry.currency),
+    totalDebits,
+    totalCredits,
   };
 }
 
@@ -539,14 +540,13 @@ export function removeLineFromEntry(entry: JournalEntry, lineId: string): Journa
   }
 
   const newLines = entry.lines.filter(line => line.id !== lineId);
-  const totalDebits = newLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = newLines.reduce((sum, line) => sum + line.credit, 0);
+  const { totalDebits, totalCredits } = recomputeTotals(newLines, entry.currency);
 
   return {
     ...entry,
     lines: newLines,
-    totalDebits: roundToCurrency(totalDebits, entry.currency),
-    totalCredits: roundToCurrency(totalCredits, entry.currency),
+    totalDebits,
+    totalCredits,
   };
 }
 
@@ -596,6 +596,14 @@ export function updateLineAmount(
   }
 
   const line = entry.lines[lineIndex]!;
+  if (line.debit === 0 && line.credit === 0) {
+    throw createValidationError(
+      'INVALID_ACCOUNTING_INPUT',
+      'Target line is ambiguous (both debit and credit are zero). Specify side before updating amount.',
+      { lineId },
+      { operation: 'update-line-amount' }
+    );
+  }
   const isDebit = line.debit > 0;
   const updatedLine: JournalLine = {
     ...line,
@@ -606,14 +614,13 @@ export function updateLineAmount(
   const newLines = [...entry.lines];
   newLines[lineIndex] = updatedLine;
 
-  const totalDebits = newLines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredits = newLines.reduce((sum, line) => sum + line.credit, 0);
+  const { totalDebits, totalCredits } = recomputeTotals(newLines, entry.currency);
 
   return {
     ...entry,
     lines: newLines,
-    totalDebits: roundToCurrency(totalDebits, entry.currency),
-    totalCredits: roundToCurrency(totalCredits, entry.currency),
+    totalDebits,
+    totalCredits,
   };
 }
 
@@ -624,7 +631,7 @@ export function updateLineAmount(
 /**
  * Convert journal entry to validation input format
  */
-export function toValidationInput(entry: JournalEntry): any {
+export function toValidationInput(entry: JournalEntry): unknown {
   return {
     date: entry.date.toISOString(),
     description: entry.description,

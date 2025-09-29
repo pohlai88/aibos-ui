@@ -30,7 +30,7 @@ import {
 // TYPES & INTERFACES
 // ============================================================================
 
-export interface SuccessResponse<T = any> {
+export interface SuccessResponse<T = unknown> {
   success: true;
   message: string;
   data: T;
@@ -411,7 +411,7 @@ export class ApiResponseBuilder {
     if (isBusinessRuleError(error)) return 422;
     if (isAuthorizationError(error)) return 403;
     // Framework / library hints (Nest HttpException or similar)
-    const hinted = getHttpStatusFromLike(error as any);
+    const hinted = getHttpStatusFromLike(error as unknown);
     if (typeof hinted === 'number') return hinted;
     // Check error name for common patterns
     if (error.name === 'UnauthorizedError') return 401;
@@ -419,7 +419,7 @@ export class ApiResponseBuilder {
     if (error.name === 'NotFoundError') return 404;
     if (error.name === 'ConflictError') return 409;
     if (error.name === 'TooManyRequestsError') return 429;
-    if ((error as any)?.name === 'ZodError') return 400;
+    if ((error as Error)?.name === 'ZodError') return 400;
     return 500;
   }
 
@@ -446,7 +446,7 @@ export abstract class ControllerBase {
     // Keep console fallback to avoid breaking environments without a logger
     // You can override in child controllers to send to your Monitoring layer
     // or use dependency injection to wire a logger.
-    // eslint-disable-next-line no-console
+     
     console.error(`Controller ${this.controllerName} error:`, error, context);
   }
 
@@ -639,15 +639,15 @@ export function createResponseMetadata(
 /**
  * Check if a response is a success response
  */
-export function isSuccessResponse<T = unknown>(response: any): response is SuccessResponse<T> {
-  return response && response.success === true;
+export function isSuccessResponse<T = unknown>(response: unknown): response is SuccessResponse<T> {
+  return !!(response && (response as { success?: boolean }).success === true);
 }
 
 /**
  * Check if a response is an error response
  */
-export function isErrorResponse(response: any): response is ErrorResponse {
-  return response && response.success === false;
+export function isErrorResponse(response: unknown): response is ErrorResponse {
+  return !!(response && (response as { success?: boolean }).success === false);
 }
 
 /**
@@ -679,26 +679,26 @@ function isValidationError(e: Error): boolean {
 }
 function isBusinessRuleError(e: Error): boolean {
   if (typeof BusinessRuleError === 'function' && e instanceof (BusinessRuleError as any)) return true;
-  return e.name === 'BusinessRuleError' || (e as any).code === 'BUSINESS_RULE_VIOLATION';
+  return e.name === 'BusinessRuleError' || (e as Error & { code?: string }).code === 'BUSINESS_RULE_VIOLATION';
 }
 function isAuthorizationError(e: Error): boolean {
   if (typeof AuthorizationError === 'function' && e instanceof (AuthorizationError as any)) return true;
-  return e.name === 'AuthorizationError' || (e as any).code === 'AUTH_FORBIDDEN';
+  return e.name === 'AuthorizationError' || (e as Error & { code?: string }).code === 'AUTH_FORBIDDEN';
 }
 function getIssuesIfAny(e: unknown): ValidationIssue[] | undefined {
-  const issues = (e as any)?.issues;
+  const issues = (e as { issues?: unknown })?.issues;
   return Array.isArray(issues) ? issues as ValidationIssue[] : undefined;
 }
 
 // Pull status hints from common error shapes (Nest HttpException, fetch Response-like, etc.)
-function getHttpStatusFromLike(e: any): number | undefined {
+function getHttpStatusFromLike(e: unknown): number | undefined {
   try {
-    if (e && typeof e.getStatus === 'function') {
-      const s = e.getStatus();
+    if (e && typeof (e as { getStatus?: () => unknown }).getStatus === 'function') {
+      const s = (e as { getStatus: () => unknown }).getStatus();
       if (typeof s === 'number') return s;
     }
-    if (typeof e?.status === 'number') return e.status;
-    if (typeof e?.statusCode === 'number') return e.statusCode;
+    if (typeof (e as { status?: unknown })?.status === 'number') return (e as { status: number }).status;
+    if (typeof (e as { statusCode?: unknown })?.statusCode === 'number') return (e as { statusCode: number }).statusCode;
   } catch {}
   return undefined;
 }

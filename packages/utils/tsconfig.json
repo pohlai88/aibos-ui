@@ -2,10 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
-    "outDir": "./dist",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true
+    "outDir": "dist",
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src"],
+  "exclude": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "dist", "node_modules", ".next"]
 }

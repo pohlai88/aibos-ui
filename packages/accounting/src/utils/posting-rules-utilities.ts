@@ -24,7 +24,7 @@ import type { JournalEntry, JournalLine } from './journal-entry-utilities';
 
 export interface BusinessIntent {
   type: 'invoice_posted' | 'payment_received' | 'expense_incurred' | 'asset_purchased' | 'inventory_received' | 'depreciation' | 'adjustment';
-  context: Record<string, any>;
+  context: Record<string, unknown>;
 }
 
 export interface BusinessContext {
@@ -33,7 +33,7 @@ export interface BusinessContext {
   currency: SupportedCurrency;
   reference: string;
   description: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TemplateLine {
@@ -47,7 +47,7 @@ export interface TemplateLine {
 export interface LineCondition {
   field: string;
   operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'exists';
-  value: any;
+  value: unknown;
 }
 
 export interface PostingTemplate {
@@ -67,7 +67,7 @@ export interface TemplateValidationRule {
 export interface RuleCondition {
   field: string;
   operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'exists' | 'in' | 'not_in';
-  value: any;
+  value: unknown;
 }
 
 export interface PostingRule {
@@ -85,6 +85,56 @@ export interface ValidationResult {
   errors: string[];
   warnings: string[];
 }
+
+// ============================================================================
+// CONSTANTS & HELPERS
+// ============================================================================
+const TOLERANCE = 0.01; // 1 cent tolerance
+const POLLUTION_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+
+function isNumber(x: unknown): x is number {
+  return typeof x === 'number' && Number.isFinite(x);
+}
+
+function isString(x: unknown): x is string {
+  return typeof x === 'string';
+}
+
+function generateId(prefix: string): string {
+  // Tiny, stable-enough ID without new deps; replace with ULID later if available.
+  const rnd = Math.floor(Math.random() * 1e6).toString().padStart(6, '0');
+  return `${prefix}-${Date.now()}-${rnd}`;
+}
+
+// ============================================================================
+// REPOSITORY (MINIMAL, IN-MEMORY)
+// ============================================================================
+export interface RuleRepository {
+  put(rule: PostingRule): void;
+  all(): PostingRule[];
+  findByIntentType(type: BusinessIntent['type']): PostingRule[];
+}
+
+class InMemoryRuleRepository implements RuleRepository {
+  private rules: PostingRule[] = [];
+  put(rule: PostingRule) {
+    // replace by id or insert; keep unique by id
+    const idx = this.rules.findIndex(r => r.id === rule.id);
+    if (idx >= 0) this.rules[idx] = rule;
+    else this.rules.push(rule);
+  }
+  all(): PostingRule[] {
+    return [...this.rules];
+  }
+  findByIntentType(type: BusinessIntent['type']): PostingRule[] {
+    return this.rules
+      .filter(r => r.active && r.businessIntent?.type === type)
+      .sort((a, b) => a.priority - b.priority);
+  }
+}
+
+// Export a default repo for convenience (can be swapped in tests)
+export const postingRuleRepo: RuleRepository = new InMemoryRuleRepository();
 
 // ============================================================================
 // RULE MANAGEMENT
@@ -106,7 +156,7 @@ export function definePostingRule(
   }
 
   const rule: PostingRule = {
-    id: `RULE-${Date.now()}`,
+    id: generateId('RULE'),
     name: `${intent.type}_${template.name}`,
     businessIntent: intent,
     template,
@@ -114,6 +164,9 @@ export function definePostingRule(
     priority: 100,
     active: true,
   };
+
+  // auto-register to in-memory repo for simple flows
+  try { postingRuleRepo.put(rule); } catch { /* no-op */ }
 
   return rule;
 }
@@ -190,6 +243,11 @@ export function validatePostingRule(rule: PostingRule): ValidationResult {
       if (condition.operator && !validOperators.includes(condition.operator)) {
         errors.push(`Condition ${index + 1}: Invalid operator '${condition.operator}'`);
       }
+
+      // Extra checks for operator/value compatibility
+      if ((condition.operator === 'in' || condition.operator === 'not_in') && !Array.isArray(condition.value)) {
+        errors.push(`Condition ${index + 1}: Operator '${condition.operator}' requires an array value`);
+      }
     });
   }
 
@@ -255,7 +313,7 @@ export function createPostingTemplate(
   }
 
   const template: PostingTemplate = {
-    id: `TEMPLATE-${Date.now()}`,
+    id: generateId('TEMPLATE'),
     name,
     description: `Template for ${name}`,
     lines,
@@ -319,7 +377,7 @@ export function validateTemplate(template: PostingTemplate): ValidationResult {
       if (line.debitFormula) {
         try {
           parseFormula(line.debitFormula);
-        } catch (error) {
+        } catch (_error) {
           errors.push(`Line ${index + 1}: Invalid debit formula: ${line.debitFormula}`);
         }
       }
@@ -327,7 +385,7 @@ export function validateTemplate(template: PostingTemplate): ValidationResult {
       if (line.creditFormula) {
         try {
           parseFormula(line.creditFormula);
-        } catch (error) {
+        } catch (_error) {
           errors.push(`Line ${index + 1}: Invalid credit formula: ${line.creditFormula}`);
         }
       }
@@ -339,7 +397,7 @@ export function validateTemplate(template: PostingTemplate): ValidationResult {
     const testContext: BusinessContext = {
       date: new Date(),
       amount: 1000,
-      currency: 'MYR',
+      currency: 'MYR' as SupportedCurrency,
       reference: 'TEST',
       description: 'Test',
     };
@@ -349,9 +407,8 @@ export function validateTemplate(template: PostingTemplate): ValidationResult {
       const totalDebits = testEntry.totalDebits;
       const totalCredits = testEntry.totalCredits;
       const difference = Math.abs(totalDebits - totalCredits);
-      const tolerance = 0.01; // 1 cent tolerance
 
-      if (difference > tolerance) {
+      if (difference > TOLERANCE) {
         errors.push(`Template is not balanced. Difference: ${difference}`);
       }
     } catch (error) {
@@ -423,7 +480,7 @@ export function applyTemplate(
   const totalCredits = lines.reduce((sum, line) => sum + line.credit, 0);
 
   const entry: JournalEntry = {
-    id: `JE-${Date.now()}`,
+    id: generateId('JE'),
     date: context.date,
     reference: context.reference,
     description: context.description,
@@ -449,9 +506,9 @@ export function mapIntentToRule(intent: BusinessIntent): PostingRule[] {
     throw new Error('Business intent is required');
   }
 
-  // This would typically query a rule repository
-  // For now, return empty array as placeholder
-  return [];
+  // Query in-memory repository by intent type, then apply condition filtering
+  const candidates = postingRuleRepo.findByIntentType(intent.type);
+  return candidates.filter(r => evaluateConditions(r.conditions, intent.context as BusinessContext));
 }
 
 /**
@@ -462,9 +519,7 @@ export function findRulesByIntent(intent: BusinessIntent): PostingRule[] {
     throw new Error('Business intent is required');
   }
 
-  // This would typically query a rule repository
-  // For now, return empty array as placeholder
-  return [];
+  return postingRuleRepo.findByIntentType(intent.type);
 }
 
 // ============================================================================
@@ -583,11 +638,11 @@ function evaluateCondition(condition: RuleCondition, context: BusinessContext): 
     case 'not_equals':
       return fieldValue !== condition.value;
     case 'greater_than':
-      return typeof fieldValue === 'number' && fieldValue > condition.value;
+      return isNumber(fieldValue) && isNumber(condition.value) && fieldValue > condition.value;
     case 'less_than':
-      return typeof fieldValue === 'number' && fieldValue < condition.value;
+      return isNumber(fieldValue) && isNumber(condition.value) && fieldValue < condition.value;
     case 'contains':
-      return typeof fieldValue === 'string' && fieldValue.includes(condition.value);
+      return isString(fieldValue) && isString(condition.value) && fieldValue.includes(condition.value);
     case 'exists':
       return fieldValue !== undefined && fieldValue !== null;
     case 'in':
@@ -616,11 +671,11 @@ function evaluateLineConditions(conditions: LineCondition[], context: BusinessCo
       case 'not_equals':
         return fieldValue !== condition.value;
       case 'greater_than':
-        return typeof fieldValue === 'number' && fieldValue > condition.value;
+        return isNumber(fieldValue) && isNumber(condition.value) && fieldValue > condition.value;
       case 'less_than':
-        return typeof fieldValue === 'number' && fieldValue < condition.value;
+        return isNumber(fieldValue) && isNumber(condition.value) && fieldValue < condition.value;
       case 'contains':
-        return typeof fieldValue === 'string' && fieldValue.includes(condition.value);
+        return isString(fieldValue) && isString(condition.value) && fieldValue.includes(condition.value);
       case 'exists':
         return fieldValue !== undefined && fieldValue !== null;
       default:
@@ -632,17 +687,18 @@ function evaluateLineConditions(conditions: LineCondition[], context: BusinessCo
 /**
  * Get field value from context using dot notation
  */
-function getFieldValue(context: BusinessContext, field: string): any {
+function getFieldValue(context: BusinessContext, field: string): unknown {
   if (!field) {
     return undefined;
   }
 
   const parts = field.split('.');
-  let value: any = context;
+  let value: unknown = context;
 
   for (const part of parts) {
-    if (value && typeof value === 'object' && part in value) {
-      value = value[part];
+    if (!isString(part) || POLLUTION_KEYS.has(part)) return undefined;
+    if (value && typeof value === 'object' && part in (value as Record<string, unknown>)) {
+      value = (value as Record<string, unknown>)[part];
     } else {
       return undefined;
     }
@@ -731,6 +787,88 @@ export function createAssetPurchaseTemplate(): PostingTemplate {
       description: 'Cash paid',
       debitFormula: '',
       creditFormula: 'amount',
+    },
+  ]);
+}
+
+/**
+ * Create a simple inventory received (GRN accrual) template
+ * DR Inventory, CR GRNI/Accrued Liabilities
+ */
+export function createInventoryReceivedTemplate(): PostingTemplate {
+  return createPostingTemplate('Inventory Received', [
+    {
+      accountCode: 'INVENTORY',
+      description: 'Inventory receipt',
+      debitFormula: 'amount',
+      creditFormula: '',
+    },
+    {
+      accountCode: 'GRNI_ACCRUAL',
+      description: 'Goods received not invoiced',
+      debitFormula: '',
+      creditFormula: 'amount',
+    },
+  ]);
+}
+
+/**
+ * Create a simple depreciation template
+ * DR Depreciation Expense, CR Accumulated Depreciation
+ */
+export function createDepreciationTemplate(): PostingTemplate {
+  return createPostingTemplate('Depreciation', [
+    {
+      accountCode: 'DEPRECIATION_EXPENSE',
+      description: 'Period depreciation',
+      debitFormula: 'amount',
+      creditFormula: '',
+    },
+    {
+      accountCode: 'ACCUMULATED_DEPRECIATION',
+      description: 'Accumulated depreciation',
+      debitFormula: '',
+      creditFormula: 'amount',
+    },
+  ]);
+}
+
+/**
+ * Create a simple adjustment template
+ * Chooses DR/CR via positive/negative amount lines using two conditional lines.
+ * Keep it symmetric and let zero-skip remove unused line.
+ */
+export function createAdjustmentTemplate(): PostingTemplate {
+  return createPostingTemplate('Adjustment', [
+    // Positive amount -> DR ADJUSTMENT_MISC
+    {
+      accountCode: 'ADJUSTMENT_MISC',
+      description: 'Manual adjustment (DR when +amount)',
+      debitFormula: 'amount',
+      creditFormula: '',
+      conditions: [{ field: 'amount', operator: 'greater_than', value: 0 }],
+    },
+    {
+      accountCode: 'SUSPENSE',
+      description: 'Offset for adjustment (CR when +amount)',
+      debitFormula: '',
+      creditFormula: 'amount',
+      conditions: [{ field: 'amount', operator: 'greater_than', value: 0 }],
+    },
+    // Negative amount -> CR ADJUSTMENT_MISC (we post absolute via formula trick: amount * -1)
+    {
+      accountCode: 'SUSPENSE',
+      description: 'Offset for adjustment (DR when -amount)',
+      debitFormula: 'amount * -1',
+      creditFormula: '',
+      conditions: [{ field: 'amount', operator: 'less_than', value: 0 }],
+    },
+    {
+      accountCode: 'ADJUSTMENT_MISC',
+      description: 'Manual adjustment (CR when -amount)',
+      debitFormula: '',
+      creditFormula: 'amount * -1',
+      conditions: [{ field: 'amount', operator: 'less_than', value: 0 }],
     },
   ]);
 }

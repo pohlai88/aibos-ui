@@ -7,12 +7,12 @@
  * @fileoverview Revenue recognition methods, schedule management, and milestone operations
  */
 
-import {
+import type {
   SupportedCurrency,
-  roundToCurrency,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { FiscalPeriod } from './fiscal-period-utilities';
+import { roundToCurrency } from './accounting-utilities';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { FiscalPeriod } from './fiscal-period-utilities';
 
 // ============================================================================
 // Types & Interfaces
@@ -28,6 +28,14 @@ export interface RevenueContract {
   recognitionMethod: RecognitionMethod;
   milestones?: Milestone[];
   progressTracking?: ProgressTracking;
+  /** MFRS 15: distinct performance obligations with allocation */
+  performanceObligations?: PerformanceObligation[];
+  /** MFRS 15: variable consideration estimate + constraint */
+  variableConsideration?: VariableConsideration;
+  /** MFRS 15: significant financing component terms (optional) */
+  financing?: FinancingTerms;
+  /** Contract modifications (prospective or retrospective) */
+  modifications?: ContractModification[];
 }
 
 export interface RecognitionSchedule {
@@ -48,6 +56,8 @@ export interface RecognitionPeriod {
   posted: boolean;
   postedDate?: Date;
   journalEntryId?: string;
+  /** Optional breakdown by Performance Obligation for auditability */
+  breakdown?: Array<{ poId: string; amount: number }>;
 }
 
 export interface Milestone {
@@ -60,6 +70,8 @@ export interface Milestone {
   percentage: number;
   status: MilestoneStatus;
   evidence?: MilestoneEvidence;
+  /** Map milestone revenue to a specific PO when applicable */
+  poId?: string;
 }
 
 export interface PercentageComplete {
@@ -148,6 +160,36 @@ export type MilestoneStatus = 'pending' | 'achieved' | 'overdue' | 'cancelled';
 export type ProgressMethod = 'cost' | 'effort' | 'deliverables' | 'time' | 'mixed';
 export type EvidenceType = 'document' | 'certification' | 'inspection' | 'approval' | 'delivery';
 
+// =========================
+// MFRS 15 – New Types
+// =========================
+export interface PerformanceObligation {
+  id: string;
+  description: string;
+  standaloneSellingPrice?: number;
+  allocatedAmount?: number; // if absent, allocate by SSP ratio
+  pattern: 'point_in_time' | 'over_time';
+}
+
+export interface VariableConsideration {
+  method: 'expected_value' | 'most_likely';
+  estimate: number; // positive or negative
+  constraintCap?: number; // max includable amount to avoid significant reversal
+}
+
+export interface FinancingTerms {
+  hasSignificantFinancing: boolean;
+  discountRateAnnual?: number; // effective annual rate (e.g., 0.06 for 6%)
+  financingDirection?: 'advance_from_customer' | 'deferred_payment_by_customer';
+}
+
+export interface ContractModification {
+  id: string;
+  date: Date;
+  type: 'prospective' | 'retrospective';
+  deltaValue: number; // positive or negative
+}
+
 // ============================================================================
 // Recognition Methods
 // ============================================================================
@@ -170,13 +212,34 @@ export function createStraightLineSchedule(
   const periods = options.customPeriods || generateStraightLinePeriods(contract, options);
   const recognitionPeriods: RecognitionPeriod[] = [];
   
+  const consideration = getConstrainedConsideration(contract);
   let cumulativeAmount = 0;
-  const periodAmount = contract.totalValue / periods.length;
+  const rawPeriodAmount = consideration / periods.length;
+  let runningSum = 0;
   
   for (let i = 0; i < periods.length; i++) {
     const period = periods[i]!;
-    const recognizedAmount = roundToCurrency(periodAmount, contract.currency);
+    // Round each period, plug residual on the final period to eliminate drift.
+    const isLast = i === periods.length - 1;
+    const recognizedAmount = isLast
+      ? roundToCurrency(consideration - runningSum, contract.currency)
+      : roundToCurrency(rawPeriodAmount, contract.currency);
+    runningSum += recognizedAmount;
     cumulativeAmount += recognizedAmount;
+
+    // Optional PO breakdown: allocate period amount across POs (by allocatedAmount or SSP ratio)
+    let breakdown: Array<{ poId: string; amount: number }> | undefined;
+    if (contract.performanceObligations && contract.performanceObligations.length > 0) {
+      const allocations = computePOAllocations(contract, consideration);
+      // Evenly spread each PO allocation across all periods with per-PO rounding + final residual plug
+      breakdown = allocatePeriodAcrossPOs(allocations, contract.currency, periods.length, i);
+      // Reconcile minor rounding differences by plugging to this period if needed
+      const sumPO = breakdown.reduce((s, b) => s + b.amount, 0);
+      const drift = roundToCurrency(recognizedAmount - sumPO, contract.currency);
+      if (Math.abs(drift) > 0) {
+        breakdown[breakdown.length - 1]!.amount = roundToCurrency(breakdown[breakdown.length - 1]!.amount + drift, contract.currency);
+      }
+    }
     
     recognitionPeriods.push({
       period,
@@ -184,6 +247,7 @@ export function createStraightLineSchedule(
       cumulativeAmount,
       percentage: ((i + 1) / periods.length) * 100,
       posted: false,
+      ...(breakdown && { breakdown }),
     });
   }
   
@@ -193,7 +257,7 @@ export function createStraightLineSchedule(
     method: 'straight_line',
     periods: recognitionPeriods,
     totalRecognized: cumulativeAmount,
-    remainingUnrecognized: contract.totalValue - cumulativeAmount,
+    remainingUnrecognized: consideration - cumulativeAmount,
     status: 'draft',
   };
 }
@@ -217,10 +281,17 @@ export function createMilestoneSchedule(
     }
   }
   
+  const consideration = getConstrainedConsideration(contract);
   const recognitionPeriods: RecognitionPeriod[] = [];
   let cumulativeAmount = 0;
   
   for (const milestone of milestones) {
+    // Enforce evidence if milestone is marked achieved
+    if (milestone.status === 'achieved') {
+      if (!milestone.evidence || !milestone.evidence.validated) {
+        throw new Error(`Milestone "${milestone.name}" cannot be recognized without validated evidence`);
+      }
+    }
     const recognizedAmount = roundToCurrency(milestone.value, contract.currency);
     cumulativeAmount += recognizedAmount;
     
@@ -239,8 +310,9 @@ export function createMilestoneSchedule(
       period,
       recognizedAmount,
       cumulativeAmount,
-      percentage: (cumulativeAmount / contract.totalValue) * 100,
+      percentage: (cumulativeAmount / consideration) * 100,
       posted: false,
+      ...(milestone.poId && { breakdown: [{ poId: milestone.poId, amount: recognizedAmount }] }),
     });
   }
   
@@ -250,7 +322,7 @@ export function createMilestoneSchedule(
     method: 'milestone',
     periods: recognitionPeriods,
     totalRecognized: cumulativeAmount,
-    remainingUnrecognized: contract.totalValue - cumulativeAmount,
+    remainingUnrecognized: consideration - cumulativeAmount,
     status: 'draft',
   };
 }
@@ -266,14 +338,22 @@ export function createPercentageCompleteSchedule(
     throw new Error('Progress tracking with updates is required');
   }
   
+  const consideration = getConstrainedConsideration(contract);
   const recognitionPeriods: RecognitionPeriod[] = [];
   let cumulativeAmount = 0;
-  
-  for (const update of progress.progressUpdates) {
-    const recognizedAmount = roundToCurrency(
-      (contract.totalValue * update.percentage) / 100,
-      contract.currency
-    );
+  // Treat updates as cumulative snapshots; recognize only the delta since the last snapshot.
+  const updates = [...progress.progressUpdates].sort((a, b) => a.date.getTime() - b.date.getTime());
+  let prevPct = 0;
+
+  updates.forEach((update, idx) => {
+    const deltaPct = Math.max(0, Math.min(100, update.percentage) - prevPct);
+    prevPct = Math.max(prevPct, Math.min(100, update.percentage));
+    // For the last update, plug rounding residual if any.
+    const isLast = idx === updates.length - 1;
+    const nominal = (consideration * deltaPct) / 100;
+    const recognizedAmount = isLast
+      ? roundToCurrency(consideration * (prevPct / 100) - cumulativeAmount, contract.currency)
+      : roundToCurrency(nominal, contract.currency);
     cumulativeAmount += recognizedAmount;
     
     const period: FiscalPeriod = {
@@ -291,10 +371,10 @@ export function createPercentageCompleteSchedule(
       period,
       recognizedAmount,
       cumulativeAmount,
-      percentage: update.percentage,
+      percentage: prevPct,
       posted: false,
     });
-  }
+  });
   
   return {
     id: `SCH-${contract.id}-${Date.now()}`,
@@ -302,7 +382,7 @@ export function createPercentageCompleteSchedule(
     method: 'percentage_complete',
     periods: recognitionPeriods,
     totalRecognized: cumulativeAmount,
-    remainingUnrecognized: contract.totalValue - cumulativeAmount,
+    remainingUnrecognized: consideration - cumulativeAmount,
     status: 'draft',
   };
 }
@@ -388,16 +468,44 @@ export function validateRecognitionSchedule(schedule: RecognitionSchedule): Busi
     });
   }
   
-  // Validate contract total
-  const totalRecognized = schedule.periods.reduce((sum, period) => sum + period.recognizedAmount, 0);
+  // Validate totals against constrained consideration
+  const constrained = getConstrainedConsideration(schedule.contract);
+  const totalRecognized = schedule.periods.reduce((sum, p) => sum + p.recognizedAmount, 0);
   const tolerance = 0.01;
-  if (Math.abs(totalRecognized - schedule.contract.totalValue) > tolerance) {
+  if (totalRecognized - constrained > tolerance) {
     issues.push({
       code: 'BALANCE',
-      message: `Total recognized amount (${totalRecognized}) does not match contract value (${schedule.contract.totalValue})`,
+      message: `Total recognized (${totalRecognized}) exceeds constrained consideration (${constrained})`,
       path: 'schedule.totalRecognized',
       severity: 'error'
     });
+  } else if (schedule.method !== 'straight_line' && schedule.status !== 'completed' && constrained - totalRecognized > tolerance) {
+    issues.push({
+      code: 'CONSISTENCY',
+      message: `Schedule recognizes ${totalRecognized} of ${constrained}. Remaining will be recognized later.`,
+      path: 'schedule.totalRecognized',
+      severity: 'warning'
+    });
+  }
+  // PO caps: ensure breakdown never exceeds allocated per PO
+  if (schedule.contract.performanceObligations?.length && schedule.periods.some(p => p.breakdown?.length)) {
+    const allocations = computePOAllocations(schedule.contract, constrained);
+    const totalsByPO: Record<string, number> = {};
+    for (const p of schedule.periods) {
+      for (const b of p.breakdown ?? []) {
+        totalsByPO[b.poId] = (totalsByPO[b.poId] ?? 0) + b.amount;
+      }
+    }
+    for (const a of allocations) {
+      if ((totalsByPO[a.poId] ?? 0) - a.allocatedAmount > tolerance) {
+        issues.push({
+          code: 'BALANCE',
+          message: `PO ${a.poId} recognized ${totalsByPO[a.poId] ?? 0} > allocated ${a.allocatedAmount}`,
+          path: `schedule.poBreakdown.${a.poId}`,
+          severity: 'error'
+        });
+      }
+    }
   }
   
   return {
@@ -415,13 +523,12 @@ export function calculateRecognizedRevenue(
   schedule: RecognitionSchedule,
   asOfDate: Date
 ): RecognizedRevenue {
-  const relevantPeriods = schedule.periods.filter(period => 
-    period.period.endDate > asOfDate
-  );
-  
-  const totalRecognized = relevantPeriods.reduce((sum, period) => sum + period.recognizedAmount, 0);
-  const remainingUnrecognized = schedule.contract.totalValue - totalRecognized;
-  const percentage = (totalRecognized / schedule.contract.totalValue) * 100;
+  // Include periods earned up to asOfDate (endDate <= asOfDate).
+  const relevantPeriods = schedule.periods.filter(p => p.period.endDate <= asOfDate);
+  const totalRecognized = relevantPeriods.reduce((sum, p) => sum + p.recognizedAmount, 0);
+  const constrained = getConstrainedConsideration(schedule.contract);
+  const remainingUnrecognized = constrained - totalRecognized;
+  const percentage = (totalRecognized / constrained) * 100;
   
   return {
     contract: schedule.contract,
@@ -516,9 +623,10 @@ export function updateMilestoneProgress(milestone: Milestone, progress: number):
  */
 export function calculateMilestoneRevenue(
   milestone: Milestone,
-  totalContractValue: number
+  totalContractValue: number,
+  currency?: SupportedCurrency
 ): number {
-  return roundToCurrency((totalContractValue * milestone.percentage) / 100, 'USD');
+  return roundToCurrency((totalContractValue * milestone.percentage) / 100, currency ?? 'USD');
 }
 
 // ============================================================================
@@ -578,7 +686,8 @@ export function calculatePercentageComplete(
   return {
     project,
     asOfDate,
-    percentage: roundToCurrency(percentage, 'USD'),
+    // Keep percentage as a numeric percentage (rounded to 2 dp), not a currency.
+    percentage: Math.round(percentage * 100) / 100,
     method: project.progressMethod,
     evidence: {
       type: 'document',
@@ -682,7 +791,12 @@ function generateStraightLinePeriods(
   const periods: FiscalPeriod[] = [];
   const startDate = options.startDate || contract.startDate;
   const endDate = options.endDate || contract.endDate;
-  const numberOfPeriods = options.periods || 12; // Default to 12 periods
+  // If periods not provided, infer monthly buckets between start/end (fallback 12).
+  const inferredMonths = Math.max(
+    1,
+    ((endDate.getFullYear() - startDate.getFullYear()) * 12) + (endDate.getMonth() - startDate.getMonth()) + 1
+  );
+  const numberOfPeriods = options.periods || inferredMonths || 12; // Default to 12 periods
   
   const duration = endDate.getTime() - startDate.getTime();
   const periodDuration = duration / numberOfPeriods;
@@ -704,6 +818,98 @@ function generateStraightLinePeriods(
   }
   
   return periods;
+}
+
+// =========================
+// MFRS 15 – Helpers
+// =========================
+function getConstrainedConsideration(contract: RevenueContract): number {
+  const base = contract.totalValue;
+  const vc = contract.variableConsideration;
+  if (!vc) return base;
+  const est = vc.estimate;
+  if (vc.constraintCap === undefined) return base + est;
+  const constrained = Math.sign(est) >= 0 ? Math.min(est, vc.constraintCap) : Math.max(est, -vc.constraintCap);
+  return base + constrained;
+}
+
+function computePOAllocations(contract: RevenueContract, consideration: number): Array<{ poId: string; allocatedAmount: number }> {
+  const pos = contract.performanceObligations ?? [];
+  if (pos.length === 0) return [];
+  const hasExplicit = pos.every(p => typeof p.allocatedAmount === 'number');
+  if (hasExplicit) {
+    const total = pos.reduce((s, p) => s + (p.allocatedAmount ?? 0), 0);
+    // If explicit sums differ from consideration, scale proportionally
+    return pos.map(p => ({
+      poId: p.id,
+      allocatedAmount: (p.allocatedAmount ?? 0) * (total ? (consideration / total) : 0),
+    }));
+  }
+  // Allocate by SSP ratio
+  const sspTotal = pos.reduce((s, p) => s + (p.standaloneSellingPrice ?? 0), 0);
+  return pos.map(p => ({
+    poId: p.id,
+    allocatedAmount: sspTotal ? consideration * ((p.standaloneSellingPrice ?? 0) / sspTotal) : 0,
+  }));
+}
+
+// Spread each PO allocation evenly across N periods with per-PO rounding and final residual plug.
+function allocatePeriodAcrossPOs(
+  allocations: Array<{ poId: string; allocatedAmount: number }>,
+  currency: SupportedCurrency,
+  totalPeriods: number,
+  periodIndex: number
+): Array<{ poId: string; amount: number }> {
+  return allocations.map((a) => {
+    const isFinalPeriod = periodIndex === totalPeriods - 1;
+    const nominal = a.allocatedAmount / totalPeriods;
+    if (!isFinalPeriod) {
+      return { poId: a.poId, amount: roundToCurrency(nominal, currency) };
+    }
+    // On final period, plug residual for this PO
+    const prior = roundToCurrency(a.allocatedAmount - (roundToCurrency(nominal, currency) * (totalPeriods - 1)), currency);
+    return { poId: a.poId, amount: prior };
+  });
+}
+
+/** Compute interest accretion for SFC up to asOfDate (finance income/expense; not added to revenue) */
+export function computeFinancingAccretion(contract: RevenueContract, asOfDate: Date, openingLiability: number): number {
+  const f = contract.financing;
+  if (!f?.hasSignificantFinancing || !f.discountRateAnnual) return 0;
+  const days = Math.max(0, Math.floor((asOfDate.getTime() - contract.startDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const dailyRate = f.discountRateAnnual / 365;
+  return openingLiability * dailyRate * days;
+}
+
+/** Apply a prospective contract modification to a schedule: reallocate remaining consideration over remaining periods */
+export function applyProspectiveModification(schedule: RecognitionSchedule, modification: ContractModification): RecognitionSchedule {
+  if (modification.type !== 'prospective') return schedule;
+  const updated = { ...schedule, periods: [...schedule.periods] };
+  const remainingIdx = updated.periods.findIndex(p => p.period.startDate >= modification.date);
+  if (remainingIdx < 0) return schedule;
+  const constrained = getConstrainedConsideration(schedule.contract) + modification.deltaValue;
+  const recognizedToDate = updated.periods.slice(0, remainingIdx).reduce((s, p) => s + p.recognizedAmount, 0);
+  const remaining = constrained - recognizedToDate;
+  const remainingPeriods = updated.periods.length - remainingIdx;
+  let run = 0;
+  for (let i = remainingIdx; i < updated.periods.length; i++) {
+    const isLast = i === updated.periods.length - 1;
+    const nominal = remaining / remainingPeriods;
+    const amt = isLast
+      ? roundToCurrency(remaining - run, schedule.contract.currency)
+      : roundToCurrency(nominal, schedule.contract.currency);
+    run += amt;
+    const prevCum = i > 0 ? updated.periods[i - 1]!.cumulativeAmount : 0;
+    updated.periods[i] = {
+      ...updated.periods[i]!,
+      recognizedAmount: amt,
+      cumulativeAmount: prevCum + amt,
+      percentage: ((i + 1) / updated.periods.length) * 100,
+    };
+  }
+  updated.totalRecognized = updated.periods.reduce((s, p) => s + p.recognizedAmount, 0);
+  updated.remainingUnrecognized = constrained - updated.totalRecognized;
+  return updated;
 }
 
 /**

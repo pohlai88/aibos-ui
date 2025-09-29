@@ -7,12 +7,12 @@
  * @fileoverview Tax reconciliation engine, tolerance management, and variance analysis
  */
 
-import {
+import type {
   SupportedCurrency,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { FiscalPeriod } from './fiscal-period-utilities';
-import { TaxLine, TaxSummary, TaxVariance } from './tax-core-utilities';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { FiscalPeriod } from './fiscal-period-utilities';
+import type { TaxLine, TaxSummary, TaxVariance } from './tax-core-utilities';
 
 // ============================================================================
 // Types & Interfaces
@@ -169,52 +169,173 @@ export type CauseType = 'system_error' | 'user_error' | 'process_issue' | 'exter
 // Reconciliation Operations
 // ============================================================================
 
+// Centralized thresholds (can be externalized to policy config)
+const THRESHOLDS = Object.freeze({
+  low: 1,
+  medium: 10,
+  high: 100,
+});
+
+// Pluggable ID generator (use your ULID/UUID SSOT if available)
+function generateId(prefix: string): string {
+   
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
+// Safe percentage (avoids NaN/Infinity)
+function pct(numerator: number, denominator: number): number {
+  return denominator === 0 ? 0 : (numerator / denominator) * 100;
+}
+
+// Map numeric amount to severity/risk buckets
+function bucketize(amount: number): { severity: ExceptionSeverity; impact: VarianceImpact } {
+  if (amount < THRESHOLDS.low) return { severity: 'low', impact: 'low' };
+  if (amount < THRESHOLDS.medium) return { severity: 'medium', impact: 'medium' };
+  if (amount < THRESHOLDS.high) return { severity: 'high', impact: 'high' };
+  return { severity: 'critical', impact: 'critical' };
+}
+
+// Pick an active tolerance rule by tax type & date (highest priority by method specificity)
+export function pickToleranceRule(
+  rules: ToleranceRule[] | undefined,
+  taxType: TaxType,
+  asOf: Date = new Date(),
+): ToleranceRule | undefined {
+  if (!rules?.length) return undefined;
+  return rules
+    .filter(r =>
+      r.active &&
+      r.taxType === taxType &&
+      r.effectiveDate <= asOf &&
+      (!(r as unknown).expiryDate || (r as unknown).expiryDate >= asOf))
+    // simple prioritization: progressive > sliding > fixed
+    .sort((a, b) => {
+      const rank = (m: ToleranceMethod) => (m === 'progressive' ? 3 : m === 'sliding' ? 2 : 1);
+      return rank(b.method) - rank(a.method);
+    })[0];
+}
+
+// Compute tolerance value given amount + rule method
+function computeToleranceValue(amount: number, rule: ToleranceRule): number {
+  switch (rule.toleranceType) {
+    case 'absolute':
+      return rule.value;
+    case 'percentage':
+      return Math.abs(amount) * (rule.value / 100);
+    case 'relative':
+      return Math.abs(amount) * rule.value;
+  }
+}
+
+// Sliding/progressive envelope (illustrative, tweak as needed)
+function adjustForMethod(baseTol: number, amount: number, rule: ToleranceRule): number {
+  if (rule.method === 'fixed') return baseTol;
+  if (rule.method === 'sliding') {
+    // widen tolerance gently with size of amount
+    return baseTol * (1 + Math.min(0.5, Math.log10(Math.max(1, Math.abs(amount))) * 0.1));
+  }
+  // progressive: step up at magnitude thresholds
+  const abs = Math.abs(amount);
+  const factor =
+    abs >= THRESHOLDS.high ? 1.5 :
+    abs >= THRESHOLDS.medium ? 1.25 :
+    abs >= THRESHOLDS.low ? 1.1 : 1;
+  return baseTol * factor;
+}
+
+// Core helper: compare actual vs expected using a tolerance rule
+export function compareWithTolerance(
+  actual: number,
+  expected: number,
+  rule?: ToleranceRule,
+): ToleranceResult {
+  const difference = Math.abs(actual - expected);
+  if (!rule) {
+    return {
+      amount: actual,
+      tolerance: 0,
+      withinTolerance: difference === 0,
+      difference,
+      // Provide a neutral rule when absent
+      rule: {
+        id: 'TOL-NONE',
+        taxType: 'vat',
+        toleranceType: 'absolute',
+        value: 0,
+        method: 'fixed',
+        active: true,
+        effectiveDate: new Date(0),
+      },
+    };
+  }
+  const base = computeToleranceValue(expected === 0 ? actual : expected, rule);
+  const tolerance = adjustForMethod(base, expected, rule);
+  return {
+    amount: actual,
+    tolerance,
+    withinTolerance: difference <= tolerance,
+    difference,
+    rule,
+  };
+}
+
 /**
  * Reconcile tax lines
  */
 export function reconcileTaxLines(
   lines: TaxLine[],
   header: TaxSummary,
-  tolerance: number = 0.01
+  tolerance: number = 0.01,
+  toleranceRules?: ToleranceRule[],
+  taxTypeForRules: TaxType = 'vat',
+  asOf: Date = new Date()
 ): ReconciliationResult {
   const lineTotal = lines.reduce((sum, line) => sum + line.taxAmount, 0);
   const headerTotal = header.totalTaxAmount;
   const difference = Math.abs(lineTotal - headerTotal);
-  const withinTolerance = difference <= tolerance;
+
+  // Prefer rule by taxType (fallback to numeric tolerance)
+  const rule = pickToleranceRule(toleranceRules, taxTypeForRules, asOf);
+  const tol = rule
+    ? compareWithTolerance(lineTotal, headerTotal, rule)
+    : { withinTolerance: difference <= tolerance, tolerance, difference, amount: lineTotal, rule: defineToleranceRule(taxTypeForRules, 'absolute', tolerance, 'fixed') } as ToleranceResult;
+  const withinTolerance = tol.withinTolerance;
   
   const variances: TaxVariance[] = [];
   const exceptions: ReconciliationException[] = [];
   
   if (!withinTolerance) {
+    const { severity, impact } = bucketize(difference);
     variances.push({
-      id: `VAR-${Date.now()}`,
+      id: generateId('VAR'),
       type: 'calculation',
       amount: difference,
-      percentage: (difference / headerTotal) * 100,
+      percentage: pct(difference, headerTotal),
       cause: 'Line total does not match header total',
-      impact: difference > 1 ? 'high' : 'medium',
+      impact,
     });
     
     exceptions.push({
-      id: `EXC-${Date.now()}`,
+      id: generateId('EXC'),
       type: 'calculation_error',
       description: `Tax reconciliation failed. Difference: ${difference}`,
       amount: difference,
-      severity: difference > 1 ? 'high' : 'medium',
+      severity,
       resolution: 'Review line calculations and header totals',
       resolved: false,
     });
   }
   
   // Check for rounding differences
-  if (header.roundingDifference > 0) {
+  if ((header as unknown).roundingDifference && (header as unknown).roundingDifference !== 0) {
+    const rd = Math.abs((header as unknown).roundingDifference as number);
     variances.push({
-      id: `VAR-ROUNDING-${Date.now()}`,
+      id: generateId('VAR-ROUNDING'),
       type: 'rounding',
-      amount: header.roundingDifference,
-      percentage: (header.roundingDifference / headerTotal) * 100,
+      amount: rd,
+      percentage: pct(rd, headerTotal),
       cause: 'Rounding difference in header',
-      impact: 'low',
+      impact: bucketize(rd).impact,
     });
   }
   
@@ -222,9 +343,9 @@ export function reconcileTaxLines(
     isReconciled: withinTolerance,
     lineTotal,
     headerTotal,
-    difference,
+    difference: tol.difference ?? difference,
     withinTolerance,
-    tolerance,
+    tolerance: rule ? tol.tolerance : tolerance,
     variances,
     exceptions,
   };
@@ -236,32 +357,40 @@ export function reconcileTaxLines(
 export function reconcileTaxPeriods(
   currentPeriod: TaxPeriod,
   priorPeriod: TaxPeriod,
-  tolerance: number = 0.01
+  tolerance: number = 0.01,
+  toleranceRules?: ToleranceRule[],
+  taxTypeForRules: TaxType = 'vat',
+  asOf: Date = new Date()
 ): PeriodReconciliationResult {
   const currentTotal = currentPeriod.totalTax;
   const priorTotal = priorPeriod.totalTax;
   const difference = Math.abs(currentTotal - priorTotal);
-  const withinTolerance = difference <= tolerance;
+  const rule = pickToleranceRule(toleranceRules, taxTypeForRules, asOf);
+  const tol = rule
+    ? compareWithTolerance(currentTotal, priorTotal, rule)
+    : { withinTolerance: difference <= tolerance, tolerance, difference, amount: currentTotal, rule: defineToleranceRule(taxTypeForRules, 'absolute', tolerance, 'fixed') } as ToleranceResult;
+  const withinTolerance = tol.withinTolerance;
   
   const variances: TaxVariance[] = [];
   const exceptions: ReconciliationException[] = [];
   
   if (!withinTolerance) {
+    const { severity, impact } = bucketize(difference);
     variances.push({
-      id: `VAR-PERIOD-${Date.now()}`,
+      id: generateId('VAR-PERIOD'),
       type: 'timing',
       amount: difference,
-      percentage: (difference / priorTotal) * 100,
+      percentage: pct(difference, priorTotal),
       cause: 'Period-to-period variance detected',
-      impact: difference > 100 ? 'high' : 'medium',
+      impact,
     });
     
     exceptions.push({
-      id: `EXC-PERIOD-${Date.now()}`,
+      id: generateId('EXC-PERIOD'),
       type: 'timing_difference',
       description: `Period reconciliation failed. Difference: ${difference}`,
       amount: difference,
-      severity: difference > 100 ? 'high' : 'medium',
+      severity,
       resolution: 'Review period-end adjustments and timing differences',
       resolved: false,
     });
@@ -273,9 +402,9 @@ export function reconcileTaxPeriods(
     isReconciled: withinTolerance,
     currentTotal,
     priorTotal,
-    difference,
+    difference: tol.difference ?? difference,
     withinTolerance,
-    tolerance,
+    tolerance: rule ? tol.tolerance : tolerance,
     variances,
     exceptions,
   };
@@ -287,32 +416,41 @@ export function reconcileTaxPeriods(
 export function reconcileTaxAccounts(
   accounts: TaxAccount[],
   period: FiscalPeriod,
-  tolerance: number = 0.01
+  tolerance: number = 0.01,
+  expectedAmount?: number,
+  toleranceRules?: ToleranceRule[],
+  taxTypeForRules: TaxType = 'vat',
+  asOf: Date = new Date()
 ): AccountReconciliationResult {
   const totalAmount = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const expectedAmount = totalAmount; // Simplified - in reality, this would be calculated differently
-  const difference = Math.abs(totalAmount - expectedAmount);
-  const withinTolerance = difference <= tolerance;
+  const expected = typeof expectedAmount === 'number' ? expectedAmount : totalAmount;
+  const difference = Math.abs(totalAmount - expected);
+  const rule = pickToleranceRule(toleranceRules, taxTypeForRules, asOf);
+  const tol = rule
+    ? compareWithTolerance(totalAmount, expected, rule)
+    : { withinTolerance: difference <= tolerance, tolerance, difference, amount: totalAmount, rule: defineToleranceRule(taxTypeForRules, 'absolute', tolerance, 'fixed') } as ToleranceResult;
+  const withinTolerance = tol.withinTolerance;
   
   const variances: TaxVariance[] = [];
   const exceptions: ReconciliationException[] = [];
   
   if (!withinTolerance) {
+    const { severity, impact } = bucketize(difference);
     variances.push({
-      id: `VAR-ACCOUNT-${Date.now()}`,
+      id: generateId('VAR-ACCOUNT'),
       type: 'classification',
       amount: difference,
-      percentage: (difference / expectedAmount) * 100,
+      percentage: pct(difference, expected),
       cause: 'Account balance variance detected',
-      impact: difference > 100 ? 'high' : 'medium',
+      impact,
     });
     
     exceptions.push({
-      id: `EXC-ACCOUNT-${Date.now()}`,
+      id: generateId('EXC-ACCOUNT'),
       type: 'classification_error',
       description: `Account reconciliation failed. Difference: ${difference}`,
       amount: difference,
-      severity: difference > 100 ? 'high' : 'medium',
+      severity,
       resolution: 'Review account classifications and balances',
       resolved: false,
     });
@@ -323,10 +461,10 @@ export function reconcileTaxAccounts(
     period,
     isReconciled: withinTolerance,
     totalAmount,
-    expectedAmount,
-    difference,
+    expectedAmount: expected,
+    difference: tol.difference ?? difference,
     withinTolerance,
-    tolerance,
+    tolerance: rule ? tol.tolerance : tolerance,
     variances,
     exceptions,
   };
@@ -368,28 +506,14 @@ export function applyTolerance(
   if (!tolerance.active) {
     throw new Error('Tolerance rule is not active');
   }
-  
-  let toleranceValue: number;
-  
-  switch (tolerance.toleranceType) {
-    case 'absolute':
-      toleranceValue = tolerance.value;
-      break;
-    case 'percentage':
-      toleranceValue = amount * (tolerance.value / 100);
-      break;
-    case 'relative':
-      toleranceValue = amount * tolerance.value;
-      break;
-    default:
-      throw new Error(`Unsupported tolerance type: ${tolerance.toleranceType}`);
-  }
-  
+  const base = computeToleranceValue(amount, tolerance);
+  const toleranceValue = adjustForMethod(base, amount, tolerance);
   return {
     amount,
     tolerance: toleranceValue,
-    withinTolerance: true, // This would be determined by the calling function
-    difference: 0, // This would be calculated by the calling function
+    // NOTE: callers should still determine withinTolerance/difference
+    withinTolerance: false,
+    difference: 0,
     rule: tolerance,
   };
 }
@@ -402,9 +526,9 @@ export function validateTolerance(
   expected: number,
   tolerance: ToleranceRule
 ): BusinessValidationResult {
-  const toleranceResult = applyTolerance(amount, tolerance);
-  const difference = Math.abs(amount - expected);
-  const withinTolerance = difference <= toleranceResult.tolerance;
+  const tr = compareWithTolerance(amount, expected, tolerance);
+  const difference = tr.difference;
+  const withinTolerance = tr.withinTolerance;
   
   const issues: ValidationIssue[] = [];
   
@@ -412,7 +536,7 @@ export function validateTolerance(
     issues.push({
       code: 'RANGE',
       path: 'amount',
-      message: `Amount exceeds tolerance. Difference: ${difference}, Tolerance: ${toleranceResult.tolerance}`,
+      message: `Amount exceeds tolerance. Difference: ${difference}, Tolerance: ${tr.tolerance}`,
     });
   }
   
@@ -583,7 +707,7 @@ function analyzeHistoricalTrend(
       trends.push({
         period: history.period,
         amount: averageAmount,
-        percentage: (averageAmount / variance.amount) * 100,
+        percentage: pct(averageAmount, variance.amount),
         trend: averageAmount > variance.amount ? 'decreasing' : 'increasing',
       });
     }
@@ -596,9 +720,9 @@ function analyzeHistoricalTrend(
  * Determine compliance impact
  */
 function determineComplianceImpact(variance: TaxVariance): ComplianceImpact {
-  if (variance.amount < 1) return 'none';
-  if (variance.amount < 10) return 'minor';
-  if (variance.amount < 100) return 'major';
+  if (variance.amount < THRESHOLDS.low) return 'none';
+  if (variance.amount < THRESHOLDS.medium) return 'minor';
+  if (variance.amount < THRESHOLDS.high) return 'major';
   return 'critical';
 }
 
@@ -606,9 +730,9 @@ function determineComplianceImpact(variance: TaxVariance): ComplianceImpact {
  * Determine operational impact
  */
 function determineOperationalImpact(variance: TaxVariance): OperationalImpact {
-  if (variance.amount < 1) return 'none';
-  if (variance.amount < 10) return 'minor';
-  if (variance.amount < 100) return 'major';
+  if (variance.amount < THRESHOLDS.low) return 'none';
+  if (variance.amount < THRESHOLDS.medium) return 'minor';
+  if (variance.amount < THRESHOLDS.high) return 'major';
   return 'critical';
 }
 
@@ -616,9 +740,9 @@ function determineOperationalImpact(variance: TaxVariance): OperationalImpact {
  * Determine risk level
  */
 function determineRiskLevel(variance: TaxVariance): RiskLevel {
-  if (variance.amount < 1) return 'low';
-  if (variance.amount < 10) return 'medium';
-  if (variance.amount < 100) return 'high';
+  if (variance.amount < THRESHOLDS.low) return 'low';
+  if (variance.amount < THRESHOLDS.medium) return 'medium';
+  if (variance.amount < THRESHOLDS.high) return 'high';
   return 'critical';
 }
 

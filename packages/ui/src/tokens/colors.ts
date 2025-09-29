@@ -5,7 +5,7 @@
  * All colors use semantic naming for maintainability and theming.
  */
 
-import { safeGet } from '@aibos/utils';
+import { safeGet } from '../utils/internal';
 
 const CSS_VAR_PREFIX = 'aibos' as const;
 

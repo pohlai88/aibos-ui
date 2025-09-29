@@ -1,4 +1,4 @@
-import 'dotenv/config';
+// import 'dotenv/config'; // Commented out - dotenv not available in this package
 import { DataSource } from 'typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import type { DataSourceOptions } from 'typeorm';

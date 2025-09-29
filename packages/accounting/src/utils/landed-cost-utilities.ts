@@ -7,17 +7,45 @@
  * @fileoverview Landed cost allocation, receipt management, and cost tracking
  */
 
-import {
+import type {
   SupportedCurrency,
 } from './accounting-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
-import { DateRange } from './date-utilities';
-import { JournalEntry } from './journal-entry-utilities';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { DateRange } from './date-utilities';
+import type { JournalEntry } from './journal-entry-utilities';
 import { RoundingMethod } from './policies/rounding-policy';
 
 // ============================================================================
 // Types & Interfaces
 // ============================================================================
+const EPS = 1e-6;
+const CENT = 0.01;
+
+type PeriodGuard = (date: Date) => { allowed: boolean; reason?: string };
+type SoDGuard = (action: string, ctx?: { receiptId?: string }) => { allowed: boolean; reason?: string };
+let _periodGuard: PeriodGuard | undefined;
+let _sodGuard: SoDGuard | undefined;
+export function setLandedCostComplianceGuards(guards: { periodGuard?: PeriodGuard; sodGuard?: SoDGuard }) {
+  _periodGuard = guards.periodGuard ?? _periodGuard;
+  _sodGuard = guards.sodGuard ?? _sodGuard;
+}
+function ensureAllowed(action: string, date: Date, ctx?: { receiptId?: string }) {
+  if (_periodGuard) {
+    const r = _periodGuard(date);
+    if (!r.allowed) throw new Error(`Period guard rejected ${action} on ${date.toISOString()}: ${r.reason ?? 'blocked'}`);
+  }
+  if (_sodGuard) {
+    const r = _sodGuard(action, ctx);
+    if (!r.allowed) throw new Error(`SoD guard rejected ${action}: ${r.reason ?? 'blocked'}`);
+  }
+}
+
+// Optional FX converter for multi-currency landed costs
+export type FXConverter = (amount: number, from: SupportedCurrency, to: SupportedCurrency, asOf: Date) => number;
+let _fxc: FXConverter | undefined;
+export function setLandedCostFX(converter: FXConverter) {
+  _fxc = converter;
+}
 
 export interface InventoryReceipt {
   id: string;
@@ -50,6 +78,21 @@ export interface AllocationResult {
   roundingDifference: number;
   isBalanced: boolean;
   calculationDate: Date;
+  /**
+   * Present when landed costs include foreign currencies and an FX converter is set.
+   * Summarizes the conversion used to get to receipt currency totals.
+   */
+  fxSummary?: {
+    receiptCurrency: SupportedCurrency;
+    sources: Array<{
+      currency: SupportedCurrency;
+      amount: number;        // source-currency total across costs of this currency
+      converted: number;     // converted to receipt currency (sum of individual conversions)
+      // rates may differ per cost; we report a weighted implied rate for convenience
+      impliedRate: number;   // converted / amount
+    }>;
+    totalConverted: number;  // sum of all converted
+  };
 }
 
 export interface AllocationItem {
@@ -59,6 +102,12 @@ export interface AllocationItem {
   allocatedCost: number;
   roundingAdjustment: number;
   finalCost: number;
+  /**
+   * Mirror of the amount in the RECEIPT currency after rounding & distribution.
+   * Populated by applyRoundingGovernance()/distributeRoundingDifference.
+   * Backward compatible (optional).
+   */
+  allocatedInReceiptCurrency?: number;
 }
 
 export interface WeightAllocation extends AllocationResult {
@@ -154,6 +203,24 @@ export interface CostReport {
   generatedAt: Date;
 }
 
+export interface LayerCapitalizationEntry {
+  itemId: string;
+  itemNumber: string;
+  description: string;
+  landedCostAmount: number;
+  currency: SupportedCurrency;
+  allocationMethod: AllocationMethod;
+  allocationFactor: number;
+  baseAmount: number;
+  roundingAdjustment: number;
+  receiptId: string;
+  receiptNumber: string;
+  receiptDate: Date;
+  vendor: string;
+  fxSummary?: AllocationResult['fxSummary'];
+  processedAt: Date;
+}
+
 export type CostType = 'freight' | 'duty' | 'insurance' | 'handling' | 'storage' | 'other';
 export type AllocationMethod = 'weight' | 'volume' | 'value' | 'quantity' | 'equal' | 'custom';
 export type ReceiptStatus = 'draft' | 'received' | 'allocated' | 'posted' | 'cancelled';
@@ -167,12 +234,18 @@ export type AdjustmentType = 'allocation' | 'rounding' | 'correction' | 'write_o
  * Allocate landed costs to inventory items
  */
 export function allocateLandedCosts(receipt: InventoryReceipt, costs: LandedCost[]): AllocationResult {
-  if (receipt.items.length === 0) {
+  ensureAllowed('allocate_landed_costs', new Date(), { receiptId: receipt.id });
+  if (!receipt || receipt.items.length === 0) {
     throw new Error('Cannot allocate costs to empty receipt');
   }
   
   if (costs.length === 0) {
     throw new Error('No costs to allocate');
+  }
+
+  // Currency guard (simple: enforce same as receipt; integrate FX later)
+  for (const c of costs) {
+    if (c.amount < 0) throw new Error('Landed cost amount cannot be negative');
   }
   
   // Use the first cost's allocation method for the entire allocation
@@ -181,7 +254,30 @@ export function allocateLandedCosts(receipt: InventoryReceipt, costs: LandedCost
     throw new Error('No costs to allocate');
   }
   const method = firstCost.allocationMethod;
-  const totalCost = costs.reduce((sum, cost) => sum + cost.amount, 0);
+  // Convert to receipt currency if needed via FX hook; otherwise enforce same-currency.
+  // Also build fxSummary per currency bucket.
+  const fxBuckets = new Map<SupportedCurrency, { amount: number; converted: number }>();
+  let totalCost = 0;
+  for (const cost of costs) {
+    if (cost.currency === receipt.currency) {
+      totalCost += cost.amount;
+      const b = fxBuckets.get(cost.currency) ?? { amount: 0, converted: 0 };
+      b.amount += cost.amount;
+      b.converted += cost.amount;
+      fxBuckets.set(cost.currency, b);
+    } else {
+      if (!_fxc) {
+        throw new Error(`Currency mismatch: cost ${cost.id} in ${cost.currency} ≠ receipt currency ${receipt.currency} (no FX converter set)`);
+      }
+      const converted = _fxc(cost.amount, cost.currency, receipt.currency, receipt.receiptDate);
+      totalCost += converted;
+      const b = fxBuckets.get(cost.currency) ?? { amount: 0, converted: 0 };
+      b.amount += cost.amount;
+      b.converted += converted;
+      fxBuckets.set(cost.currency, b);
+    }
+  }
+  if (totalCost <= 0) throw new Error('Total landed cost must be positive');
   
   let allocationResult: AllocationResult;
   
@@ -211,15 +307,36 @@ export function allocateLandedCosts(receipt: InventoryReceipt, costs: LandedCost
     allocated: true,
     allocationDate: new Date(),
   }));
-  
-  return allocationResult;
+
+  // Compose fx summary if any source currency != receipt currency
+  let fxSummary: AllocationResult['fxSummary'] | undefined;
+  if ([...fxBuckets.keys()].some(c => c !== receipt.currency)) {
+    fxSummary = {
+      receiptCurrency: receipt.currency,
+      sources: [...fxBuckets.entries()].map(([currency, v]) => ({
+        currency,
+        amount: v.amount,
+        converted: v.converted,
+        impliedRate: v.amount > 0 ? v.converted / v.amount : 0
+      })),
+      totalConverted: totalCost
+    };
+  }
+
+  // Inject the real receipt into the result (without changing calc signatures)
+  const result = { ...allocationResult, receipt };
+  if (fxSummary) {
+    result.fxSummary = fxSummary;
+  }
+  return result;
 }
 
 /**
  * Calculate allocation by weight
  */
 export function calculateAllocationByWeight(items: InventoryItem[], totalCost: number): WeightAllocation {
-  const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+  if (items.length === 0) throw new Error('No items to allocate');
+  const totalWeight = items.reduce((sum, item) => sum + (item.weight || 0), 0);
   
   if (totalWeight === 0) {
     throw new Error('Total weight cannot be zero for weight-based allocation');
@@ -230,7 +347,7 @@ export function calculateAllocationByWeight(items: InventoryItem[], totalCost: n
   let totalAllocated = 0;
   
   items.forEach(item => {
-    const weightFactor = item.weight / totalWeight;
+    const weightFactor = (item.weight || 0) / totalWeight;
     const allocatedCost = totalCost * weightFactor;
     
     weightFactors.set(item.id, weightFactor);
@@ -249,7 +366,7 @@ export function calculateAllocationByWeight(items: InventoryItem[], totalCost: n
   const roundingDifference = totalCost - totalAllocated;
   
   return {
-    receipt: {} as InventoryReceipt, // Would be populated in real implementation
+    receipt: {} as InventoryReceipt,
     method: 'weight',
     items: allocationItems,
     totalAllocated,
@@ -265,7 +382,8 @@ export function calculateAllocationByWeight(items: InventoryItem[], totalCost: n
  * Calculate allocation by volume
  */
 export function calculateAllocationByVolume(items: InventoryItem[], totalCost: number): VolumeAllocation {
-  const totalVolume = items.reduce((sum, item) => sum + item.volume, 0);
+  if (items.length === 0) throw new Error('No items to allocate');
+  const totalVolume = items.reduce((sum, item) => sum + (item.volume || 0), 0);
   
   if (totalVolume === 0) {
     throw new Error('Total volume cannot be zero for volume-based allocation');
@@ -276,7 +394,7 @@ export function calculateAllocationByVolume(items: InventoryItem[], totalCost: n
   let totalAllocated = 0;
   
   items.forEach(item => {
-    const volumeFactor = item.volume / totalVolume;
+    const volumeFactor = (item.volume || 0) / totalVolume;
     const allocatedCost = totalCost * volumeFactor;
     
     volumeFactors.set(item.id, volumeFactor);
@@ -295,7 +413,7 @@ export function calculateAllocationByVolume(items: InventoryItem[], totalCost: n
   const roundingDifference = totalCost - totalAllocated;
   
   return {
-    receipt: {} as InventoryReceipt, // Would be populated in real implementation
+    receipt: {} as InventoryReceipt,
     method: 'volume',
     items: allocationItems,
     totalAllocated,
@@ -311,7 +429,8 @@ export function calculateAllocationByVolume(items: InventoryItem[], totalCost: n
  * Calculate allocation by value
  */
 export function calculateAllocationByValue(items: InventoryItem[], totalCost: number): ValueAllocation {
-  const totalValue = items.reduce((sum, item) => sum + item.totalCost, 0);
+  if (items.length === 0) throw new Error('No items to allocate');
+  const totalValue = items.reduce((sum, item) => sum + (item.totalCost || 0), 0);
   
   if (totalValue === 0) {
     throw new Error('Total value cannot be zero for value-based allocation');
@@ -322,7 +441,7 @@ export function calculateAllocationByValue(items: InventoryItem[], totalCost: nu
   let totalAllocated = 0;
   
   items.forEach(item => {
-    const valueFactor = item.totalCost / totalValue;
+    const valueFactor = (item.totalCost || 0) / totalValue;
     const allocatedCost = totalCost * valueFactor;
     
     valueFactors.set(item.id, valueFactor);
@@ -341,7 +460,7 @@ export function calculateAllocationByValue(items: InventoryItem[], totalCost: nu
   const roundingDifference = totalCost - totalAllocated;
   
   return {
-    receipt: {} as InventoryReceipt, // Would be populated in real implementation
+    receipt: {} as InventoryReceipt,
     method: 'value',
     items: allocationItems,
     totalAllocated,
@@ -357,7 +476,8 @@ export function calculateAllocationByValue(items: InventoryItem[], totalCost: nu
  * Calculate allocation by quantity
  */
 export function calculateAllocationByQuantity(items: InventoryItem[], totalCost: number): QuantityAllocation {
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  if (items.length === 0) throw new Error('No items to allocate');
+  const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   
   if (totalQuantity === 0) {
     throw new Error('Total quantity cannot be zero for quantity-based allocation');
@@ -368,7 +488,7 @@ export function calculateAllocationByQuantity(items: InventoryItem[], totalCost:
   let totalAllocated = 0;
   
   items.forEach(item => {
-    const quantityFactor = item.quantity / totalQuantity;
+    const quantityFactor = (item.quantity || 0) / totalQuantity;
     const allocatedCost = totalCost * quantityFactor;
     
     quantityFactors.set(item.id, quantityFactor);
@@ -387,7 +507,7 @@ export function calculateAllocationByQuantity(items: InventoryItem[], totalCost:
   const roundingDifference = totalCost - totalAllocated;
   
   return {
-    receipt: {} as InventoryReceipt, // Would be populated in real implementation
+    receipt: {} as InventoryReceipt,
     method: 'quantity',
     items: allocationItems,
     totalAllocated,
@@ -403,6 +523,7 @@ export function calculateAllocationByQuantity(items: InventoryItem[], totalCost:
  * Calculate equal allocation
  */
 export function calculateEqualAllocation(items: InventoryItem[], totalCost: number): AllocationResult {
+  if (items.length === 0) throw new Error('No items to allocate');
   const equalAmount = totalCost / items.length;
   const allocationItems: AllocationItem[] = [];
   let totalAllocated = 0;
@@ -425,7 +546,7 @@ export function calculateEqualAllocation(items: InventoryItem[], totalCost: numb
   const roundingDifference = totalCost - totalAllocated;
   
   return {
-    receipt: {} as InventoryReceipt, // Would be populated in real implementation
+    receipt: {} as InventoryReceipt,
     method: 'equal',
     items: allocationItems,
     totalAllocated,
@@ -443,6 +564,7 @@ export function calculateEqualAllocation(items: InventoryItem[], totalCost: numb
  * Create inventory receipt
  */
 export function createInventoryReceipt(receipt: ReceiptData): InventoryReceipt {
+  ensureAllowed('create_receipt', receipt.receiptDate, undefined);
   const totalCost = receipt.items.reduce((sum, item) => sum + item.totalCost, 0);
   
   return {
@@ -462,7 +584,17 @@ export function createInventoryReceipt(receipt: ReceiptData): InventoryReceipt {
  * Add landed costs to receipt
  */
 export function addLandedCosts(receipt: InventoryReceipt, costs: LandedCost[]): InventoryReceipt {
-  const newTotalCost = receipt.totalCost + costs.reduce((sum, cost) => sum + cost.amount, 0);
+  ensureAllowed('add_landed_costs', new Date(), { receiptId: receipt.id });
+  for (const c of costs) {
+    if (c.amount < 0) throw new Error('Landed cost amount cannot be negative');
+  }
+  // Keep receipt.totalCost in receipt currency; if costs are foreign and FX hook exists, convert for total
+  const addendum = costs.reduce((sum, cost) => {
+    if (cost.currency === receipt.currency) return sum + cost.amount;
+    if (_fxc) return sum + _fxc(cost.amount, cost.currency, receipt.currency, receipt.receiptDate);
+    throw new Error(`Currency mismatch: cost ${cost.id} in ${cost.currency} ≠ receipt currency ${receipt.currency} (no FX converter set)`);
+  }, 0);
+  const newTotalCost = receipt.totalCost + addendum;
   
   return {
     ...receipt,
@@ -626,6 +758,7 @@ export function applyRoundingGovernance(allocation: AllocationResult, method: Ro
       ...item,
       roundingAdjustment,
       finalCost: roundedAmount,
+      allocatedInReceiptCurrency: roundedAmount,
     });
     
     totalAdjusted += roundedAmount;
@@ -650,37 +783,32 @@ export function distributeRoundingDifference(allocation: AllocationResult): Allo
     return allocation; // No significant difference to distribute
   }
   
-  const adjustedItems: AllocationItem[] = [];
-  let remainingDifference = allocation.roundingDifference;
-  const itemCount = allocation.items.length;
-  
-  allocation.items.forEach((item, index) => {
-    let adjustment = 0;
-    
-    // Distribute difference evenly, with remainder going to last item
-    if (index === itemCount - 1) {
-      adjustment = remainingDifference;
-    } else {
-      adjustment = Math.round(remainingDifference / (itemCount - index) * 100) / 100;
-      remainingDifference -= adjustment;
+  // Largest remainders: assign ±0.01 to items with biggest fractional parts
+  const sign = allocation.roundingDifference > 0 ? 1 : -1;
+  let pennies = Math.round(Math.abs(allocation.roundingDifference) / CENT);
+  if (pennies === 0) return { ...allocation, isBalanced: true, roundingDifference: 0 };
+
+  const ranked = allocation.items
+    .map((it, idx) => {
+      const frac = Math.abs(it.finalCost / CENT - Math.trunc(it.finalCost / CENT));
+      return { idx, frac };
+    })
+    .sort((a, b) => b.frac - a.frac);
+
+  const adjusted = allocation.items.map(i => ({ ...i }));
+  let i = 0;
+  while (pennies > 0 && ranked.length > 0) {
+    const t = ranked[i % ranked.length]!;
+    if (t.idx >= 0 && t.idx < adjusted.length) {
+      adjusted[t.idx]!.roundingAdjustment += sign * CENT;
+      adjusted[t.idx]!.finalCost = round2(adjusted[t.idx]!.finalCost + sign * CENT);
+      adjusted[t.idx]!.allocatedInReceiptCurrency = adjusted[t.idx]!.finalCost;
     }
-    
-    adjustedItems.push({
-      ...item,
-      roundingAdjustment: item.roundingAdjustment + adjustment,
-      finalCost: item.finalCost + adjustment,
-    });
-  });
-  
-  const newTotalAllocated = adjustedItems.reduce((sum, item) => sum + item.finalCost, 0);
-  
-  return {
-    ...allocation,
-    items: adjustedItems,
-    totalAllocated: newTotalAllocated,
-    roundingDifference: 0,
-    isBalanced: true,
-  };
+    pennies--;
+    i++;
+  }
+  const newTotal = adjusted.reduce((s, it) => s + it.finalCost, 0);
+  return { ...allocation, items: adjusted, totalAllocated: newTotal, roundingDifference: 0, isBalanced: true };
 }
 
 /**
@@ -852,7 +980,7 @@ export function generateCostReport(receipts: InventoryReceipt[], period: DateRan
   }, 0);
   
   const unallocatedCosts = totalLandedCosts - totalAllocatedCosts;
-  const roundingDifferences = 0; // Would be calculated from actual allocations
+  const roundingDifferences = 0; // TODO: sum from actual allocations when persisted
   
   return {
     id: `cost_report_${period.start.getFullYear()}_${period.start.getMonth() + 1}`,
@@ -876,10 +1004,20 @@ function applyRoundingMethod(amount: number, method: RoundingMethod, precision: 
   
   switch (method) {
     case RoundingMethod.HALF_UP:
-      return Math.round(scaled) / factor;
+      return Math.round(scaled) / factor; // ties away from zero
     case RoundingMethod.HALF_DOWN:
-      return Math.floor(scaled + 0.5) / factor;
+      // ties go down: e.g., 1.5 -> 1, -1.5 -> -1
+      const n = Math.trunc(scaled);
+      const frac = Math.abs(scaled - n);
+      if (Math.abs(frac - 0.5) < EPS) return n / factor;
+      return Math.round(scaled) / factor;
     case RoundingMethod.HALF_EVEN:
+      // banker's rounding: ties to even
+      const floor = Math.floor(scaled);
+      const diff = scaled - floor;
+      if (Math.abs(diff - 0.5) < EPS) {
+        return ((floor % 2 === 0 ? floor : floor + 1) / factor);
+      }
       return Math.round(scaled) / factor;
     case RoundingMethod.CEILING:
       return Math.ceil(scaled) / factor;
@@ -931,13 +1069,13 @@ function createJournalEntries(receipt: InventoryReceipt, allocations: Allocation
   // Create journal entries for landed cost allocations
   allocations.forEach(allocation => {
     const allocationEntry: JournalEntry = {
-      id: `allocation_${allocation.receipt.id}_${Date.now()}`,
+      id: `allocation_${allocation.receipt.id || receipt.id}_${Date.now()}`,
       date: new Date(),
-      reference: `ALLOC-${allocation.receipt.id}`,
+      reference: `ALLOC-${allocation.receipt.id || receipt.id}`,
       description: `Landed cost allocation - ${allocation.method}`,
       lines: allocation.items.map(item => ({
         id: `line_${item.item.id}_${Date.now()}`,
-        accountCode: '1300', // Inventory account
+        accountCode: '1300', // Inventory
         description: `Landed cost for ${item.item.description}`,
         debit: item.finalCost,
         credit: 0,
@@ -949,11 +1087,11 @@ function createJournalEntries(receipt: InventoryReceipt, allocations: Allocation
       status: 'draft',
     };
     
-    // Add credit line for landed costs
+    // Credit a clearing/AP account to capitalize costs (not expense)
     allocationEntry.lines.push({
       id: `line_landed_cost_${Date.now()}`,
-      accountCode: '6902', // Landed cost expense
-      description: 'Landed cost allocation',
+      accountCode: '2105', // Freight & duty clearing / AP
+      description: 'Landed cost clearing',
       debit: 0,
       credit: allocation.totalAllocated,
       currency: receipt.currency,
@@ -964,4 +1102,38 @@ function createJournalEntries(receipt: InventoryReceipt, allocations: Allocation
   });
   
   return journalEntries;
+}
+
+/**
+ * Convert allocation result to inventory layer capitalization entries
+ * 
+ * Returns item-level capitalization deltas that can be posted to your inventory layer engine.
+ * Each entry represents the landed cost amount to be capitalized into the item's cost basis.
+ * 
+ * @param allocation - The allocation result with rounded and distributed amounts
+ * @returns Array of capitalization entries ready for inventory layer processing
+ */
+export function toLayerCapitalizationEntries(allocation: AllocationResult): LayerCapitalizationEntry[] {
+  return allocation.items.map(item => ({
+    itemId: item.item.id,
+    itemNumber: item.item.itemNumber,
+    description: item.item.description,
+    landedCostAmount: item.allocatedInReceiptCurrency ?? item.finalCost,
+    currency: allocation.receipt.currency,
+    allocationMethod: allocation.method,
+    allocationFactor: item.allocationFactor,
+    baseAmount: item.baseAmount,
+    roundingAdjustment: item.roundingAdjustment,
+    receiptId: allocation.receipt.id,
+    receiptNumber: allocation.receipt.receiptNumber,
+    receiptDate: allocation.receipt.receiptDate,
+    vendor: allocation.receipt.vendor,
+    fxSummary: allocation.fxSummary,
+    processedAt: new Date(),
+  }));
+}
+
+// small helpers
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }

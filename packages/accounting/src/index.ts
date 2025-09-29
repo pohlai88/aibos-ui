@@ -130,7 +130,7 @@ export interface ErrorResponse {
 export interface SuccessResponse {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 // Validation exports (facade-safe)

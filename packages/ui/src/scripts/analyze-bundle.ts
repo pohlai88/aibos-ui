@@ -7,7 +7,6 @@
  * for the UI package to ensure it meets enterprise standards.
  */
 
-import { safeJoin } from '@aibos/utils';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,7 +124,7 @@ function analyzeBundle(): BundleAnalysis {
     if (!fs.existsSync(dir)) return [];
     const out: string[] = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const fp = safeJoin(dir, entry.name);
+      const fp = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         out.push(...walk(fp));
       } else if (entry.isFile()) {

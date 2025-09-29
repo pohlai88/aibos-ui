@@ -5,6 +5,9 @@
  * including class name merging, variant management, and polymorphic behavior.
  */
 
+// Internal utilities (self-contained, no external dependencies)
+export * from './internal';
+
 // Class name utilities
 export { cn, cx, makeCn } from './cn.utility';
 
@@ -35,6 +38,3 @@ export {
   stabilizeRender,
   useStableCallback,
 } from './variance-reduction.utility';
-
-// Note: Security and safe object utilities are available directly from @aibos/utils
-// This maintains clean separation and avoids name conflicts

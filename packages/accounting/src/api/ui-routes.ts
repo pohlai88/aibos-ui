@@ -5,7 +5,7 @@
  * Provides optimized endpoints for frontend components.
  */
 
-import type { Router, RequestHandler } from 'express';
+import type { Router, RequestHandler, Request, Response, NextFunction } from 'express';
 import { Router as ExpressRouter } from 'express';
 import type { UIControllerExpress } from './ui-controller-express.js';
 
@@ -40,7 +40,7 @@ export function createUIRoutes(
 
   // Async error wrapper: ensure thrown/rejected handlers reach error middleware
   const wrap =
-    (function_: (req: unknown, res: unknown, next: unknown) => unknown): RequestHandler =>
+    (function_: (req: Request, res: Response, next: NextFunction) => unknown): RequestHandler =>
     (req, res, next) =>
       Promise.resolve(function_(req, res, next)).catch(next);
 

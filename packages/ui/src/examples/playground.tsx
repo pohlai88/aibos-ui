@@ -4,14 +4,14 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
-} from '@aibos/ui/components/card';
-import { Modal } from '@aibos/ui/components/modal';
-import { X, Check } from '@aibos/ui/core';
-import { Badge } from '@aibos/ui/primitives/badge';
-import { Button } from '@aibos/ui/primitives/button';
-import { Checkbox } from '@aibos/ui/primitives/checkbox';
-import { Input } from '@aibos/ui/primitives/input';
-import { Switch } from '@aibos/ui/primitives/switch';
+} from '@components/card';
+import { Modal } from '@components/modal';
+import { CloseIcon, CheckIcon } from '@icons/internal';
+import { Badge } from '@primitives/badge';
+import { Button } from '@primitives/button';
+import { Checkbox } from '@primitives/checkbox';
+import { Input } from '@primitives/input';
+import { Switch } from '@primitives/switch';
 import React, { useState } from 'react';
 
 // Header Component
@@ -80,7 +80,7 @@ const ButtonSizes = () => (
       <Button size="default">Default</Button>
       <Button size="lg">Large</Button>
       <Button size="icon">
-        <Check className="h-4 w-4" />
+        <CheckIcon className="h-4 w-4" />
       </Button>
     </div>
   </div>
@@ -279,7 +279,7 @@ const ContactForm = ({
           <Input
             placeholder="Enter your full name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
             required
           />
         </div>
@@ -292,7 +292,7 @@ const ContactForm = ({
             type="email"
             placeholder="Enter your email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, email: e.target.value })}
             required
           />
         </div>
@@ -302,8 +302,8 @@ const ContactForm = ({
             <Checkbox
               id="notifications"
               checked={formData.notifications}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, notifications: checked as boolean })
+              onCheckedChange={(checked: boolean) =>
+                setFormData({ ...formData, notifications: checked })
               }
             />
             <label htmlFor="notifications" className="text-semantic-foreground text-sm">
@@ -315,7 +315,7 @@ const ContactForm = ({
             <Checkbox
               id="terms"
               checked={formData.terms}
-              onCheckedChange={(checked) => setFormData({ ...formData, terms: checked as boolean })}
+              onCheckedChange={(checked: boolean) => setFormData({ ...formData, terms: checked })}
               required
             />
             <label htmlFor="terms" className="text-semantic-foreground text-sm">
@@ -424,7 +424,7 @@ export default function ExamplesPlayground(): React.ReactElement {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-semantic-foreground text-lg font-semibold">Example Modal</h2>
             <Button variant="ghost" size="sm" onClick={() => setIsModalOpen(false)}>
-              <X className="h-4 w-4" />
+              <CloseIcon className="h-4 w-4" />
             </Button>
           </div>
           <p className="text-semantic-muted-foreground mb-4">

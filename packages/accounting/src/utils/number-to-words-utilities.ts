@@ -28,12 +28,22 @@
  * ```
  */
 
-import type { 
-  SupportedCurrency
-} from './accounting-utilities';
+import type { SupportedCurrency } from './accounting-utilities';
+import { currencyDecimals } from './policies/currency-policy';
 import type { 
   BusinessValidationResult as ValidationResult
 } from './validation-utilities';
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Error messages
+const ERROR_MESSAGES = {
+  LOCALE_REQUIRED: 'Locale is required',
+  INVALID_AMOUNT_PROVIDED: 'Invalid amount provided',
+  CURRENCY_REQUIRED: 'Currency is required',
+} as const;
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -67,10 +77,11 @@ export interface CurrencyWordsResult {
  */
 export interface ConversionOptions {
   readonly includeCurrency?: boolean;
-  readonly includeCents?: boolean;
+  readonly includeCents?: boolean; // if true, uses currency-specific decimals when a currency is supplied
   readonly format?: ConversionFormat;
   readonly case?: TextCase;
   readonly separator?: string;
+  readonly decimalsOverride?: number; // optional: override decimals for fractional part
 }
 
 /**
@@ -334,12 +345,12 @@ export function convertNumberToWords(
   options: ConversionOptions = {}
 ): WordsResult {
   // Validate inputs
-  if (typeof number !== 'number' || isNaN(number)) {
+  if (typeof number !== 'number' || !Number.isFinite(number)) {
     throw new Error('Invalid number provided');
   }
 
   if (!locale || locale.trim() === '') {
-    throw new Error('Locale is required');
+    throw new Error(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Validate locale
@@ -385,16 +396,16 @@ export function convertCurrencyToWords(
   locale: string
 ): CurrencyWordsResult {
   // Validate inputs
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    throw new Error('Invalid amount provided');
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    throw new Error(ERROR_MESSAGES.INVALID_AMOUNT_PROVIDED);
   }
 
   if (!currency || currency.trim() === '') {
-    throw new Error('Currency is required');
+    throw new Error(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!locale || locale.trim() === '') {
-    throw new Error('Locale is required');
+    throw new Error(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Get currency names
@@ -403,8 +414,10 @@ export function convertCurrencyToWords(
     throw new Error(`Currency names not found for ${currency} in locale ${locale}`);
   }
 
-  // Convert amount to words
-  const words = convertNumberToWordsInternal(amount, locale, { includeCents: true });
+  // Determine decimals for fractional words
+  const decs = safeCurrencyDecimals(currency);
+  // Convert amount to words using currency decimals
+  const words = convertNumberToWordsInternal(amount, locale, { includeCents: true, decimalsOverride: decs });
 
   // Get currency name
   const currencyName = amount === 1 ? currencyNames.singular : currencyNames.plural;
@@ -444,7 +457,7 @@ export function validateNumberToWords(
   const warnings: string[] = [];
 
   // Validate inputs
-  if (typeof number !== 'number' || isNaN(number)) {
+  if (typeof number !== 'number' || !Number.isFinite(number)) {
     errors.push('Invalid number provided');
   }
 
@@ -453,7 +466,7 @@ export function validateNumberToWords(
   }
 
   if (!locale || locale.trim() === '') {
-    errors.push('Locale is required');
+    errors.push(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Validate locale
@@ -536,6 +549,11 @@ export function validateLocale(locale: string): ValidationResult {
     warnings.push('Locale code format may be invalid (expected: xx-XX)');
   }
 
+  // Informational warning for locales with basic (non-grammatical) support
+  if (supportedLocale && !locale.startsWith('en-')) {
+    warnings.push('Locale has basic word rules; advanced grammar not fully supported yet');
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -593,22 +611,23 @@ export function formatForCheque(
   locale: string
 ): ChequeFormatResult {
   // Validate inputs
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    throw new Error('Invalid amount provided');
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    throw new Error(ERROR_MESSAGES.INVALID_AMOUNT_PROVIDED);
   }
 
   if (!currency || currency.trim() === '') {
-    throw new Error('Currency is required');
+    throw new Error(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!locale || locale.trim() === '') {
-    throw new Error('Locale is required');
+    throw new Error(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Convert to words
   const words = convertNumberToWordsInternal(amount, locale, { 
-    includeCents: true, 
-    case: 'title_case' 
+    includeCents: true,
+    decimalsOverride: safeCurrencyDecimals(currency),
+    case: 'title_case'
   });
 
   // Format for cheque
@@ -643,21 +662,22 @@ export function formatForInvoice(
   locale: string
 ): InvoiceFormatResult {
   // Validate inputs
-  if (typeof amount !== 'number' || isNaN(amount)) {
-    throw new Error('Invalid amount provided');
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    throw new Error(ERROR_MESSAGES.INVALID_AMOUNT_PROVIDED);
   }
 
   if (!currency || currency.trim() === '') {
-    throw new Error('Currency is required');
+    throw new Error(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!locale || locale.trim() === '') {
-    throw new Error('Locale is required');
+    throw new Error(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Convert to words
   const words = convertNumberToWordsInternal(amount, locale, { 
-    includeCents: true, 
+    includeCents: true,
+    decimalsOverride: safeCurrencyDecimals(currency),
     case: 'sentence_case' 
   });
 
@@ -693,7 +713,7 @@ export function validateSpecialFormatting(result: SpecialFormatResult): Validati
   const warnings: string[] = [];
 
   // Validate basic properties
-  if (typeof result.amount !== 'number' || isNaN(result.amount)) {
+  if (typeof result.amount !== 'number' || !Number.isFinite(result.amount)) {
     errors.push('Invalid amount');
   }
 
@@ -702,11 +722,11 @@ export function validateSpecialFormatting(result: SpecialFormatResult): Validati
   }
 
   if (!result.currency || result.currency.trim() === '') {
-    errors.push('Currency is required');
+    errors.push(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!result.locale || result.locale.trim() === '') {
-    errors.push('Locale is required');
+    errors.push(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   if (!result.format || result.format.trim() === '') {
@@ -794,11 +814,11 @@ export function validateCurrencyName(currency: SupportedCurrency, locale: string
 
   // Validate inputs
   if (!currency || currency.trim() === '') {
-    errors.push('Currency is required');
+    errors.push(ERROR_MESSAGES.CURRENCY_REQUIRED);
   }
 
   if (!locale || locale.trim() === '') {
-    errors.push('Locale is required');
+    errors.push(ERROR_MESSAGES.LOCALE_REQUIRED);
   }
 
   // Check if currency names exist
@@ -824,6 +844,15 @@ export function validateCurrencyName(currency: SupportedCurrency, locale: string
 // HELPER FUNCTIONS
 // ============================================================================
 
+function safeCurrencyDecimals(currency: SupportedCurrency): number {
+  try {
+    const d = currencyDecimals(currency as string);
+    return Number.isInteger(d) && d >= 0 ? d : 2;
+  } catch {
+    return 2;
+  }
+}
+
 /**
  * Convert number to words internally
  * 
@@ -847,9 +876,13 @@ function convertNumberToWordsInternal(
     return getZeroWord(locale);
   }
 
-  // Split into integer and decimal parts
-  const integerPart = Math.floor(number);
-  const decimalPart = Math.round((number - integerPart) * 100);
+  // Decide decimals for fractional words
+  const decimals = options.decimalsOverride ?? 2;
+  const factor = Math.pow(10, decimals);
+
+  // Split into integer and fractional parts using chosen decimals
+  const integerPart = Math.trunc(number);
+  const decimalPart = Math.round((number - integerPart) * factor);
 
   // Convert integer part
   let words = convertIntegerToWords(integerPart, locale);
@@ -857,7 +890,7 @@ function convertNumberToWordsInternal(
   // Add decimal part if requested
   if (options.includeCents && decimalPart > 0) {
     const decimalWords = convertIntegerToWords(decimalPart, locale);
-    words += ` ${getAndWord(locale)} ${decimalWords} ${getCentsWord(decimalPart, locale)}`;
+    words += ` ${getAndWord(locale)} ${decimalWords} ${getCentsWord(decimalPart, locale, decimals)}`;
   }
 
   // Apply case formatting
@@ -935,7 +968,26 @@ function convertGroupToWords(group: number, locale: string): string {
       words.push(getTensWord(tens, locale));
     }
     if (ones > 0) {
-      words.push(getOnesWord(ones, locale));
+      const onesWord = getOnesWord(ones, locale);
+      // Hyphenate for English locales (e.g., twenty-one)
+      if (locale.startsWith('en-') && tens >= 2) {
+        const last = words.pop() || '';
+        words.push(`${last}-${onesWord}`);
+      } else {
+        words.push(onesWord);
+      }
+    }
+  }
+
+  // Insert "and" for en-GB when there are hundreds and a remainder
+  if (locale === 'en-GB' && hundreds > 0 && (tens > 0 || ones > 0)) {
+    // Place "and" after "hundred" (e.g., "one hundred and five")
+    // Reconstruct to ensure proper placement
+    const hIndex = words.indexOf(getHundredWord(locale));
+    if (hIndex !== -1 && hIndex === 1) {
+      const prefix = words.slice(0, 2).join(' ');
+      const rest = words.slice(2).join(' ');
+      return `${prefix} and ${rest}`.trim();
     }
   }
 
@@ -1143,8 +1195,8 @@ function getHundredWord(locale: string): string {
  */
 function getGroupName(groupIndex: number, locale: string): string {
   const groupNames: Record<string, string[]> = {
-    'en-US': ['', 'thousand', 'million', 'billion', 'trillion'],
-    'en-GB': ['', 'thousand', 'million', 'billion', 'trillion'],
+    'en-US': ['', 'thousand', 'million', 'billion', 'trillion', 'quadrillion', 'quintillion'],
+    'en-GB': ['', 'thousand', 'million', 'billion', 'trillion', 'quadrillion', 'quintillion'],
     'es-ES': ['', 'mil', 'millón', 'mil millones', 'billón'],
     'fr-FR': ['', 'mille', 'million', 'milliard', 'billion'],
     'de-DE': ['', 'tausend', 'Million', 'Milliarde', 'Billion'],
@@ -1185,11 +1237,12 @@ function getAndWord(locale: string): string {
  * @param locale - Locale code
  * @returns Cents word
  */
-function getCentsWord(number: number, locale: string): string {
-  const currencyNames = getCurrencyNames('USD', locale); // Default to USD for cents
-  if (!currencyNames) {
-    return 'cents';
-  }
-  
-  return number === 1 ? currencyNames.cent : currencyNames.cents;
+function getCentsWord(number: number, locale: string, decimals: number): string {
+  const isSingular = number === 1;
+  // When decimals=0 (e.g., JPY), no cents/minor unit words should be appended.
+  if (decimals <= 0) return '';
+  // Fallback to USD vocabulary if specific currency vocabulary is unavailable in caller context.
+  const currencyNames = CURRENCY_NAMES[locale as keyof typeof CURRENCY_NAMES]?.USD;
+  if (!currencyNames) return isSingular ? 'cent' : 'cents';
+  return isSingular ? currencyNames.cent : currencyNames.cents;
 }

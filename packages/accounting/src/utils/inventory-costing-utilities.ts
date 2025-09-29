@@ -28,16 +28,17 @@
  * ```
  */
 
-import type { 
-  SupportedCurrency
-} from './accounting-utilities';
+import type { SupportedCurrency } from './accounting-utilities';
 import type { 
   BusinessValidationResult as ValidationResult
 } from './validation-utilities';
 
 // ============================================================================
-// TYPES & INTERFACES
+// ENUMS & CONSTANTS
 // ============================================================================
+const EPS = 1e-6;
+const DEFAULT_TOLERANCE = 0.01; // RM/cents tolerance for totals
+const ALLOW_LIFO = false; // IAS 2 / MFRS 102 prohibits LIFO by default
 
 /**
  * Inventory item with complete costing information
@@ -296,6 +297,28 @@ export const INVENTORY_CATEGORIES = {
 } as const;
 
 // ============================================================================
+// OPTIONAL COMPLIANCE GUARDS (additive; no API break)
+// ============================================================================
+type PeriodGuard = (date: Date) => { allowed: boolean; reason?: string };
+type SoDGuard = (action: string, ctx: { itemId?: string | undefined }) => { allowed: boolean; reason?: string };
+let _periodGuard: PeriodGuard | undefined;
+let _sodGuard: SoDGuard | undefined;
+export function setInventoryComplianceGuards(guards: { periodGuard?: PeriodGuard; sodGuard?: SoDGuard }): void {
+  _periodGuard = guards.periodGuard ?? _periodGuard;
+  _sodGuard = guards.sodGuard ?? _sodGuard;
+}
+function ensureAllowed(action: string, date: Date, ctx?: { itemId?: string }) {
+  if (_periodGuard) {
+    const r = _periodGuard(date);
+    if (!r.allowed) throw new Error(`Period guard rejected ${action} on ${date.toISOString()}: ${r.reason ?? 'blocked'}`);
+  }
+  if (_sodGuard) {
+    const r = _sodGuard(action, { itemId: ctx?.itemId });
+    if (!r.allowed) throw new Error(`SoD guard rejected ${action}: ${r.reason ?? 'blocked'}`);
+  }
+}
+
+// ============================================================================
 // COSTING METHODS
 // ============================================================================
 
@@ -317,18 +340,21 @@ export function calculateFIFOCost(
   quantity: number,
   asOfDate: Date
 ): CostingResult {
+  ensureAllowed('cost_fifo', asOfDate, { itemId: inventory.id });
   // Validate inputs
   if (quantity <= 0) {
     throw new Error('Quantity must be positive');
   }
 
-  if (quantity > inventory.totalQuantity) {
-    throw new Error('Quantity exceeds available inventory');
-  }
+  // Compute on-hand as of date (active & not expired)
+  const onHandAsOf = inventory.layers
+    .filter(l => l.status === 'active' && l.date <= asOfDate && (!l.expiryDate || l.expiryDate >= asOfDate))
+    .reduce((s, l) => s + l.quantity, 0);
+  if (quantity - onHandAsOf > EPS) throw new Error('Quantity exceeds available inventory as of date');
 
   // Sort layers by date (oldest first for FIFO)
   const sortedLayers = [...inventory.layers]
-    .filter(layer => layer.status === 'active' && layer.date <= asOfDate)
+    .filter(layer => layer.status === 'active' && layer.date <= asOfDate && (!layer.expiryDate || layer.expiryDate >= asOfDate))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let remainingQuantity = quantity;
@@ -387,23 +413,25 @@ export function calculateWeightedAverageCost(
   quantity: number,
   asOfDate: Date
 ): CostingResult {
+  ensureAllowed('cost_weighted_average', asOfDate, { itemId: inventory.id });
   // Validate inputs
   if (quantity <= 0) {
     throw new Error('Quantity must be positive');
   }
 
-  if (quantity > inventory.totalQuantity) {
-    throw new Error('Quantity exceeds available inventory');
-  }
+  const onHandAsOf = inventory.layers
+    .filter(l => l.status === 'active' && l.date <= asOfDate && (!l.expiryDate || l.expiryDate >= asOfDate))
+    .reduce((s, l) => s + l.quantity, 0);
+  if (quantity - onHandAsOf > EPS) throw new Error('Quantity exceeds available inventory as of date');
 
   // Get active layers as of date
   const activeLayers = inventory.layers.filter(
-    layer => layer.status === 'active' && layer.date <= asOfDate
+    layer => layer.status === 'active' && layer.date <= asOfDate && (!layer.expiryDate || layer.expiryDate >= asOfDate)
   );
 
   // Calculate weighted average unit cost
   const totalQuantity = activeLayers.reduce((sum, layer) => sum + layer.quantity, 0);
-  const totalValue = activeLayers.reduce((sum, layer) => sum + layer.totalCost, 0);
+  const totalValue = activeLayers.reduce((sum, layer) => sum + layer.quantity * layer.unitCost, 0);
   
   if (totalQuantity === 0) {
     throw new Error('No active inventory layers found');
@@ -453,18 +481,23 @@ export function calculateLIFOCost(
   quantity: number,
   asOfDate: Date
 ): CostingResult {
+  if (!ALLOW_LIFO) {
+    throw new Error('LIFO is disabled (IAS 2 / MFRS 102). Enable ALLOW_LIFO with explicit policy override if required.');
+  }
+  ensureAllowed('cost_lifo', asOfDate, { itemId: inventory.id });
   // Validate inputs
   if (quantity <= 0) {
     throw new Error('Quantity must be positive');
   }
 
-  if (quantity > inventory.totalQuantity) {
-    throw new Error('Quantity exceeds available inventory');
-  }
+  const onHandAsOf = inventory.layers
+    .filter(l => l.status === 'active' && l.date <= asOfDate && (!l.expiryDate || l.expiryDate >= asOfDate))
+    .reduce((s, l) => s + l.quantity, 0);
+  if (quantity - onHandAsOf > EPS) throw new Error('Quantity exceeds available inventory as of date');
 
   // Sort layers by date (newest first for LIFO)
   const sortedLayers = [...inventory.layers]
-    .filter(layer => layer.status === 'active' && layer.date <= asOfDate)
+    .filter(layer => layer.status === 'active' && layer.date <= asOfDate && (!layer.expiryDate || layer.expiryDate >= asOfDate))
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 
   let remainingQuantity = quantity;
@@ -535,7 +568,7 @@ export function calculateSpecificIdentification(
 
   // Calculate total quantity and cost
   const totalQuantity = layers.reduce((sum, layer) => sum + layer.quantity, 0);
-  const totalCost = layers.reduce((sum, layer) => sum + layer.totalCost, 0);
+  const totalCost = layers.reduce((sum, layer) => sum + layer.quantity * layer.unitCost, 0);
   const unitCost = totalCost / totalQuantity;
 
   return {
@@ -646,6 +679,7 @@ export function updateInventoryLayers(
   item: InventoryItem,
   transaction: InventoryTransaction
 ): readonly InventoryLayer[] {
+  ensureAllowed('update_layers', transaction.date, { itemId: item.id });
   const updatedLayers: InventoryLayer[] = [...item.layers];
 
   switch (transaction.transactionType) {
@@ -744,7 +778,7 @@ export function validateInventoryLayers(layers: readonly InventoryLayer[]): Vali
       errors.push(`Layer ${layer.id}: Unit cost must be positive`);
     }
 
-    if (layer.totalCost !== layer.quantity * layer.unitCost) {
+    if (Math.abs(layer.totalCost - layer.quantity * layer.unitCost) > DEFAULT_TOLERANCE) {
       errors.push(`Layer ${layer.id}: Total cost does not match quantity × unit cost`);
     }
 
@@ -801,9 +835,11 @@ export function calculateCOGS(
     throw new Error('Sale quantity must be positive');
   }
 
-  if (sale.quantity > sale.item.totalQuantity) {
-    throw new Error('Sale quantity exceeds available inventory');
-  }
+  ensureAllowed('calculate_cogs', sale.saleDate, { itemId: sale.item.id });
+  const onHandAsOfSale = sale.item.layers
+    .filter(l => l.status === 'active' && l.date <= sale.saleDate && (!l.expiryDate || l.expiryDate >= sale.saleDate))
+    .reduce((s, l) => s + l.quantity, 0);
+  if (sale.quantity - onHandAsOfSale > EPS) throw new Error('Sale quantity exceeds available inventory as of sale date');
 
   // Calculate cost based on method
   let costingResult: CostingResult;
@@ -909,18 +945,18 @@ export function validateCOGSCalculation(cogs: COGSResult): ValidationResult {
 
   // Validate calculation
   const expectedTotal = cogs.quantity * cogs.unitCost;
-  if (Math.abs(cogs.totalCOGS - expectedTotal) > 0.01) {
+  if (Math.abs(cogs.totalCOGS - expectedTotal) > DEFAULT_TOLERANCE) {
     errors.push('COGS total does not match quantity × unit cost');
   }
 
   // Validate layers used
   const layersTotalQuantity = cogs.layersUsed.reduce((sum, layer) => sum + layer.quantity, 0);
-  if (Math.abs(layersTotalQuantity - cogs.quantity) > 0.01) {
+  if (Math.abs(layersTotalQuantity - cogs.quantity) > DEFAULT_TOLERANCE) {
     errors.push('Layers total quantity does not match COGS quantity');
   }
 
   const layersTotalCost = cogs.layersUsed.reduce((sum, layer) => sum + layer.totalCost, 0);
-  if (Math.abs(layersTotalCost - cogs.totalCOGS) > 0.01) {
+  if (Math.abs(layersTotalCost - cogs.totalCOGS) > DEFAULT_TOLERANCE) {
     errors.push('Layers total cost does not match COGS total');
   }
 
@@ -1004,6 +1040,7 @@ export function applyWriteDown(
   writeDown: WriteDownResult
 ): InventoryAdjustment {
   // Calculate unit write-down
+  if (item.totalQuantity <= 0) throw new Error('Cannot apply write-down: item has zero quantity');
   const unitWriteDown = writeDown.writeDownAmount / item.totalQuantity;
 
   return {
@@ -1056,12 +1093,12 @@ export function validateWriteDown(writeDown: WriteDownResult): ValidationResult 
 
   // Validate calculations
   const expectedWriteDownAmount = writeDown.currentValue - writeDown.marketValue;
-  if (Math.abs(writeDown.writeDownAmount - expectedWriteDownAmount) > 0.01) {
+  if (Math.abs(writeDown.writeDownAmount - expectedWriteDownAmount) > DEFAULT_TOLERANCE) {
     errors.push('Write-down amount calculation is incorrect');
   }
 
   const expectedPercentage = (writeDown.writeDownAmount / writeDown.currentValue) * 100;
-  if (Math.abs(writeDown.writeDownPercentage - expectedPercentage) > 0.01) {
+  if (Math.abs(writeDown.writeDownPercentage - expectedPercentage) > DEFAULT_TOLERANCE) {
     errors.push('Write-down percentage calculation is incorrect');
   }
 
@@ -1084,6 +1121,10 @@ export function validateWriteDown(writeDown: WriteDownResult): ValidationResult 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+export function roundTo(n: number, dp = 2): number {
+  const f = Math.pow(10, dp);
+  return Math.round((n + Number.EPSILON) * f) / f;
+}
 
 /**
  * Consume layers for issue transaction
@@ -1118,6 +1159,8 @@ function consumeLayersForIssue(
     if (remainingQuantity <= 0) break;
 
     const quantityToConsume = Math.min(remainingQuantity, layer.quantity);
+    // Skip expired layers defensively
+    if (layer.expiryDate && layer.expiryDate < transaction.date) continue;
     
     consumedLayers.push({
       ...layer,

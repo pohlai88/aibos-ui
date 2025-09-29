@@ -536,7 +536,7 @@ export class PerformanceProfiler {
   /**
    * Get metrics (alias for getStats for compatibility)
    */
-  getMetrics() {
+  getMetrics(): PerformanceMetrics {
     return this.getStats();
   }
 

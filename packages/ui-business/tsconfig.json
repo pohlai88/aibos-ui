@@ -1,11 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
+  "references": [
+    { "path": "../accounting" },
+    { "path": "../ui" },
+    { "path": "../utils" }
+  ],
   "compilerOptions": {
     "composite": true,
-    "outDir": "./dist",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true
+    "outDir": "dist",
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "disableSourceOfProjectReferenceRedirect": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src"],
+  "exclude": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "dist", "node_modules", ".next"]
 }

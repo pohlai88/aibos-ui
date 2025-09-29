@@ -8,10 +8,11 @@
  */
 
 import {
-  SupportedCurrency,
+  type SupportedCurrency,
+  DEFAULT_CURRENCY,
 } from './accounting-utilities';
 import { createValidationError } from './error-utilities';
-import { ValidationIssue, BusinessValidationResult } from './validation-utilities';
+import type { ValidationIssue, BusinessValidationResult } from './validation-utilities';
 import { isValidDate, differenceInDaysFns } from './date-utilities';
 
 // ============================================================================
@@ -103,7 +104,7 @@ export interface AgingBucketDefinition {
 }
 
 export interface BucketUpdates {
-  buckets: AgingBucket[];
+  buckets?: AgingBucket[];
   addBucket?: AgingBucket;
   removeBucket?: string;
   updateBucket?: AgingBucket;
@@ -195,46 +196,48 @@ export function calculateAging(
     );
   }
   
-  const bucketResults: AgingBucketResult[] = [];
-  let totalAmount = 0;
-  let totalOverdue = 0;
-  let totalDays = 0;
-  let transactionCount = 0;
-  
-  for (const bucket of buckets) {
-    const bucketTransactions = transactions.filter(transaction => {
-      const days = differenceInDaysFns(asOfDate, transaction.dueDate);
-      return days >= bucket.minDays && days <= bucket.maxDays;
+  // Filter to relevant transactions:
+  // - positive remaining balance
+  // - exclude fully paid/cancelled by default
+  const relevant = (transactions || []).filter(t =>
+    t && t.remainingAmount > 0 && t.status !== 'paid' && t.status !== 'cancelled'
+  );
+
+  // First pass: compute per-bucket transaction lists and amounts
+  const perBucket = buckets.map((bucket) => {
+    const txns = relevant.filter((t) => {
+      const daysPastDue = differenceInDaysFns(asOfDate, t.dueDate);
+      return daysPastDue >= bucket.minDays && daysPastDue <= bucket.maxDays;
     });
-    
-    const bucketAmount = bucketTransactions.reduce((sum, t) => sum + t.remainingAmount, 0);
-    const bucketPercentage = totalAmount > 0 ? (bucketAmount / totalAmount) * 100 : 0;
-    const bucketAverageDays = bucketTransactions.length > 0 
-      ? bucketTransactions.reduce((sum, t) => sum + differenceInDaysFns(asOfDate, t.dueDate), 0) / bucketTransactions.length
+    const amount = txns.reduce((sum, t) => sum + t.remainingAmount, 0);
+    const avgDays = txns.length > 0
+      ? txns.reduce((sum, t) => sum + differenceInDaysFns(asOfDate, t.dueDate), 0) / txns.length
       : 0;
-    
-    bucketResults.push({
-      bucket,
-      amount: bucketAmount,
-      percentage: bucketPercentage,
-      transactionCount: bucketTransactions.length,
-      averageDays: bucketAverageDays,
-    });
-    
-    totalAmount += bucketAmount;
-    totalDays += bucketTransactions.reduce((sum, t) => sum + differenceInDaysFns(asOfDate, t.dueDate), 0);
-    transactionCount += bucketTransactions.length;
-    
-    // Check if bucket represents overdue amounts
-    if (bucket.minDays > 0) {
-      totalOverdue += bucketAmount;
-    }
-  }
-  
+    return { bucket, txns, amount, avgDays };
+  });
+
+  // Totals (now accurate for percentage math)
+  const totalAmount = perBucket.reduce((s, b) => s + b.amount, 0);
+  const totalOverdue = perBucket
+    .filter(b => b.bucket.minDays > 0)
+    .reduce((s, b) => s + b.amount, 0);
+  const totalDays = perBucket.reduce(
+    (s, b) => s + (b.avgDays * b.txns.length), 0
+  );
+  const transactionCount = perBucket.reduce((s, b) => s + b.txns.length, 0);
   const averageDays = transactionCount > 0 ? totalDays / transactionCount : 0;
-  
+
+  // Second pass: build results with correct percentages
+  const bucketResults: AgingBucketResult[] = perBucket.map(({ bucket, txns, amount, avgDays }) => ({
+    bucket,
+    amount,
+    percentage: totalAmount > 0 ? (amount / totalAmount) * 100 : 0,
+    transactionCount: txns.length,
+    averageDays: avgDays,
+  }));
+
   return {
-    customer: transactions[0]?.customer || 'UNKNOWN',
+    customer: relevant[0]?.customer || transactions[0]?.customer || 'UNKNOWN',
     asOfDate,
     buckets: bucketResults,
     totalAmount,
@@ -478,7 +481,7 @@ export function updateCreditLimit(
   return {
     customer,
     limit: newLimit,
-    currency: 'USD', // Default currency
+    currency: DEFAULT_CURRENCY, // Use SSOT default currency
     effectiveDate,
     status: 'active',
     lastUpdated: new Date(),

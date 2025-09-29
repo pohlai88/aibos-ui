@@ -27,6 +27,12 @@ export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
  */
 export const DEFAULT_CURRENCY = 'MYR' as const;
 
+/**
+ * Optimized set for O(1) membership checks.
+ * Keep this the single truth derived from SUPPORTED_CURRENCIES.
+ */
+export const SUPPORTED_CURRENCIES_SET: ReadonlySet<SupportedCurrency> = new Set(SUPPORTED_CURRENCIES);
+
 // ============================================================================
 // CURRENCY DECIMALS
 // ============================================================================
@@ -47,6 +53,15 @@ export const CURRENCY_DECIMALS: Record<SupportedCurrency, number> = {
   'CNY': 2, // Chinese Yuan
 } as const;
 
+/**
+ * Derived helpers
+ */
+export const ZERO_DECIMAL_CURRENCIES: ReadonlySet<SupportedCurrency> = new Set(
+  Object.entries(CURRENCY_DECIMALS)
+    .filter(([, d]) => d === 0)
+    .map(([k]) => k as SupportedCurrency)
+);
+
 // ============================================================================
 // CURRENCY UTILITIES
 // ============================================================================
@@ -54,7 +69,7 @@ export const CURRENCY_DECIMALS: Record<SupportedCurrency, number> = {
 /**
  * Get decimal places for a currency
  */
-export function currencyDecimals(currency: string): number {
+export function currencyDecimals(currency: string | SupportedCurrency): number {
   return CURRENCY_DECIMALS[currency as SupportedCurrency] ?? 2; // Default to 2 decimals
 }
 
@@ -62,7 +77,7 @@ export function currencyDecimals(currency: string): number {
  * Check if currency is supported
  */
 export function isSupportedCurrency(currency: string): currency is SupportedCurrency {
-  return SUPPORTED_CURRENCIES.includes(currency as SupportedCurrency);
+  return SUPPORTED_CURRENCIES_SET.has(currency as SupportedCurrency);
 }
 
 /**
@@ -81,6 +96,23 @@ export function validateCurrency(currency: string): SupportedCurrency {
 export function normalizeCurrency(currency: string): SupportedCurrency | null {
   const normalized = currency.trim().toUpperCase();
   return isSupportedCurrency(normalized) ? normalized : null;
+}
+
+/**
+ * Is the currency zero-decimal?
+ */
+export function isZeroDecimalCurrency(currency: string | SupportedCurrency): boolean {
+  const c = typeof currency === 'string' ? normalizeCurrency(currency) : currency;
+  return c ? ZERO_DECIMAL_CURRENCIES.has(c) : false;
+}
+
+/**
+ * Minor unit factor: 10 ** decimals
+ */
+export function minorUnitFactor(currency: string | SupportedCurrency): number {
+  const decimals = currencyDecimals((typeof currency === 'string' ? (normalizeCurrency(currency) ?? (currency as SupportedCurrency)) : currency));
+  // Guard against pathological decimals (shouldn't happen with our SSOT)
+  return decimals <= 0 ? 1 : Math.pow(10, decimals);
 }
 
 // ============================================================================

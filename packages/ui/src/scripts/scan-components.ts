@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Component Scanner
+ * Component Scanner - Simplified Version
  *
  * Scans the codebase for components used in ERP pages and flags
  * unmapped components in the usage map.
@@ -10,18 +10,10 @@
 import {
   safeGet,
   safeSet,
+  safeRegExpFromUser,
   hasOwn,
-  safePath,
-  readFileSafe,
-  readDirectorySafe,
-  existsSafe,
-  EXTENSIONS,
-  ScanComponentsArgs,
-  parseArgs,
-  showHelp,
-} from '@aibos/utils';
-import { safeRegExpFromUser } from '@aibos/utils/security';
-import type fs from 'node:fs';
+} from '../utils/internal';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,15 +21,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
+interface CliOptions {
+  usageMapPath: string;
+  webRoot: string;
+  pkgName: string;
+  extensions: string[];
+  json: boolean;
+  failOnUnmapped: boolean;
+}
+
 interface UsageMap {
-  components?: Record<
-    string,
-    {
-      pages?: string[];
-      stories?: string[];
-      description?: string;
-    }
-  >;
+  components: Record<string, { pages: string[]; stories: string[]; tags: string[] }>;
 }
 
 interface ScanResult {
@@ -47,146 +41,107 @@ interface ScanResult {
   recommendations: string[];
 }
 
-type CliOptions = {
-  webRoot: string;
-  usageMapPath: string;
-  pkgName: string;
-  extensions: string[];
-  json: boolean;
-  failOnUnmapped: boolean;
-};
-
-// Reduce complexity via helpers & allowlists; prevent object injection
-const ALLOWED_EXT = new Set(['.tsx', '.ts']);
-
-function isAllowedExtension(f: string) {
-  return ALLOWED_EXT.has(path.extname(f));
-}
-
-// This function is now replaced by the shared utility
-
 function parseCli(): CliOptions {
-  try {
-    const args = parseArgs(ScanComponentsArgs);
-
-    if (args.help) {
-      showHelp(
-        'Component Scanner',
-        'Scans the codebase for components used in ERP pages and flags unmapped components',
-        [
-          'pnpm run scan-components -- --input src/components --verbose',
-          'pnpm run scan-components -- --input src --output report.json',
-        ],
-      );
-      process.exit(0);
-    }
-
-    // Use safe path resolution
-    const webRoot = safePath(PROJECT_ROOT, args.input || 'apps/web/src');
-    const usageMapPath = safePath(PROJECT_ROOT, 'packages/ui/docs/usage-map.json');
-    const packageName = '@aibos/ui';
-    const extensions = args.extensions || ['.ts', '.tsx'];
-    const json = !!args.output;
-    const failOnUnmapped = false; // Could be added to schema if needed
-
-    return { webRoot, usageMapPath, pkgName: packageName, extensions, json, failOnUnmapped };
-  } catch (error) {
-    console.error('❌ Failed to parse arguments:', error);
-    process.exit(1);
-  }
+  const args = process.argv.slice(2);
+  
+  return {
+    usageMapPath: 'docs/usage-map.json',
+    webRoot: 'apps/web',
+    pkgName: '@aibos/ui',
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    json: args.includes('--json'),
+    failOnUnmapped: false,
+  };
 }
-
-const DEFAULT_IGNORES = new Set([
-  'node_modules',
-  '.git',
-  '.next',
-  'dist',
-  'build',
-  '.storybook',
-  'storybook-static',
-  '.turbo',
-  '.cache',
-]);
 
 function scanDirectory(dirPath: string, extensions: string[] = ['.tsx', '.ts']): string[] {
   const files: string[] = [];
-  const entries = readDirectorySafe(PROJECT_ROOT, dirPath, {
-    withFileTypes: true,
-    recursive: true,
-  }) as fs.Dirent[];
-
-  for (const entry of entries) {
-    if (DEFAULT_IGNORES.has(entry.name)) continue;
-    const fullPath = path.join(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      files.push(...scanDirectory(fullPath, extensions));
-    } else if (entry.isFile() && isAllowedExtension(fullPath)) {
-      files.push(fullPath);
+  
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (['node_modules', '.git', '.next', 'dist', 'build'].includes(entry.name)) continue;
+      
+      const fullPath = path.join(dirPath, entry.name);
+      
+      if (entry.isDirectory()) {
+        files.push(...scanDirectory(fullPath, extensions));
+      } else if (entry.isFile() && extensions.includes(path.extname(fullPath))) {
+        files.push(fullPath);
+      }
     }
+  } catch (error) {
+    console.warn(`Warning: Could not scan directory ${dirPath}:`, error);
   }
-
+  
   return files;
 }
 
 function extractImports(filePath: string, packageName: string): string[] {
-  const content = readFileSafe(PROJECT_ROOT, filePath, {
-    allowedExtensions: [...EXTENSIONS.ALL_SOURCE],
-  });
   const imports: string[] = [];
-
-  // Handle ESM imports with optional deep subpaths & multiline named imports
-  // e.g. import { Button, Card as UICard } from '@scope/pkg';
-  //      import Button from '@scope/pkg/button';
-  const esmRegex = safeRegExpFromUser(
-    String.raw`import[\s\S]*?from\s+['"]${packageName.replace('/', String.raw`\/`)}(?:\/([^'"]+))?['"]`,
-    'g',
-  );
-  let match: RegExpExecArray | null;
-
-  while ((match = esmRegex.exec(content)) !== null) {
-    if (match[1]) {
-      const importPath = match[1];
-      const componentName = path.posix.basename(importPath);
-      imports.push(componentName);
-    } else {
-      // find the closest named import block preceding this "from"
-      const beforeFrom = content.slice(0, esmRegex.lastIndex);
-      const namedBlock = beforeFrom.match(/import\s+{([\s\S]*?)}\s+from\s+['"][^'"]+['"]\s*$/m);
-      if (namedBlock && namedBlock[1]) {
-        imports.push(
-          ...namedBlock[1]
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .map((s) => s.split(/\s+as\s+/i)[0]?.trim() || ''), // strip alias
-        );
-      } else {
-        // default import without subpath, we can't know component name reliably — skip
+  
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    // Handle ESM imports with optional deep subpaths
+    const esmRegex = safeRegExpFromUser(
+      String.raw`import[\s\S]*?from\s+['"]${packageName.replace('/', String.raw`\/`)}(?:\/([^'"]+))?['"]`,
+      'g',
+    );
+    
+    if (esmRegex) {
+      let match: RegExpExecArray | null;
+      while ((match = esmRegex.exec(content)) !== null) {
+        if (match[1]) {
+          const importPath = match[1];
+          const componentName = path.posix.basename(importPath);
+          imports.push(componentName);
+        } else {
+          // Handle named imports
+          const beforeFrom = content.slice(0, esmRegex.lastIndex);
+          const namedBlock = beforeFrom.match(/import\s+{([\s\S]*?)}\s+from\s+['"][^'"]+['"]\s*$/m);
+          if (namedBlock && namedBlock[1]) {
+            imports.push(
+              ...namedBlock[1]
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((s) => s.split(/\s+as\s+/i)[0]?.trim() || ''),
+            );
+          }
+        }
       }
     }
+    
+    // Handle CommonJS requires
+    const cjsRegex = safeRegExpFromUser(
+      String.raw`require\(\s*['"]${packageName.replace('/', String.raw`\/`)}\/([^'"]+)['"]\s*\)`,
+      'g',
+    );
+    
+    if (cjsRegex) {
+      let match: RegExpExecArray | null;
+      while ((match = cjsRegex.exec(content)) !== null) {
+        const componentName = path.posix.basename(match[1]!);
+        imports.push(componentName);
+      }
+    }
+  } catch (error) {
+    console.warn(`Warning: Could not read file ${filePath}:`, error);
   }
-
-  // Handle CommonJS requires with subpaths: const Button = require('@aibos/ui/button')
-  const cjsRegex = safeRegExpFromUser(
-    String.raw`require\(\s*['"]${packageName.replace('/', String.raw`\/`)}\/([^'"]+)['"]\s*\)`,
-    'g',
-  );
-  while ((match = cjsRegex.exec(content)) !== null) {
-    const componentName = path.posix.basename(match[1]!);
-    imports.push(componentName);
-  }
-
+  
   return imports;
 }
 
 function loadUsageMap(usageMapPath: string): UsageMap {
-  if (!existsSafe(PROJECT_ROOT, usageMapPath)) {
+  const fullPath = path.join(PROJECT_ROOT, usageMapPath);
+  
+  if (!fs.existsSync(fullPath)) {
     throw new Error(`Usage map not found at ${usageMapPath}`);
   }
-  const content = readFileSafe(PROJECT_ROOT, usageMapPath, {
-    allowedExtensions: [...EXTENSIONS.JSON],
-  });
+  
+  const content = fs.readFileSync(fullPath, 'utf8');
   return JSON.parse(content) as UsageMap;
 }
 
@@ -194,7 +149,7 @@ function scanComponents(options: CliOptions): ScanResult {
   const usageMap = loadUsageMap(options.usageMapPath);
   const mappedComponents = new Set(Object.keys(usageMap.components || {}));
 
-  const webAppPath = options.webRoot;
+  const webAppPath = path.join(PROJECT_ROOT, options.webRoot);
   const erpFiles = scanDirectory(webAppPath, options.extensions);
 
   const importPatterns: Record<string, string[]> = {};
@@ -210,7 +165,7 @@ function scanComponents(options: CliOptions): ScanResult {
       if (!hasOwn(importPatterns, component)) {
         safeSet(importPatterns, component, []);
       }
-      const patterns = safeGet(importPatterns, component, Object.keys(importPatterns)) as string[];
+      const patterns = safeGet(importPatterns, component) as string[];
       if (patterns) {
         patterns.push(relativePath);
       }
@@ -261,6 +216,7 @@ function generateReport(result: ScanResult, asJson = false): void {
     console.log(JSON.stringify(result, undefined, 2));
     return;
   }
+  
   console.log('🔍 Component Usage Scanner Report');
   console.log('=================================');
 
@@ -268,12 +224,8 @@ function generateReport(result: ScanResult, asJson = false): void {
     console.log('\n🚨 Unmapped Components (Used but not in usage-map.json):');
     result.unmappedComponents.forEach((component) => {
       console.log(`  - ${component}`);
-      const patterns = safeGet(
-        result.importPatterns,
-        component,
-        Object.keys(result.importPatterns),
-      );
-      if (patterns) {
+      const patterns = safeGet(result.importPatterns, component);
+      if (patterns && Array.isArray(patterns)) {
         console.log(`    Used in: ${patterns.join(', ')}`);
       }
     });
@@ -318,9 +270,9 @@ function main(): void {
   }
 }
 
-// Run scan if this script is executed directly
-if (import.meta.url.includes('scan-components.ts')) {
+// Run if this script is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-export { scanComponents, type ScanResult };
+export { scanComponents, loadUsageMap, type UsageMap, type ScanResult };

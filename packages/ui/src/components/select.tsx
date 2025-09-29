@@ -11,7 +11,7 @@ import {
   SELECT_ITEM_ICON,
   PADDING_SMALL,
 } from '../constants/class-names';
-import { narrowToElements } from '@aibos/utils/type-guards';
+import { narrowToElements } from '../utils/internal';
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from '@icons/internal';
 import {
   Select as SelectPrimitive,
@@ -44,13 +44,13 @@ const Select = React.forwardRef<
     const elements = narrowToElements(children);
 
     return elements
-      .flatMap((child) =>
+      .flatMap((child: React.ReactElement) =>
         child.type === React.Fragment
           ? narrowToElements((child.props as { children?: React.ReactNode })?.children)
           : [child],
       )
       .filter(
-        (element) =>
+        (element: React.ReactElement) =>
           element && element.props && (element.props as { value?: unknown }).value != undefined,
       );
   }, [children]); // memo: stop rebuilding array each render
@@ -73,7 +73,7 @@ const Select = React.forwardRef<
             {placeholder}
           </option>
         ) : undefined}
-        {items.map((element, index: number) => (
+        {items.map((element: React.ReactElement, index: number) => (
           <option
             key={element.key ?? index}
             value={String((element.props as { value?: unknown }).value)}
