@@ -85,7 +85,7 @@ const sliderThumbVariants = cva(
 );
 
 export interface SliderProperties
-  extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>,
+  extends Omit<React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>, 'orientation'>,
     VariantProps<typeof sliderVariants> {
   /**
    * Whether the slider is disabled
@@ -128,7 +128,7 @@ export interface SliderProperties
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   SliderProperties
->(({ className, orientation, size, ...props }, reference) => {
+>(({ className, orientation, size, disabled, readOnly, min, max, step, defaultValue, value, onValueChange, onValueCommit, inverted, asChild, name, minStepsBetweenThumbs, ...props }, reference) => {
   if (isPerfMode()) {
     // Performance mode: minimal DOM, static classes
     return (

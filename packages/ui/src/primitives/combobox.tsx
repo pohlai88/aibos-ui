@@ -280,17 +280,25 @@ const Combobox = React.forwardRef<
         </div>
         <div className="flex items-center gap-1">
           {showClearButton && selectedValue && (
-            <button
-              type="button"
+            <div
               onClick={(e) => {
                 e.stopPropagation();
                 handleClear();
               }}
-              className="text-semantic-muted-foreground hover:text-semantic-foreground h-4 w-4"
+              className="text-semantic-muted-foreground hover:text-semantic-foreground h-4 w-4 cursor-pointer"
+              role="button"
+              tabIndex={0}
               aria-label="Clear"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClear();
+                }
+              }}
             >
               <X className="h-3 w-3" />
-            </button>
+            </div>
           )}
           <ChevronDown className={cn(
             "text-semantic-muted-foreground h-4 w-4 transition-transform",

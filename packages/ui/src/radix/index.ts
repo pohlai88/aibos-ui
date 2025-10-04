@@ -43,20 +43,38 @@ export { RadixLabel, radixLabelVariants, type RadixLabelProperties } from './lab
 // Slot export (already exists, re-export for completeness)
 export { Slot } from './slot';
 
-// Slider exports
-export { Slider, SliderTrack, SliderRange, SliderThumb } from './slider';
+// Slider exports (Radix primitives)
+export { 
+  Slider as SliderPrimitive, 
+  SliderTrack as SliderTrackPrimitive, 
+  SliderRange as SliderRangePrimitive, 
+  SliderThumb as SliderThumbPrimitive 
+} from './slider';
 
-// Toggle exports
-export { Toggle } from './toggle';
+// Toggle exports (Radix primitives)
+export { Toggle as TogglePrimitive } from './toggle';
 
-// Toggle Group exports
-export { ToggleGroup, ToggleGroupItem } from './toggle-group';
+// Toggle Group exports (Radix primitives)
+export { 
+  ToggleGroup as ToggleGroupPrimitive, 
+  ToggleGroupItem as ToggleGroupItemPrimitive 
+} from './toggle-group';
 
-// Calendar exports
-export { Calendar, CalendarDay } from './calendar';
+// Calendar exports (Radix primitives)
+export { 
+  Calendar as CalendarPrimitive, 
+  CalendarDay as CalendarDayPrimitive 
+} from './calendar';
 
-// Avatar exports
-export { Avatar, AvatarImage, AvatarFallback } from './avatar';
+// Avatar exports (Radix primitives)
+export { 
+  Avatar as AvatarPrimitive, 
+  AvatarImage as AvatarImagePrimitive, 
+  AvatarFallback as AvatarFallbackPrimitive 
+} from './avatar';
 
-// Combobox exports
-export { Combobox, ComboboxItem } from './combobox';
+// Combobox exports (Radix primitives)
+export { 
+  Combobox as ComboboxPrimitive, 
+  ComboboxItem as ComboboxItemPrimitive 
+} from './combobox';
