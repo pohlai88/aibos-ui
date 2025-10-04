@@ -58,13 +58,13 @@ npx tsc --version
 
 ```bash
 # Install AIBOS UI
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 # Or with npm
-npm install @aibos/ui
+npm install aibos-ui
 
 # Or with yarn
-yarn add @aibos/ui
+yarn add aibos-ui
 ```
 
 ### **CSS Setup**
@@ -73,8 +73,8 @@ Import the required CSS files in your main CSS file:
 
 ```css
 /* main.css */
-@import '@aibos/ui/styles/globals.css';
-@import '@aibos/ui/styles/utilities.css';
+@import 'aibos-ui/styles/globals.css';
+@import 'aibos-ui/styles/utilities.css';
 ```
 
 ### **TypeScript Setup**
@@ -101,18 +101,18 @@ The package includes full TypeScript support with comprehensive type definitions
 
 ```tsx
 // ✅ Recommended: Tree-shakable imports
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 // ✅ Also supported: Individual component imports
-import { Button } from '@aibos/ui/primitives/button';
-import { Card } from '@aibos/ui/components/card';
+import { Button } from 'aibos-ui/primitives/button';
+import { Card } from 'aibos-ui/components/card';
 ```
 
 ### **First Component**
 
 ```tsx
 import React from 'react';
-import { Button, Card, CardHeader, CardTitle, CardContent } from '@aibos/ui';
+import { Button, Card, CardHeader, CardTitle, CardContent } from 'aibos-ui';
 
 function WelcomeCard() {
   return (
@@ -139,7 +139,7 @@ export default WelcomeCard;
 
 ```tsx
 import React from 'react';
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, Form } from '@aibos/ui';
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, Form } from 'aibos-ui';
 
 function ContactForm() {
   const handleSubmit = (data: any) => {
@@ -194,7 +194,7 @@ Primitives are atomic UI components that form the foundation of the design syste
 Interactive elements for user actions.
 
 ```tsx
-import { Button } from '@aibos/ui';
+import { Button } from 'aibos-ui';
 
 // Basic usage
 <Button>Click me</Button>
@@ -233,7 +233,7 @@ import { Button } from '@aibos/ui';
 Text input fields with validation support.
 
 ```tsx
-import { Input } from '@aibos/ui';
+import { Input } from 'aibos-ui';
 
 // Basic usage
 <Input placeholder="Enter text" />
@@ -270,7 +270,7 @@ import { Input } from '@aibos/ui';
 Binary choice controls.
 
 ```tsx
-import { Checkbox } from '@aibos/ui';
+import { Checkbox } from 'aibos-ui';
 
 // Basic usage
 <Checkbox>Accept terms</Checkbox>
@@ -298,7 +298,7 @@ import { Checkbox } from '@aibos/ui';
 Single choice from multiple options.
 
 ```tsx
-import { RadioGroup, Radio } from '@aibos/ui';
+import { RadioGroup, Radio } from 'aibos-ui';
 
 // Basic usage
 <RadioGroup value={value} onChange={setValue}>
@@ -325,7 +325,7 @@ import { RadioGroup, Radio } from '@aibos/ui';
 Toggle switches for binary states.
 
 ```tsx
-import { Switch } from '@aibos/ui';
+import { Switch } from 'aibos-ui';
 
 // Basic usage
 <Switch checked={isEnabled} onChange={setIsEnabled} />
@@ -352,7 +352,7 @@ import { Switch } from '@aibos/ui';
 Status indicators and labels.
 
 ```tsx
-import { Badge } from '@aibos/ui';
+import { Badge } from 'aibos-ui';
 
 // Variants
 <Badge variant="default">Default</Badge>
@@ -387,7 +387,7 @@ Complex UI elements built from primitives.
 Content containers with header, content, and footer sections.
 
 ```tsx
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@aibos/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from 'aibos-ui';
 
 // Basic card
 <Card>
@@ -417,7 +417,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 Overlay dialogs for important interactions.
 
 ```tsx
-import { Modal, ModalTrigger, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '@aibos/ui';
+import { Modal, ModalTrigger, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from 'aibos-ui';
 
 // Basic modal
 <Modal>
@@ -456,7 +456,7 @@ import { Modal, ModalTrigger, ModalContent, ModalHeader, ModalTitle, ModalDescri
 Data display with sorting, filtering, and pagination.
 
 ```tsx
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@aibos/ui';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from 'aibos-ui';
 
 // Basic table
 <Table>
@@ -515,7 +515,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 Form handling with validation using React Hook Form and Zod.
 
 ```tsx
-import { Form, FormField, FormLabel, FormControl, FormMessage, FormDescription } from '@aibos/ui';
+import { Form, FormField, FormLabel, FormControl, FormMessage, FormDescription } from 'aibos-ui';
 import { z } from 'zod';
 
 // Form schema
@@ -589,7 +589,7 @@ Custom React hooks for enhanced functionality.
 Theme management with light/dark mode support.
 
 ```tsx
-import { useTheme } from '@aibos/ui';
+import { useTheme } from 'aibos-ui';
 
 function ThemeToggle() {
   const { theme, setTheme, toggleTheme } = useTheme();
@@ -612,7 +612,7 @@ function ThemeToggle() {
 Responsive design with media query support.
 
 ```tsx
-import { useMediaQuery } from '@aibos/ui';
+import { useMediaQuery } from 'aibos-ui';
 
 function ResponsiveComponent() {
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -640,7 +640,7 @@ function ResponsiveComponent() {
 Toast notification management.
 
 ```tsx
-import { useToast } from '@aibos/ui';
+import { useToast } from 'aibos-ui';
 
 function NotificationExample() {
   const { toast } = useToast();
@@ -678,7 +678,7 @@ function NotificationExample() {
 Data correlation and relationship management.
 
 ```tsx
-import { useCorrelation } from '@aibos/ui';
+import { useCorrelation } from 'aibos-ui';
 
 function DataCorrelation() {
   const { correlate, getCorrelations, clearCorrelations } = useCorrelation();
@@ -714,7 +714,7 @@ Helper functions for enhanced development experience.
 Class name utility for conditional styling.
 
 ```tsx
-import { cn } from '@aibos/ui';
+import { cn } from 'aibos-ui';
 
 function ConditionalStyling() {
   const isActive = true;
@@ -746,7 +746,7 @@ function ConditionalStyling() {
 Component variant utility using Class Variance Authority.
 
 ```tsx
-import { variants } from '@aibos/ui';
+import { variants } from 'aibos-ui';
 
 const buttonVariants = variants({
   base: 'inline-flex items-center justify-center rounded-md',
@@ -791,7 +791,7 @@ function CustomButton({ variant, size, className, ...props }) {
 Polymorphic component utility for flexible element types.
 
 ```tsx
-import { polymorphic } from '@aibos/ui';
+import { polymorphic } from 'aibos-ui';
 
 const PolymorphicButton = polymorphic('button', {
   base: 'inline-flex items-center justify-center rounded-md',
@@ -826,7 +826,7 @@ Performance monitoring and optimization utilities.
 Real-time performance monitoring for components.
 
 ```tsx
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -850,7 +850,7 @@ import {
   measureRenderTime, 
   measureMemoryUsage, 
   getPerformanceMetrics 
-} from '@aibos/ui';
+} from 'aibos-ui';
 
 function PerformanceExample() {
   const handleClick = () => {
@@ -981,7 +981,7 @@ import { Button, Card, TextField } from '@mui/material';
 </Card>
 
 // After (AIBOS UI)
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 <Button variant="primary">
   AIBOS Button
@@ -1009,7 +1009,7 @@ import { Button, Box, Input } from '@chakra-ui/react';
 </Box>
 
 // After (AIBOS UI)
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -1035,7 +1035,7 @@ import { Button, Card, Input } from 'antd';
 </Card>
 
 // After (AIBOS UI)
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -1081,14 +1081,14 @@ import { Button, Card, Input } from '@aibos/ui';
 
 ```tsx
 // ✅ Good - Tree-shakable imports
-import { Button } from '@aibos/ui/primitives/button';
-import { Card } from '@aibos/ui/components/card';
+import { Button } from 'aibos-ui/primitives/button';
+import { Card } from 'aibos-ui/components/card';
 
 // ✅ Also good - Main import (still optimized)
-import { Button, Card } from '@aibos/ui';
+import { Button, Card } from 'aibos-ui';
 
 // ❌ Bad - Source imports
-import { Button } from '@aibos/ui/src/primitives/button';
+import { Button } from 'aibos-ui/src/primitives/button';
 ```
 
 ### **4. Handle Loading States**
@@ -1142,14 +1142,14 @@ import { Button } from '@aibos/ui/src/primitives/button';
 
 ```tsx
 // ✅ Optimal - Individual imports
-import { Button } from '@aibos/ui/primitives/button';
-import { Card } from '@aibos/ui/components/card';
+import { Button } from 'aibos-ui/primitives/button';
+import { Card } from 'aibos-ui/components/card';
 
 // ✅ Good - Main import (still tree-shakable)
-import { Button, Card } from '@aibos/ui';
+import { Button, Card } from 'aibos-ui';
 
 // ❌ Avoid - Importing entire library
-import * as UI from '@aibos/ui';
+import * as UI from 'aibos-ui';
 ```
 
 ### **Dynamic Imports**
@@ -1158,8 +1158,8 @@ import * as UI from '@aibos/ui';
 // ✅ Good - Dynamic imports for heavy components
 import { lazy, Suspense } from 'react';
 
-const DataGrid = lazy(() => import('@aibos/ui/components/data-grid'));
-const DataTable = lazy(() => import('@aibos/ui/components/data-table'));
+const DataGrid = lazy(() => import('aibos-ui/components/data-grid'));
+const DataTable = lazy(() => import('aibos-ui/components/data-table'));
 
 function App() {
   return (
@@ -1174,7 +1174,7 @@ function App() {
 
 ```tsx
 // ✅ Good - Performance monitoring
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -1332,7 +1332,7 @@ pnpm run prepublishOnly
 ### **Performance Monitoring**
 
 ```tsx
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -1351,7 +1351,7 @@ function App() {
 ### **Error Tracking**
 
 ```tsx
-import { ErrorBoundary } from '@aibos/ui';
+import { ErrorBoundary } from 'aibos-ui';
 
 function App() {
   return (
@@ -1371,7 +1371,7 @@ function App() {
 
 ```tsx
 // Component usage tracking
-import { trackComponentUsage } from '@aibos/ui';
+import { trackComponentUsage } from 'aibos-ui';
 
 function MyComponent() {
   useEffect(() => {
@@ -1471,19 +1471,19 @@ function MyComponent() {
 
 ```tsx
 // Primitives
-import { Button, Input, Checkbox, Switch, Badge } from '@aibos/ui';
+import { Button, Input, Checkbox, Switch, Badge } from 'aibos-ui';
 
 // Components
-import { Card, Modal, Table, Form, Navigation } from '@aibos/ui';
+import { Card, Modal, Table, Form, Navigation } from 'aibos-ui';
 
 // Hooks
-import { useTheme, useMediaQuery, useToast } from '@aibos/ui';
+import { useTheme, useMediaQuery, useToast } from 'aibos-ui';
 
 // Utilities
-import { cn, variants, polymorphic } from '@aibos/ui';
+import { cn, variants, polymorphic } from 'aibos-ui';
 
 // Performance
-import { PerformanceMonitor, measureRenderTime } from '@aibos/ui';
+import { PerformanceMonitor, measureRenderTime } from 'aibos-ui';
 ```
 
 ---

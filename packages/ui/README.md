@@ -1,17 +1,17 @@
-# @aibos/ui
+# aibos-ui
 
 Enterprise-grade React component library built with TypeScript, Tailwind CSS, and accessibility-first principles.
 
 ## Installation
 
 ```bash
-pnpm add @aibos/ui
+pnpm add aibos-ui
 ```
 
 ## Usage
 
 ```tsx
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 function App() {
   return (

@@ -66,7 +66,7 @@ import { Button } from '@mui/material';
 </Button>
 
 // After (AIBOS UI)
-import { Button } from '@aibos/ui';
+import { Button } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -110,7 +110,7 @@ function MaterialForm() {
 }
 
 // After (AIBOS UI)
-import { Input, Button, Card, CardContent, Form } from '@aibos/ui';
+import { Input, Button, Card, CardContent, Form } from 'aibos-ui';
 
 function AIBOSForm() {
   return (
@@ -158,7 +158,7 @@ function MaterialTable() {
 }
 
 // After (AIBOS UI)
-import { Table } from '@aibos/ui';
+import { Table } from 'aibos-ui';
 
 function AIBOSTable() {
   return (
@@ -258,7 +258,7 @@ function ChakraLayout() {
 }
 
 // After (AIBOS UI)
-import { Card, CardContent } from '@aibos/ui';
+import { Card, CardContent } from 'aibos-ui';
 
 function AIBOSLayout() {
   return (
@@ -315,7 +315,7 @@ import {
   FormMessage, 
   Input, 
   Button 
-} from '@aibos/ui';
+} from 'aibos-ui';
 
 function AIBOSForm() {
   return (
@@ -383,7 +383,7 @@ function AntForm() {
 }
 
 // After (AIBOS UI)
-import { Button, Input, Card, CardHeader, CardTitle, CardContent } from '@aibos/ui';
+import { Button, Input, Card, CardHeader, CardTitle, CardContent } from 'aibos-ui';
 
 function AIBOSForm() {
   return (
@@ -438,7 +438,7 @@ function AntTable() {
 }
 
 // After (AIBOS UI)
-import { Table, Button } from '@aibos/ui';
+import { Table, Button } from 'aibos-ui';
 
 const columns = [
   {
@@ -521,7 +521,7 @@ function BootstrapForm() {
 }
 
 // After (AIBOS UI)
-import { Form, FormField, FormLabel, Input, Button, Card, CardContent } from '@aibos/ui';
+import { Form, FormField, FormLabel, Input, Button, Card, CardContent } from 'aibos-ui';
 
 function AIBOSForm() {
   return (
@@ -612,7 +612,7 @@ function SemanticForm() {
 }
 
 // After (AIBOS UI)
-import { Form, FormField, FormLabel, Input, Button, Card, CardContent } from '@aibos/ui';
+import { Form, FormField, FormLabel, Input, Button, Card, CardContent } from 'aibos-ui';
 
 function AIBOSForm() {
   return (
@@ -665,10 +665,10 @@ Migrate components one at a time while maintaining functionality:
 
 ```tsx
 // Step 1: Install AIBOS UI alongside existing library
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 // Step 2: Create wrapper components
-import { Button as AIBOSButton } from '@aibos/ui';
+import { Button as AIBOSButton } from 'aibos-ui';
 import { Button as MUIButton } from '@mui/material';
 
 // Step 3: Gradually replace components
@@ -709,7 +709,7 @@ import {
   Input, 
   Card, 
   CardContent 
-} from '@aibos/ui';
+} from 'aibos-ui';
 
 // No theme provider needed - uses CSS custom properties
 ```
@@ -757,12 +757,12 @@ function UnifiedButton({ variant, children, onClick }: UnifiedButtonProps) {
 1. **Setup Phase**
    ```bash
    # Install AIBOS UI
-   pnpm add @aibos/ui
+   pnpm add aibos-ui
    
    # Install CSS
    # Add to main.css
-   @import '@aibos/ui/styles/globals.css';
-   @import '@aibos/ui/styles/utilities.css';
+@import 'aibos-ui/styles/globals.css';
+@import 'aibos-ui/styles/utilities.css';
    ```
 
 2. **Component Mapping**
@@ -815,7 +815,7 @@ function UnifiedButton({ variant, children, onClick }: UnifiedButtonProps) {
 // Test both old and new components during migration
 import { render, screen } from '@testing-library/react';
 import { Button as OldButton } from '@mui/material';
-import { Button as NewButton } from '@aibos/ui';
+import { Button as NewButton } from 'aibos-ui';
 
 describe('Button Migration', () => {
   it('should render old button correctly', () => {
@@ -844,7 +844,7 @@ describe('Button Migration', () => {
 ```tsx
 // Use visual regression testing to ensure UI consistency
 import { render } from '@testing-library/react';
-import { Button } from '@aibos/ui';
+import { Button } from 'aibos-ui';
 
 describe('Visual Regression', () => {
   it('should match button snapshot', () => {
@@ -860,7 +860,7 @@ describe('Visual Regression', () => {
 // Test accessibility compliance
 import { render } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
-import { Button } from '@aibos/ui';
+import { Button } from 'aibos-ui';
 
 expect.extend(toHaveNoViolations);
 
@@ -893,7 +893,7 @@ pnpm run analyze
 
 ```tsx
 // Monitor performance during migration
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -909,14 +909,14 @@ function App() {
 ```tsx
 // Optimize imports for better tree shaking
 // ✅ Good - Individual imports
-import { Button } from '@aibos/ui/primitives/button';
-import { Input } from '@aibos/ui/primitives/input';
+import { Button } from 'aibos-ui/primitives/button';
+import { Input } from 'aibos-ui/primitives/input';
 
 // ✅ Also good - Main import (still tree-shakable)
-import { Button, Input } from '@aibos/ui';
+import { Button, Input } from 'aibos-ui';
 
 // ❌ Bad - Importing entire library
-import * as UI from '@aibos/ui';
+import * as UI from 'aibos-ui';
 ```
 
 ---
@@ -1037,11 +1037,11 @@ import * as UI from '@aibos/ui';
 
 ```bash
 # 1. Install AIBOS UI
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 # 2. Add CSS imports
-echo '@import "@aibos/ui/styles/globals.css";' >> src/main.css
-echo '@import "@aibos/ui/styles/utilities.css";' >> src/main.css
+echo '@import "aibos-ui/styles/globals.css";' >> src/main.css
+echo '@import "aibos-ui/styles/utilities.css";' >> src/main.css
 
 # 3. Start replacing components
 # Replace Button first, then Input, then others

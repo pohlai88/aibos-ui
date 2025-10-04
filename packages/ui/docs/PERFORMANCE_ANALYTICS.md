@@ -58,16 +58,16 @@ pnpm run analyze
 
 ```tsx
 // ✅ Optimal - Individual imports (best tree shaking)
-import { Button } from '@aibos/ui/primitives/button';
-import { Input } from '@aibos/ui/primitives/input';
+import { Button } from 'aibos-ui/primitives/button';
+import { Input } from 'aibos-ui/primitives/input';
 // Bundle impact: ~2KB
 
 // ✅ Good - Main import (still tree-shakable)
-import { Button, Input } from '@aibos/ui';
+import { Button, Input } from 'aibos-ui';
 // Bundle impact: ~4KB
 
 // ❌ Avoid - Importing entire library
-import * as UI from '@aibos/ui';
+import * as UI from 'aibos-ui';
 // Bundle impact: ~30KB
 ```
 
@@ -77,9 +77,9 @@ import * as UI from '@aibos/ui';
 // Heavy components loaded on-demand
 import { lazy, Suspense } from 'react';
 
-const DataGrid = lazy(() => import('@aibos/ui/components/data-grid'));
-const DataTable = lazy(() => import('@aibos/ui/components/data-table'));
-const CommandPalette = lazy(() => import('@aibos/ui/components/command-palette'));
+const DataGrid = lazy(() => import('aibos-ui/components/data-grid'));
+const DataTable = lazy(() => import('aibos-ui/components/data-table'));
+const CommandPalette = lazy(() => import('aibos-ui/components/command-palette'));
 
 function App() {
   return (
@@ -121,7 +121,7 @@ const performanceTargets = {
 ### **Performance Monitoring**
 
 ```tsx
-import { PerformanceMonitor, measureRenderTime } from '@aibos/ui';
+import { PerformanceMonitor, measureRenderTime } from 'aibos-ui';
 
 // Automatic performance monitoring
 function App() {
@@ -162,7 +162,7 @@ function ExpensiveComponent() {
 ```tsx
 // Button performance test
 import { render } from '@testing-library/react';
-import { measureRenderTime } from '@aibos/ui';
+import { measureRenderTime } from 'aibos-ui';
 
 describe('Button Performance', () => {
   it('should render within performance budget', () => {
@@ -233,7 +233,7 @@ describe('Performance Regression', () => {
 ### **Memory Monitoring**
 
 ```tsx
-import { measureMemoryUsage, getMemoryInfo } from '@aibos/ui';
+import { measureMemoryUsage, getMemoryInfo } from 'aibos-ui';
 
 function MemoryMonitor() {
   const [memoryInfo, setMemoryInfo] = useState(null);
@@ -262,7 +262,7 @@ function MemoryMonitor() {
 
 ```tsx
 // Memory leak detection utility
-import { detectMemoryLeaks } from '@aibos/ui';
+import { detectMemoryLeaks } from 'aibos-ui';
 
 function ComponentWithPotentialLeak() {
   useEffect(() => {
@@ -300,7 +300,7 @@ describe('Memory Leak Detection', () => {
 ### **Web Vitals Integration**
 
 ```tsx
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -331,7 +331,7 @@ function App() {
 
 ```tsx
 // Custom performance metrics
-import { trackPerformanceMetric } from '@aibos/ui';
+import { trackPerformanceMetric } from 'aibos-ui';
 
 function DataProcessingComponent() {
   const processData = async (data: any[]) => {
@@ -364,7 +364,7 @@ function DataProcessingComponent() {
 ### **Error Boundary Integration**
 
 ```tsx
-import { ErrorBoundary } from '@aibos/ui';
+import { ErrorBoundary } from 'aibos-ui';
 
 function App() {
   return (
@@ -397,7 +397,7 @@ function App() {
 
 ```tsx
 // Track component-specific errors
-import { trackComponentError } from '@aibos/ui';
+import { trackComponentError } from 'aibos-ui';
 
 function RiskyComponent() {
   const handleRiskyOperation = async () => {
@@ -425,7 +425,7 @@ function RiskyComponent() {
 ### **Component Usage Tracking**
 
 ```tsx
-import { trackComponentUsage } from '@aibos/ui';
+import { trackComponentUsage } from 'aibos-ui';
 
 function TrackedButton() {
   useEffect(() => {
@@ -445,7 +445,7 @@ function TrackedButton() {
 
 ```tsx
 // Track user interactions
-import { trackUserInteraction } from '@aibos/ui';
+import { trackUserInteraction } from 'aibos-ui';
 
 function InteractiveComponent() {
   const handleClick = () => {
@@ -465,7 +465,7 @@ function InteractiveComponent() {
 
 ```tsx
 // Track feature usage
-import { trackFeatureUsage } from '@aibos/ui';
+import { trackFeatureUsage } from 'aibos-ui';
 
 function FeatureComponent() {
   const handleFeatureUse = () => {
@@ -493,7 +493,7 @@ function FeatureComponent() {
 
 ```tsx
 // Real-time metrics dashboard
-import { usePerformanceMetrics } from '@aibos/ui';
+import { usePerformanceMetrics } from 'aibos-ui';
 
 function MetricsDashboard() {
   const metrics = usePerformanceMetrics();
@@ -526,7 +526,7 @@ function MetricsDashboard() {
 
 ```tsx
 // Performance alert system
-import { usePerformanceAlerts } from '@aibos/ui';
+import { usePerformanceAlerts } from 'aibos-ui';
 
 function PerformanceAlerts() {
   const alerts = usePerformanceAlerts();
@@ -554,7 +554,7 @@ function PerformanceAlerts() {
 
 ```tsx
 // Track user journey through the app
-import { trackUserJourney } from '@aibos/ui';
+import { trackUserJourney } from 'aibos-ui';
 
 function UserJourneyTracker() {
   useEffect(() => {
@@ -585,7 +585,7 @@ function UserJourneyTracker() {
 
 ```tsx
 // Track conversion events
-import { trackConversion } from '@aibos/ui';
+import { trackConversion } from 'aibos-ui';
 
 function ConversionTracker() {
   const handleSignUp = () => {
@@ -621,7 +621,7 @@ function ConversionTracker() {
 
 ```tsx
 // Track component adoption
-import { trackComponentAdoption } from '@aibos/ui';
+import { trackComponentAdoption } from 'aibos-ui';
 
 function ComponentAdoptionTracker() {
   useEffect(() => {
@@ -641,7 +641,7 @@ function ComponentAdoptionTracker() {
 
 ```tsx
 // Analyze performance impact of features
-import { analyzePerformanceImpact } from '@aibos/ui';
+import { analyzePerformanceImpact } from 'aibos-ui';
 
 function PerformanceImpactAnalyzer() {
   const analyzeFeature = (feature: string) => {
@@ -671,7 +671,7 @@ function PerformanceImpactAnalyzer() {
 
 ```tsx
 // Production performance monitoring
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function ProductionApp() {
   return (
@@ -721,7 +721,7 @@ function ProductionApp() {
 
 ```tsx
 // Real-time analytics dashboard
-import { useAnalytics } from '@aibos/ui';
+import { useAnalytics } from 'aibos-ui';
 
 function AnalyticsDashboard() {
   const analytics = useAnalytics();
@@ -794,7 +794,7 @@ pnpm run build:ci        # CI build with size checks
 ```tsx
 // Runtime optimization techniques
 import { memo, useMemo, useCallback } from 'react';
-import { Button } from '@aibos/ui';
+import { Button } from 'aibos-ui';
 
 // Memoize expensive components
 const ExpensiveComponent = memo(({ data }) => {
@@ -851,13 +851,13 @@ Overall: 98/100 (Industry Leading)
 
 ```bash
 # Install performance monitoring
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 # Setup performance monitoring
 ```
 
 ```tsx
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -872,7 +872,7 @@ function App() {
 
 ```tsx
 // Setup analytics
-import { setupAnalytics } from '@aibos/ui';
+import { setupAnalytics } from 'aibos-ui';
 
 setupAnalytics({
   apiKey: 'your-api-key',

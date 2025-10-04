@@ -90,7 +90,7 @@ aws s3 sync dist/ s3://aibos-ui-cdn/v$(npm version patch)/ --delete
 
 ```json
 {
-  "name": "@aibos/ui",
+  "name": "aibos-ui",
   "version": "1.0.0",
   "private": false,
   "publishConfig": {
@@ -371,7 +371,7 @@ jobs:
 
 ```tsx
 // Production performance monitoring
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function ProductionApp() {
   return (
@@ -405,7 +405,7 @@ function ProductionApp() {
 
 ```tsx
 // Real User Monitoring setup
-import { setupRUM } from '@aibos/ui';
+import { setupRUM } from 'aibos-ui';
 
 setupRUM({
   apiKey: process.env.RUM_API_KEY,
@@ -429,7 +429,7 @@ setupRUM({
 ```tsx
 // Sentry error tracking
 import * as Sentry from '@sentry/react';
-import { ErrorBoundary } from '@aibos/ui';
+import { ErrorBoundary } from 'aibos-ui';
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -467,7 +467,7 @@ function App() {
 
 ```tsx
 // Custom error tracking service
-import { trackError } from '@aibos/ui';
+import { trackError } from 'aibos-ui';
 
 function ErrorTrackingService() {
   const handleError = (error: Error, context: any) => {
@@ -497,7 +497,7 @@ function ErrorTrackingService() {
 
 ```tsx
 // Google Analytics setup
-import { setupAnalytics } from '@aibos/ui';
+import { setupAnalytics } from 'aibos-ui';
 
 setupAnalytics({
   trackingId: process.env.GA_TRACKING_ID,
@@ -512,7 +512,7 @@ setupAnalytics({
 });
 
 // Track component usage
-import { trackComponentUsage } from '@aibos/ui';
+import { trackComponentUsage } from 'aibos-ui';
 
 function TrackedComponent() {
   useEffect(() => {
@@ -530,7 +530,7 @@ function TrackedComponent() {
 
 ```tsx
 // Custom analytics dashboard
-import { useAnalytics } from '@aibos/ui';
+import { useAnalytics } from 'aibos-ui';
 
 function AnalyticsDashboard() {
   const analytics = useAnalytics();
@@ -846,7 +846,7 @@ pnpm run monitor:deployment
 
 ```tsx
 // Enable production monitoring
-import { PerformanceMonitor, ErrorBoundary } from '@aibos/ui';
+import { PerformanceMonitor, ErrorBoundary } from 'aibos-ui';
 
 function ProductionApp() {
   return (
