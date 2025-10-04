@@ -89,11 +89,11 @@ describe('Calendar', () => {
       
       // Find enabled day buttons (not disabled)
       const dayButtons = screen.getAllByRole('button').filter(button => 
-        button.textContent && /^\d+$/.test(button.textContent) && !button.disabled
+        button.textContent && /^\d+$/.test(button.textContent) && !button.hasAttribute('disabled')
       );
       
       if (dayButtons.length > 0) {
-        fireEvent.click(dayButtons[0]);
+        fireEvent.click(dayButtons[0]!);
         expect(onValueChange).toHaveBeenCalled();
       }
     });
@@ -112,7 +112,7 @@ describe('Calendar', () => {
       
       // Find the today button by looking for the one with today's date that's not disabled
       const todayButtons = screen.getAllByRole('button').filter(button => 
-        button.textContent === today.getDate().toString() && !button.disabled
+        button.textContent === today.getDate().toString() && !button.hasAttribute('disabled')
       );
       
       if (todayButtons.length > 0) {

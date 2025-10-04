@@ -137,6 +137,10 @@ export interface ComboboxItemProperties
    * Children content
    */
   children?: React.ReactNode;
+  /**
+   * Callback function when item is selected
+   */
+  onSelect?: () => void;
 }
 
 const Combobox = React.forwardRef<
