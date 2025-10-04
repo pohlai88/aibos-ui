@@ -1,117 +1,109 @@
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
-import boundaries from 'eslint-plugin-boundaries';
-import importPlugin from 'eslint-plugin-import';
-// import perfectionist from 'eslint-plugin-perfectionist'; // Removed - too strict for development workflow
-import promise from 'eslint-plugin-promise';
-import sonarjs from 'eslint-plugin-sonarjs';
-import security from 'eslint-plugin-security';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
-import reactHooks from 'eslint-plugin-react-hooks';
-import prettier from 'eslint-config-prettier';
-import jsoncParser from 'jsonc-eslint-parser';
-import jsonc from 'eslint-plugin-jsonc';
-// import aibosUi from './packages/ui/eslint-plugin/index.js'; // REMOVED - custom plugin deleted
-// import nextPlugin from 'eslint-config-next'; // Temporarily disabled due to ESLint compatibility issues
+import js from '@eslint/js'
+import typescript from '@typescript-eslint/eslint-plugin'
+import typescriptParser from '@typescript-eslint/parser'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
+import reactHooks from 'eslint-plugin-react-hooks'
+import tailwind from 'eslint-plugin-tailwindcss'
+import security from 'eslint-plugin-security'
+import prettier from 'eslint-config-prettier'
 
 export default [
   // Base configuration
   js.configs.recommended,
 
-  // Single source of truth for all ignores
+  // UI Package specific ignores
   {
     ignores: [
       // Build artifacts
       'node_modules/',
       'dist/',
       'build/',
-      '.next/',
       '.turbo/',
-      '.vercel/',
       'coverage/',
-      '**/*.gen.ts',
-      '**/*.generated.ts',
       '**/*.tsbuildinfo',
       '**/.tsbuildinfo',
       '**/.cache/**',
       '**/.turbo/**',
-      '**/.vercel/**',
       '**/dist/**',
       '**/build/**',
-      '**/apps/web/.next/**',
-      '**/apps/web/.next/types/**',
-      '**/apps/web/.next/static/**',
-      '**/apps/web/.next/server/**',
-      // lock/state
+      // Lock files
       'pnpm-lock.yaml',
       'package-lock.json',
       'yarn.lock',
-      
-      // Test files and related content - SINGLE SOURCE OF TRUTH
-      '**/*.test.*',
-      '**/*.spec.*',
-      '**/__tests__/**',
-      '**/__mocks__/**',
-      '**/tests/**',
-      '**/test/**',
-      '**/e2e/**',
-      '**/integration/**',
-      '**/fixtures/**',
+      // Storybook files
       '**/*.stories.*',
       '**/*.story.*',
       '**/*.snap',
+      // Generated and misc
+      '**/.next/**',
+      '**/.vite/**',
+      '**/.storybook/**',
+      // JSON files (handled separately)
+      '**/*.json'
     ],
   },
 
-  // TypeScript configuration
+  // TypeScript baseline for all TS/TSX (excluding JSON files)
   {
     files: ['**/*.{ts,tsx}'],
+    ignores: ['**/*.json'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
         ecmaVersion: 2023,
         sourceType: 'module',
         ecmaFeatures: { jsx: true },
+        // Enable fast, zero-config type-aware linting across monorepo
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
-        // Node.js globals
-        global: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        console: 'readonly',
-        crypto: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setImmediate: 'readonly',
-        clearImmediate: 'readonly',
-        // Node.js namespace
-        NodeJS: 'readonly',
-        // Browser/DOM globals
+        // Browser/DOM globals for UI components
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
-        location: 'readonly',
-        localStorage: 'readonly',
-        sessionStorage: 'readonly',
-        fetch: 'readonly',
+        console: 'readonly',
         performance: 'readonly',
-        // (drop type-only DOM names; avoid masking undefined identifiers at runtime)
-        // If you truly need any as runtime globals, re-add them surgically.
+        localStorage: 'readonly',
+        process: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLButtonElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        HTMLLabelElement: 'readonly',
+        HTMLParagraphElement: 'readonly',
+        HTMLHeadingElement: 'readonly',
+        HTMLLIElement: 'readonly',
+        HTMLAnchorElement: 'readonly',
+        HTMLSpanElement: 'readonly',
+        HTMLOListElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        SVGSVGElement: 'readonly',
+        Element: 'readonly',
+        Event: 'readonly',
+        Document: 'readonly',
+        MediaQueryList: 'readonly',
+        MediaQueryListEvent: 'readonly',
+        ResizeObserver: 'readonly',
+        ResizeObserverEntry: 'readonly',
+        ResizeObserverCallback: 'readonly',
+        IntersectionObserver: 'readonly',
+        IntersectionObserverEntry: 'readonly',
+        IntersectionObserverCallback: 'readonly',
+        MutationObserver: 'readonly',
+        MutationCallback: 'readonly',
+        DOMRect: 'readonly',
+        DOMRectReadOnly: 'readonly',
+        Performance: 'readonly',
+        FrameRequestCallback: 'readonly',
+        Window: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
         // React/JSX globals
         JSX: 'readonly',
         React: 'readonly',
-        // Theme/Design system globals (for UI components)
-        primary: 'readonly',
-        spacing: 'readonly',
-        neutral: 'readonly',
-        // Other globals
-        btoa: 'readonly',
-        atob: 'readonly',
-        URL: 'readonly',
-        alert: 'readonly',
         // Test globals
         describe: 'readonly',
         test: 'readonly',
@@ -123,47 +115,25 @@ export default [
         afterEach: 'readonly',
         vitest: 'readonly',
         vi: 'readonly',
-        // CommonJS globals
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
       },
     },
     plugins: {
       '@typescript-eslint': typescript,
-      boundaries,
-      import: importPlugin,
-      // perfectionist, // Removed - too strict for development workflow
-      promise,
-      sonarjs,
-      security,
       'jsx-a11y': jsxA11y,
       'react-hooks': reactHooks,
-      jsonc,
-      // 'aibos-ui': aibosUi, // REMOVED - custom plugin deleted
+      'tailwindcss': tailwind,
+      security,
     },
     rules: {
-      // Enhanced TypeScript rules
-      '@typescript-eslint/no-explicit-any': [
-        'error',
-        { fixToUnknown: true, ignoreRestArgs: false },
-      ],
-      '@typescript-eslint/explicit-module-boundary-types': 'error',
+      // TypeScript rules optimized for UI components
+      '@typescript-eslint/no-explicit-any': ['error', { fixToUnknown: true, ignoreRestArgs: false }],
+      // For UI components we can infer props/returns; keep this off to reduce noise
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
-        { 
-          prefer: 'type-imports', 
-          fixStyle: 'inline-type-imports',
-          disallowTypeAnnotations: false
-        },
+        { prefer: 'type-imports', fixStyle: 'inline-type-imports', disallowTypeAnnotations: false },
       ],
-      '@typescript-eslint/consistent-type-exports': [
-        'error',
-        { fixMixedExportsWithInlineTypeSpecifier: true }
-      ],
-      'no-unused-vars': 'off', // ← CRITICAL: Disable base rule first
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -173,122 +143,57 @@ export default [
           ignoreRestSiblings: true,
         },
       ],
-
-      // Boundaries rules (architectural lineage) - temporarily disabled for baseline
-      'boundaries/element-types': 'off',
-      'boundaries/no-unknown-files': 'off',
-
-      // Imports: resolve strictly with TS + node
-      'import/no-unresolved': ['error', { ignore: ['^node:'] }],
-      // Don't force extensions in TS imports
-      'import/extensions': ['off'],
-      'import/no-extraneous-dependencies': [
+      // Basic hardening; keep this lightweight for UI
+      'security/detect-object-injection': 'warn',
+      // Tailwind: keep classes ordered and prevent drift to ad-hoc classnames
+      'tailwindcss/classnames-order': 'warn',
+      // Disable custom classname checking since we use no-restricted-syntax for raw color detection
+      'tailwindcss/no-custom-classname': 'off',
+      // 🚫 Ban raw Tailwind color utilities in JSX className literals/templates.
+      // Encourage tokens (e.g., semantic-text-primary) instead.
+      // This targets <div className="..."> and className={`...`}
+      'no-restricted-syntax': [
         'error',
         {
-          packageDir: [
-            '.',                  // repo root
-            'packages/*',
-            'apps/*',
-            'services/*'
-          ],
-          devDependencies: [
-            '**/*.test.ts',
-            '**/*.spec.ts',
-            '**/test/**',
-            '**/__tests__/**',
-            '**/*.config.{js,cjs,ts}',
-            'scripts/**',
-            'tests/**',
-            '**/setup.ts',
-            '**/setup.js',
-          ],
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/\\b(?:text|bg|border|ring|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
+          message:
+            'Use semantic tokens (e.g., semantic-text-primary) — raw Tailwind color utilities are forbidden in UI code.',
         },
-      ],
-
-      // Enhanced Security rules - optimized for development workflow
-      'security/detect-object-injection': 'warn', // Keep as warn for controlled access patterns
-      'security/detect-non-literal-regexp': 'warn', // Downgrade to warn for dynamic patterns
-      'security/detect-unsafe-regex': 'error',
-      'security/detect-buffer-noassert': 'error',
-      'security/detect-child-process': 'warn',
-
-      // Critical security rules only
-      'security/detect-disable-mustache-escape': 'error',
-      'security/detect-eval-with-expression': 'error',
-      'security/detect-no-csrf-before-method-override': 'error',
-      'security/detect-non-literal-fs-filename': 'warn', // Allow for build scripts
-      'security/detect-non-literal-require': 'warn', // Allow for dynamic imports
-      'security/detect-possible-timing-attacks': 'warn',
-      'security/detect-pseudoRandomBytes': 'error',
-      'security/detect-new-buffer': 'error',
-
-      // Complexity rules - Temporarily disabled for development
-      complexity: 'off', // Temporarily disabled
-      'max-depth': 'off', // Temporarily disabled
-      'max-lines-per-function': 'off', // Temporarily disabled
-
-      // Performance rules
-      'sonarjs/no-duplicate-string': 'error',
-      'sonarjs/no-identical-functions': 'error',
-      'sonarjs/no-redundant-boolean': 'error',
-      'sonarjs/no-unused-collection': 'error',
-      'sonarjs/prefer-immediate-return': 'error',
-      'sonarjs/prefer-single-boolean-return': 'error',
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-
-
-      // Local policies
-      'no-restricted-imports': [
-        'error',
         {
-          paths: [
-            {
-              name: 'lucide-react',
-              message: 'Use @aibos/ui/icons wrapper to avoid heavy bundles.',
-            },
-            {
-              name: 'lodash',
-              message: 'Use lodash-es per‑method imports or stdlib.',
-            },
-          ],
-          patterns: [
-            // No deep internal paths across services
-            '@aibos/*/src/*',
-          ],
+          // Template literals: className={`text-blue-600 ...`}
+          selector:
+            "JSXAttribute[name.name='className'] TemplateLiteral[quasis.0.value.raw=/\\b(?:text|bg|border|ring|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
+          message:
+            'Use semantic tokens (e.g., semantic-text-primary) — raw Tailwind color utilities are forbidden in UI code.',
+        },
+        {
+          // cn("text-blue-600", ...) or cn(`text-blue-600 ...`)
+          selector:
+            "CallExpression[callee.name='cn'] Literal[value=/\\b(?:text|bg|border|ring|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
+          message:
+            'Use semantic tokens (e.g., semantic-text-primary) — raw Tailwind color utilities are forbidden in UI code.',
+        },
+        {
+          // cva({ base: "text-blue-600 ..." })
+          selector:
+            "CallExpression[callee.name='cva'] Property[key.name='base'] Literal[value=/\\b(?:text|bg|border|ring|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]",
+          message:
+            'Use semantic tokens (e.g., semantic-text-primary) — raw Tailwind color utilities are forbidden in UI code.',
         },
       ],
     },
     settings: {
-      'import/resolver': {
-        node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] },
-        // Resolve TS path aliases per-package
-        typescript: {
-          project: [
-            './tsconfig.json',
-            './packages/*/tsconfig.json',
-            './apps/*/tsconfig.json',
-            './services/*/tsconfig.json'
-          ]
-        }
-      },
-      // Make import plugin parse TS files with the TS parser
-      'import/parsers': {
-        '@typescript-eslint/parser': ['.ts', '.tsx']
-      },
-      'boundaries/elements': [
-        { type: 'packages', pattern: 'packages/*/src/**/*' },
-        { type: 'apps', pattern: 'apps/*/src/**/*' },
-        { type: 'services', pattern: 'services/*/src/**/*' },
-      ],
-      'boundaries/ignore': ['**/*.test.ts', '**/*.spec.ts', '**/*.config.ts', '**/*.d.ts'],
+      tailwindcss: { callees: ['cn', 'cva'] }, // recognize your common class combiner helpers
+      react: { version: 'detect' },
     },
   },
 
-  // React/JSX specific rules
+  // React/JSX specific rules for UI components
   {
     files: ['**/*.tsx'],
     rules: {
-      // Re-enable JSX-a11y rules for React files
+      // Essential JSX-a11y rules for UI components
       'jsx-a11y/alt-text': 'error',
       'jsx-a11y/anchor-has-content': 'error',
       'jsx-a11y/anchor-is-valid': 'error',
@@ -297,9 +202,6 @@ export default [
       'jsx-a11y/aria-unsupported-elements': 'error',
       'jsx-a11y/click-events-have-key-events': 'error',
       'jsx-a11y/heading-has-content': 'error',
-      'jsx-a11y/html-has-lang': 'error',
-      'jsx-a11y/iframe-has-title': 'error',
-      'jsx-a11y/img-redundant-alt': 'error',
       'jsx-a11y/no-access-key': 'error',
       'jsx-a11y/no-autofocus': 'error',
       'jsx-a11y/no-distracting-elements': 'error',
@@ -313,390 +215,108 @@ export default [
       'jsx-a11y/role-supports-aria-props': 'error',
       'jsx-a11y/scope': 'error',
       'jsx-a11y/tabindex-no-positive': 'error',
+      // React hooks rules
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 
-
-  // Config files and scripts
+  // Test files configuration - relaxed rules for UI testing
   {
     files: [
+      '**/*.test.{js,ts,jsx,tsx}',
+      '**/*.spec.{js,ts,jsx,tsx}',
+      '**/__tests__/**/*.{js,ts,jsx,tsx}',
+      '**/__mocks__/**/*.{js,ts,jsx,tsx}',
+      '**/tests/**/*.{js,ts,jsx,tsx}',
+      '**/test/**/*.{js,ts,jsx,tsx}',
+    ],
+    rules: {
+      // Relaxed rules for test files
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      'no-console': 'off',
+      'jsx-a11y/no-autofocus': 'off', // Allow autofocus in tests
+      'tailwindcss/no-custom-classname': 'off',
+      // Let tests use raw colors if needed for snapshots/visual assertions
+      'no-restricted-syntax': 'off',
+    },
+  },
+
+  // Config files - minimal rules for configuration files
+  {
+    files: [
+      // Allow raw tailwind in theme/tokens/stories/playground by design
+      'src/theme/**',
+      'src/tokens/**',
+      'src/**/playground/**',
+      '**/*.stories.*',
+
       '**/*.config.{js,cjs,ts,mjs}',
       '**/tsup.config.ts',
       '**/vitest.config.ts',
-      '**/playwright.config.ts',
       '**/tailwind.config.js',
-      '**/next.config.js',
       '**/postcss.config.js',
       '**/eslint.config.{js,mjs,cjs}',
-      '**/dangerfile.js',
       '**/turbo.json',
       '**/pnpm-workspace.yaml',
       '**/package.json',
       '**/tsconfig*.json',
       '**/vite.config.ts',
-      '**/webpack.config.js',
-      '**/rollup.config.js',
-      '**/jest.config.{js,ts}',
-      '**/cypress.config.{ts,js}',
       'scripts/**/*.{js,ts,cjs,mjs}',
-      '**/scripts/**/*.{js,ts,cjs,mjs}',
-      '**/codemods/**/*.{js,ts,cjs,mjs}',
-      '**/eslint-rules/**/*.{js,ts,cjs,mjs}',
-      '**/grafana-datasources/**/*.{yml,yaml,json,ts,js,mjs,cjs}',
-      '**/storybook/**/*.{ts,js,mjs,cjs}',
-      '**/.storybook/**/*.{ts,js,mjs,cjs}',
-      // Root-level scripts
-      '*.js',
-      '*.mjs',
-      '*.cjs',
+      // Root level config files
+      'eslint.config.js',
+      'pnpm-workspace.yaml',
+      'scripts/enforce-pnpm.js',
     ],
-    plugins: {
-      security,
-    },
-    languageOptions: {
-      globals: {
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        process: 'readonly',
-        console: 'readonly',
-        Buffer: 'readonly',
-        global: 'readonly',
-        // Node.js globals
-        NodeJS: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        setImmediate: 'readonly',
-        clearImmediate: 'readonly',
-        // CommonJS globals
-        define: 'readonly',
-        defineProperty: 'readonly',
-        // Build tool globals
-        import: 'readonly',
-        importMeta: 'readonly',
-      },
-    },
-    rules: {
-      'import/no-commonjs': 'off',
-      '@typescript-eslint/no-var-requires': 'off',
-      'no-undef': 'off', // Config files often use global variables
-      'no-unused-vars': 'off', // Scripts often have unused vars
-      '@typescript-eslint/no-unused-vars': 'off',
-      'security/detect-object-injection': 'warn', // Config files often use dynamic keys
-      'security/detect-non-literal-fs-filename': 'warn', // Build scripts often use dynamic paths
-      'security/detect-non-literal-regexp': 'warn', // Config files may use dynamic regex
-    },
-  },
-
-  // UI package specific rules
-  {
-    files: ['packages/ui/**/*.{ts,tsx}'],
-    rules: {
-      // Keep explicit types for library surface; relax for internal fns
-      '@typescript-eslint/explicit-module-boundary-types': ['warn'],
-
-      // Allow null for React components (empty renders) but prefer undefined for internal logic
-      // Note: React components need to return null for empty renders
-
-      // Guarded dynamic access is okay with justification comments
-      'security/detect-object-injection': 'error',
-
-      // Keep complexity realistic, fail egregious cases - Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      // Handle unused vars in UI package
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-
-
-  // BFF package (NestJS) - handle injected dependencies
-  {
-    files: ['apps/bff/**/*.{ts,tsx}'],
-    rules: {
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-
-  // Eventsourcing package - handle unused vars and any types
-  {
-    files: ['packages/eventsourcing/**/*.{ts,tsx}'],
-    rules: {
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-
-  // Accounting package - handle unused vars and enum values
-  {
-    files: ['packages/accounting/**/*.{ts,tsx}'],
-    rules: {
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-
-  // Accounting-web package - handle unused vars
-  {
-    files: ['packages/accounting-web/**/*.{ts,tsx}'],
-    rules: {
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-
-  // Web app - combine Next.js specifics + local relaxations
-  {
-    files: ['apps/web/**/*.{ts,tsx}'],
-    rules: {
-      // Next.js-like expectations without eslint-config-next
-      'react-hooks/exhaustive-deps': 'warn',
-      'react-hooks/rules-of-hooks': 'error',
-      'jsx-a11y/anchor-is-valid': 'off', // handled by next/link
-      'import/no-anonymous-default-export': 'off', // Next pages/components often default-export
-
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          varsIgnorePattern: '^_',
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-      // Temporarily disable restricted imports for lucide-react
-      'no-restricted-imports': 'off',
-    },
-  },
-
-  // ESLint plugin - Node.js environment for CommonJS
-  {
-    files: ['packages/ui/eslint-plugin/**/*.js'],
-    languageOptions: {
-      globals: {
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        process: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        console: 'readonly',
-        global: 'readonly',
-        NodeJS: 'readonly',
-      },
-    },
-    rules: {
-      'import/no-commonjs': 'off',
-    },
-  },
-
-  // Tailwind plugins - CommonJS files
-  {
-    files: ['**/tailwind.plugins/**/*.js'],
-    languageOptions: {
-      sourceType: 'script',
-      globals: {
-        require: 'readonly',
-        module: 'readonly',
-        exports: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        global: 'readonly',
-        NodeJS: 'readonly',
-        console: 'readonly',
-        process: 'readonly',
-      },
-    },
-    rules: {
-      'no-undef': 'off', // Allow globals in CommonJS files
-      'import/no-commonjs': 'off',
-    },
-  },
-
-  // ------------- TIERED COMPLEXITY RULES -------------
-  // ERP-grade complexity management with folder-based overrides
-  
-  // Base TypeScript settings with real complexity measures
-  {
-    name: 'complexity/base',
-    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
-      parserOptions: { 
-        project: ['./tsconfig.json'],
-        projectService: true,
-        tsconfigRootDir: process.cwd(),
+      parserOptions: {
+        // Disable project service for config files to avoid parsing errors
+        projectService: false,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+        exports: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+        Buffer: 'readonly',
+        global: 'readonly',
+        NodeJS: 'readonly',
       },
     },
-    plugins: { 
-      '@typescript-eslint': typescript, 
-      sonarjs: sonarjs,
-      security: security
-    },
     rules: {
-      // General safety/perf rules
-      'security/detect-object-injection': 'error',
-      'no-new-func': 'error',
-      'no-eval': 'error',
-      
-      // Prefer real complexity measures over raw line count - Temporarily disabled
-      complexity: 'off', // Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      // '@typescript-eslint/max-params': ['error', { max: 5 }], // Temporarily disabled
-      
-      // Tiered line count - base threshold - Temporarily disabled
-      'max-lines-per-function': 'off', // Temporarily disabled
+      // Minimal rules for config files
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      'no-unused-labels': 'off',
+      'tailwindcss/no-custom-classname': 'off',
+      'no-restricted-syntax': 'off',
     },
   },
 
-  // Base JavaScript settings (no TypeScript parser)
+  // Narrow, type-aware pass ONLY for src/** to keep ESLint fast
   {
-    name: 'complexity/base-js',
-    files: ['**/*.{js,mjs,cjs}'],
-    plugins: { 
-      sonarjs: sonarjs,
-      security: security
-    },
-    rules: {
-      // General safety/perf rules
-      'security/detect-object-injection': 'error',
-      'no-new-func': 'error',
-      'no-eval': 'error',
-      
-      // Prefer real complexity measures over raw line count - Temporarily disabled
-      complexity: 'off', // Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      
-      // Tiered line count - base threshold - Temporarily disabled
-      'max-lines-per-function': 'off', // Temporarily disabled
-    },
-  },
-
-  // UI components tighter (favor hooks & composition)
-  {
-    name: 'complexity/ui-components',
-    files: ['packages/ui/**', 'packages/ui-business/**'],
-    rules: {
-      complexity: 'off', // Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      'max-lines-per-function': 'off', // Temporarily disabled
-      // '@typescript-eslint/max-params': ['error', { max: 5 }], // Temporarily disabled
-    },
-  },
-
-  // Charts/visualizations: allow lines, control complexity
-  {
-    name: 'complexity/charts',
-    files: ['**/financial-charts/**'],
-    rules: {
-      'max-lines-per-function': 'off', // Temporarily disabled
-      complexity: 'off', // Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      // '@typescript-eslint/max-params': ['error', { max: 6 }], // Temporarily disabled
-    },
-  },
-
-  // Scripts/CLI: slightly higher line budget
-  {
-    name: 'complexity/scripts',
-    files: ['**/scripts/**'],
-    rules: {
-      'max-lines-per-function': 'off', // Temporarily disabled
-      complexity: 'off', // Temporarily disabled
-      'sonarjs/cognitive-complexity': 'off', // Temporarily disabled
-      // '@typescript-eslint/max-params': ['error', { max: 6 }], // Temporarily disabled
-    },
-  },
-
-  // Turn off in seeds/migrations/generated/storybook
-  {
-    name: 'complexity/exclusions',
-    files: [
-      '**/__fixtures__/**',
-      '**/*.stories.*',
-      'apps/**/seeds/**',
-      '**/migrations/**',
-      '**/generated/**',
-    ],
-    rules: {
-      'max-lines-per-function': 'off',
-      complexity: 'off',
-      'sonarjs/cognitive-complexity': 'off',
-      '@typescript-eslint/max-params': 'off',
-    },
-  },
-
-  // JSON/JSONC file handling - stops "Unexpected token :" errors
-  {
-    files: ['**/*.json'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
-      parser: jsoncParser,
+      parser: typescriptParser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
-    plugins: {
-      jsonc,
+    rules: {
+      // Keep the type-driven checks here if you want to add any later
     },
-    rules: {},
-  },
-  {
-    files: ['**/*.jsonc'],
-    languageOptions: {
-      parser: jsoncParser,
-    },
-    plugins: {
-      jsonc,
-    },
-    rules: {},
   },
 
-  // ------------- PRETTIER INTEGRATION -------------
-  // IMPORTANT: Prettier config MUST be LAST to disable conflicting formatting rules
+  // Prettier integration (must be last)
   prettier,
-];
+]

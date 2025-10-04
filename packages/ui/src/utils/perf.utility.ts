@@ -1,29 +1,31 @@
 /**
- * Performance Mode Utility
- *
- * Provides runtime detection of performance testing mode
- * to enable zero-cost optimizations during performance tests.
+ * Performance monitoring utilities
  */
 
-// Cache perf mode state to avoid repeated DOM queries
-let _perfModeCache: boolean | undefined = undefined;
-let _perfModeChecked = false;
+let perfMode = false;
 
 export function isPerfMode(): boolean {
-  // Only check once per test run to eliminate variance
-  if (!_perfModeChecked) {
-    try {
-      _perfModeCache = typeof document !== 'undefined' && document.body?.dataset?.perf === '1';
-    } catch {
-      _perfModeCache = false;
-    }
-    _perfModeChecked = true;
-  }
-  return _perfModeCache ?? false;
+  return perfMode;
 }
 
-// Reset function for tests
+export function setPerfMode(enabled: boolean): void {
+  perfMode = enabled;
+}
+
 export function resetPerfMode(): void {
-  _perfModeCache = undefined;
-  _perfModeChecked = false;
+  perfMode = false;
+}
+
+export function measurePerformance<T>(fn: () => T, label?: string): T {
+  if (!perfMode) return fn();
+  
+  const start = performance.now();
+  const result = fn();
+  const end = performance.now();
+  
+  if (label) {
+    console.log(`${label}: ${end - start}ms`);
+  }
+  
+  return result;
 }

@@ -11,21 +11,21 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2',
+  'focus:ring-semantic-ring inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/80',
+          'bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/80 border-transparent',
         secondary:
-          'border-transparent bg-semantic-muted text-semantic-muted-foreground hover:bg-semantic-muted/80',
+          'bg-semantic-muted text-semantic-muted-foreground hover:bg-semantic-muted/80 border-transparent',
         destructive:
-          'border-transparent bg-semantic-destructive text-semantic-destructive-foreground hover:bg-semantic-destructive/80',
+          'bg-semantic-destructive text-semantic-destructive-foreground hover:bg-semantic-destructive/80 border-transparent',
         success:
-          'border-transparent bg-semantic-success text-semantic-success-foreground hover:bg-semantic-success/80',
+          'bg-semantic-success text-semantic-success-foreground hover:bg-semantic-success/80 border-transparent',
         warning:
-          'border-transparent bg-semantic-warning text-semantic-warning-foreground hover:bg-semantic-warning/80',
-        info: 'border-transparent bg-semantic-info text-semantic-info-foreground hover:bg-semantic-info/80',
+          'bg-semantic-warning text-semantic-warning-foreground hover:bg-semantic-warning/80 border-transparent',
+        info: 'bg-semantic-info text-semantic-info-foreground hover:bg-semantic-info/80 border-transparent',
         outline: 'text-semantic-foreground',
       },
     },

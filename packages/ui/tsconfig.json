@@ -58,6 +58,15 @@
       "@tokens": ["./src/tokens"]
     }
   },
-  "include": ["src"],
-  "exclude": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "dist", "node_modules", ".next"]
+  "include": [
+    "src",
+    "test",
+    "tests",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*.config.*",
+    "vitest.config.ts",
+    "tsup.config.ts"
+  ],
+  "exclude": ["dist", "node_modules", ".next"]
 }

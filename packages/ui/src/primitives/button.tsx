@@ -11,7 +11,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-semantic-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'ring-offset-semantic-background focus-visible:ring-semantic-ring inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -22,7 +22,7 @@ const buttonVariants = cva(
         destructive:
           'bg-semantic-destructive text-semantic-destructive-foreground hover:bg-semantic-destructive/90',
         outline:
-          'border border-semantic-input bg-semantic-background hover:bg-semantic-accent hover:text-semantic-accent-foreground',
+          'border-semantic-input bg-semantic-background hover:bg-semantic-accent hover:text-semantic-accent-foreground border',
         secondary: 'bg-semantic-muted text-semantic-muted-foreground hover:bg-semantic-muted/80',
         ghost: 'hover:bg-semantic-accent hover:text-semantic-accent-foreground',
         link: 'text-semantic-primary underline-offset-4 hover:underline',

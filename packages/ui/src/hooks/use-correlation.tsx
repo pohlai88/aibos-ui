@@ -47,7 +47,7 @@ export interface CorrelationContextValue<T = unknown>
 const CorrelationContext = React.createContext<CorrelationContextValue | undefined>(undefined);
 
 // Helper functions for correlation operations
-const createCorrelationActions = (
+const useCorrelationActions = (
   setState: React.Dispatch<React.SetStateAction<CorrelationState>>,
 ) => {
   const addCorrelation = React.useCallback(
@@ -124,7 +124,7 @@ const createCorrelationActions = (
 };
 
 // Helper functions for correlation queries
-const createCorrelationQueries = (state: CorrelationState) => {
+const useCorrelationQueries = (state: CorrelationState) => {
   const getCorrelation = React.useCallback(
     (id: string) => {
       return state.correlations.get(id);
@@ -162,7 +162,7 @@ const createCorrelationQueries = (state: CorrelationState) => {
 };
 
 // Helper functions for correlation refresh operations
-const createCorrelationRefresh = (
+const useCorrelationRefresh = (
   setState: React.Dispatch<React.SetStateAction<CorrelationState>>,
   state: CorrelationState,
 ) => {
@@ -254,9 +254,9 @@ export function CorrelationProvider({
     lastUpdated: undefined,
   }));
 
-  const actions = createCorrelationActions(setState);
-  const queries = createCorrelationQueries(state);
-  const refresh = createCorrelationRefresh(setState, state);
+  const actions = useCorrelationActions(setState);
+  const queries = useCorrelationQueries(state);
+  const refresh = useCorrelationRefresh(setState, state);
 
   const contextValue: CorrelationContextValue = React.useMemo(
     () => ({

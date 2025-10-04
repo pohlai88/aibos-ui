@@ -13,7 +13,7 @@ import * as React from 'react';
 const radioGroupVariants = cva('grid gap-2');
 
 const radioItemVariants = cva(
-  'aspect-square h-4 w-4 rounded-full border border-semantic-border bg-semantic-background text-semantic-primary ring-offset-semantic-background transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-semantic-primary data-[state=checked]:text-semantic-primary-foreground',
+  'border-semantic-border bg-semantic-background text-semantic-primary ring-offset-semantic-background focus-visible:ring-semantic-ring data-[state=checked]:bg-semantic-primary data-[state=checked]:text-semantic-primary-foreground aspect-square h-4 w-4 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {

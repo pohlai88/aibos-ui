@@ -30,7 +30,7 @@ const createMql = (query: string): MediaQueryList => {
     addListener: (cb: (e: Event) => void) => listeners.add(cb),
     removeListener: (cb: (e: Event) => void) => listeners.delete(cb),
     dispatchEvent: (e: Event) => {
-      listeners.getAll().forEach((cb: (e: Event) => void) => cb(e));
+      Array.from(listeners).forEach((cb: (e: Event) => void) => cb(e));
       // onchange handler if set
       if (typeof mql.onchange === 'function') mql.onchange(e as MediaQueryListEvent);
       return true;

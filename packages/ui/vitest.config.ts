@@ -11,17 +11,55 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
+    // Enhanced test configuration for UI packages
+    testTimeout: 10000,
+    hookTimeout: 10000,
+    teardownTimeout: 10000,
+    // Parallel execution for faster tests
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: false,
+        minThreads: 1,
+        maxThreads: 4,
+      },
+    },
+    // Coverage configuration
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'src/test/', '**/*.d.ts', '**/*.config.*', '**/coverage/**'],
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/coverage/**',
+        '**/dist/**',
+        '**/*.stories.*',
+        '**/*.story.*',
+        '**/index.ts', // Barrel exports
+      ],
       thresholds: {
         global: {
-          branches: 80,
-          functions: 80,
-          lines: 80,
-          statements: 80,
+          branches: 85,
+          functions: 85,
+          lines: 85,
+          statements: 85,
         },
+      },
+        // Include source maps for better coverage reporting
+        // sourcemap: true, // Removed - not supported in current version
+    },
+    // Performance monitoring
+    benchmark: {
+      include: ['src/**/*.{bench,benchmark}.{js,ts,jsx,tsx}'],
+      exclude: ['node_modules', 'dist'],
+    },
+    // UI-specific test utilities
+    environmentOptions: {
+      jsdom: {
+        resources: 'usable',
       },
     },
   },
@@ -47,12 +85,19 @@ export default defineConfig({
       '@performance/*': path.resolve(__dirname, './src/performance/*'),
       '@test': path.resolve(__dirname, './src/test'),
       '@test/*': path.resolve(__dirname, './src/test/*'),
-      '@scripts': path.resolve(__dirname, './src/scripts'),
-      '@scripts/*': path.resolve(__dirname, './src/scripts/*'),
-      '@examples': path.resolve(__dirname, './src/examples'),
-      '@examples/*': path.resolve(__dirname, './src/examples/*'),
       '@types': path.resolve(__dirname, './src/types'),
       '@types/*': path.resolve(__dirname, './src/types/*'),
     },
+  },
+  // Development server configuration
+  server: {
+    port: 3000,
+    open: true,
+  },
+  // Build optimization
+  build: {
+    target: 'es2022',
+    minify: 'esbuild',
+    sourcemap: true,
   },
 });

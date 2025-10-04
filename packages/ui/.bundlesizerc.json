@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": "./dist/index.js",
+      "maxSize": "150kb",
+      "compression": "gzip"
+    },
+    {
+      "path": "./dist/index.cjs",
+      "maxSize": "150kb",
+      "compression": "gzip"
+    },
+    {
+      "path": "./dist/core.js",
+      "maxSize": "50kb",
+      "compression": "gzip"
+    },
+    {
+      "path": "./dist/tokens.js",
+      "maxSize": "30kb",
+      "compression": "gzip"
+    },
+    {
+      "path": "./dist/utils.js",
+      "maxSize": "40kb",
+      "compression": "gzip"
+    }
+  ]
+}

@@ -11,14 +11,14 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const navigationVariants = cva(
-  'flex items-center justify-between border-b border-semantic-border bg-semantic-background px-4 py-3',
+  'border-semantic-border bg-semantic-background flex items-center justify-between border-b px-4 py-3',
   {
     variants: {
       variant: {
         default: '',
         elevated: 'shadow-elev-1',
         transparent: 'border-transparent bg-transparent',
-        card: 'rounded-lg border bg-semantic-card shadow-elev-1',
+        card: 'bg-semantic-card shadow-elev-1 rounded-lg border',
       },
       size: {
         sm: 'px-3 py-2',
@@ -34,7 +34,7 @@ const navigationVariants = cva(
 );
 
 const navItemVariants = cva(
-  'flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-semantic-accent hover:text-semantic-accent-foreground focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2',
+  'hover:bg-semantic-accent hover:text-semantic-accent-foreground focus:ring-semantic-ring flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2',
   {
     variants: {
       active: {
@@ -44,7 +44,7 @@ const navItemVariants = cva(
       variant: {
         default: '',
         ghost: 'hover:bg-semantic-muted/50',
-        outline: 'border border-semantic-border hover:bg-semantic-accent',
+        outline: 'border-semantic-border hover:bg-semantic-accent border',
       },
     },
     defaultVariants: {

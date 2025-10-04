@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-import { setIfAllowed, getIfAllowed as _getIfAllowed, type Whitelist, safeGet } from '../utils/internal';
+import { getIfAllowed as _getIfAllowed, type Whitelist, safeGet } from '../utils/internal';
 import * as React from 'react';
 
 export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
@@ -76,7 +76,7 @@ function determineBreakpoint(matches: Record<string, boolean>): Breakpoint {
 }
 
 // Whitelist for safe object access
-const MEDIA_STATE_KEYS: Whitelist = new Set([
+const MEDIA_STATE_KEYS: Whitelist<string> = [
   'width',
   'height', 
   'query',
@@ -86,7 +86,7 @@ const MEDIA_STATE_KEYS: Whitelist = new Set([
   'lg',
   'xl',
   '2xl',
-]);
+];
 
 export interface MediaQueryState {
   xs: boolean;
@@ -156,9 +156,9 @@ export function useMediaQueries(queries: Record<string, string>): Record<string,
       (accumulator, key) => {
         const query = safeGet(queries, key) as string | undefined;
         if (query) {
-          setIfAllowed(accumulator, key, window.matchMedia(query).matches, MEDIA_STATE_KEYS);
+          accumulator[key] = MEDIA_STATE_KEYS.includes(key) ? window.matchMedia(query).matches : false;
         } else {
-          setIfAllowed(accumulator, key, false, MEDIA_STATE_KEYS);
+          accumulator[key] = false;
         }
         return accumulator;
       },

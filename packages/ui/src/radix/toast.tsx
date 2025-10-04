@@ -11,13 +11,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const toastVariants = cva(
-  'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border border-semantic-border bg-semantic-background p-6 pr-8 shadow-elev-3 transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[state=closed]:animate-premium-fade data-[state=open]:animate-premium-fade data-[swipe=end]:animate-premium-fade data-[swipe=move]:transition-none',
+  'border-semantic-border bg-semantic-background shadow-elev-3 data-[state=closed]:animate-premium-fade data-[state=open]:animate-premium-fade data-[swipe=end]:animate-premium-fade group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none',
   {
     variants: {
       variant: {
         default: 'border-semantic-border bg-semantic-background',
         destructive:
-          'group border-semantic-destructive bg-semantic-destructive text-semantic-destructive-foreground',
+          'border-semantic-destructive bg-semantic-destructive text-semantic-destructive-foreground group',
         success: 'bg-semantic-success text-semantic-success-foreground border-semantic-success',
         warning: 'bg-semantic-warning text-semantic-warning-foreground border-semantic-warning',
         info: 'bg-semantic-info text-semantic-info-foreground border-semantic-info',
@@ -30,7 +30,7 @@ const toastVariants = cva(
 );
 
 const toastActionVariants = cva(
-  'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-semantic-border bg-transparent px-3 text-sm font-medium ring-offset-semantic-background transition-colors hover:bg-semantic-secondary focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-semantic-destructive/40 group-[.destructive]:hover:border-semantic-destructive/30 group-[.destructive]:hover:bg-semantic-destructive group-[.destructive]:hover:text-semantic-destructive-foreground group-[.destructive]:focus:ring-semantic-destructive',
+  'border-semantic-border ring-offset-semantic-background hover:bg-semantic-secondary focus:ring-semantic-ring group-[.destructive]:border-semantic-destructive/40 group-[.destructive]:hover:border-semantic-destructive/30 group-[.destructive]:hover:bg-semantic-destructive group-[.destructive]:hover:text-semantic-destructive-foreground group-[.destructive]:focus:ring-semantic-destructive inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -46,7 +46,7 @@ const toastActionVariants = cva(
 );
 
 const toastCloseVariants = cva(
-  'absolute right-2 top-2 rounded-md p-1 text-semantic-foreground/50 opacity-0 transition-opacity hover:text-semantic-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-semantic-destructive-foreground group-[.destructive]:hover:text-semantic-destructive-foreground',
+  'text-semantic-foreground/50 hover:text-semantic-foreground group-[.destructive]:text-semantic-destructive-foreground group-[.destructive]:hover:text-semantic-destructive-foreground absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100',
   {
     variants: {
       variant: {

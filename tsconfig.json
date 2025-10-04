@@ -1,16 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "packages/utils" },
-    { "path": "packages/eventsourcing" },
-    { "path": "packages/ui" },
-    { "path": "packages/accounting" },
-    { "path": "packages/accounting-contracts" },
-    { "path": "packages/accounting-web" },
-    { "path": "packages/observability" },
-    { "path": "packages/policy" },
-    { "path": "packages/ui-business" },
-    { "path": "apps/bff" },
-    { "path": "apps/web" }
-  ]
+  "references": [{ "path": "packages/ui" }]
 }

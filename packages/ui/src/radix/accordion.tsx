@@ -15,11 +15,11 @@ const ACCORDION_SPACING = 'space-y-2';
 const ACCORDION_PERF_STATIC = 'perf-static';
 const accordionVariants = cva(ACCORDION_SPACING);
 
-const accordionItemVariants = cva('border-b border-semantic-border', {
+const accordionItemVariants = cva('border-semantic-border border-b', {
   variants: {
     variant: {
       default: '',
-      card: 'rounded-lg border border-semantic-border bg-semantic-card shadow-elev-1',
+      card: 'border-semantic-border bg-semantic-card shadow-elev-1 rounded-lg border',
       ghost: 'border-none',
     },
   },
@@ -29,7 +29,7 @@ const accordionItemVariants = cva('border-b border-semantic-border', {
 });
 
 const accordionTriggerVariants = cva(
-  'flex flex-1 items-center justify-between py-4 font-medium transition-all hover:text-semantic-foreground [&[data-state=open]>svg]:rotate-180',
+  'hover:text-semantic-foreground flex flex-1 items-center justify-between py-4 font-medium transition-all [&[data-state=open]>svg]:rotate-180',
   {
     variants: {
       variant: {
@@ -45,7 +45,7 @@ const accordionTriggerVariants = cva(
 );
 
 const accordionContentVariants = cva(
-  'overflow-hidden text-sm transition-all data-[state=closed]:animate-premium-fade data-[state=open]:animate-premium-fade',
+  'data-[state=closed]:animate-premium-fade data-[state=open]:animate-premium-fade overflow-hidden text-sm transition-all',
   {
     variants: {
       variant: {

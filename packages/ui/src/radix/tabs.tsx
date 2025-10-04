@@ -10,13 +10,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const tabsListVariants = cva(
-  'inline-flex h-10 items-center justify-center rounded-md bg-semantic-muted p-1 text-semantic-muted-foreground',
+  'bg-semantic-muted text-semantic-muted-foreground inline-flex h-10 items-center justify-center rounded-md p-1',
   {
     variants: {
       variant: {
         default: '',
-        card: 'border border-semantic-border bg-semantic-card',
-        underline: 'rounded-none border-b border-semantic-border bg-transparent p-0',
+        card: 'border-semantic-border bg-semantic-card border',
+        underline: 'border-semantic-border rounded-none border-b bg-transparent p-0',
       },
       size: {
         sm: 'h-8 text-xs',
@@ -32,14 +32,14 @@ const tabsListVariants = cva(
 );
 
 const tabsTriggerVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-semantic-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-semantic-background data-[state=active]:text-semantic-foreground data-[state=active]:shadow-sm',
+  'ring-offset-semantic-background focus-visible:ring-semantic-ring data-[state=active]:bg-semantic-background data-[state=active]:text-semantic-foreground inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm',
   {
     variants: {
       variant: {
         default: '',
         card: 'data-[state=active]:bg-semantic-card data-[state=active]:shadow-elev-1',
         underline:
-          'rounded-none border-b-2 border-transparent data-[state=active]:border-semantic-primary data-[state=active]:shadow-none',
+          'data-[state=active]:border-semantic-primary rounded-none border-b-2 border-transparent data-[state=active]:shadow-none',
       },
     },
     defaultVariants: {
@@ -49,13 +49,13 @@ const tabsTriggerVariants = cva(
 );
 
 const tabsContentVariants = cva(
-  'mt-2 ring-offset-semantic-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2',
+  'ring-offset-semantic-background focus-visible:ring-semantic-ring mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
   {
     variants: {
       variant: {
         default: '',
-        card: 'rounded-md border border-semantic-border bg-semantic-card p-4 shadow-elev-1',
-        underline: 'border-t border-semantic-border pt-4',
+        card: 'border-semantic-border bg-semantic-card shadow-elev-1 rounded-md border p-4',
+        underline: 'border-semantic-border border-t pt-4',
       },
     },
     defaultVariants: {

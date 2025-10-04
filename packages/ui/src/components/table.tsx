@@ -32,7 +32,7 @@ const tableVariants = cva('w-full border-collapse', {
     variant: {
       default: '',
       striped: 'table-zebra',
-      bordered: 'border border-semantic-border',
+      bordered: 'border-semantic-border border',
       hover: 'table-hover',
     },
     size: {
@@ -47,7 +47,7 @@ const tableVariants = cva('w-full border-collapse', {
   },
 });
 
-const tableHeaderVariants = cva('bg-semantic-muted/50 font-medium text-semantic-foreground', {
+const tableHeaderVariants = cva('bg-semantic-muted/50 text-semantic-foreground font-medium', {
   variants: {
     size: {
       sm: 'px-2 py-1 text-xs',
@@ -60,7 +60,7 @@ const tableHeaderVariants = cva('bg-semantic-muted/50 font-medium text-semantic-
   },
 });
 
-const tableCellVariants = cva('border-b border-semantic-border text-semantic-foreground', {
+const tableCellVariants = cva('border-semantic-border text-semantic-foreground border-b', {
   variants: {
     size: {
       sm: 'px-2 py-1 text-xs',

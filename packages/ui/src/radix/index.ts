@@ -37,5 +37,8 @@ export {
   MenuRadioGroup,
 } from './menu';
 
+// Label exports
+export { RadixLabel, radixLabelVariants, type RadixLabelProperties } from './label';
+
 // Slot export (already exists, re-export for completeness)
 export { Slot } from './slot';

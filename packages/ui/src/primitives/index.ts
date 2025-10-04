@@ -48,3 +48,6 @@ export {
 
 // Loading Spinner exports
 export { LoadingSpinner, type LoadingSpinnerProperties } from './loading-spinner';
+
+// Label exports
+export { Label, labelVariants, type LabelProperties } from './label';

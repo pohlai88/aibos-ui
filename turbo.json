@@ -4,15 +4,60 @@
     "lint": {
       "outputs": []
     },
+    "lint:fix": {
+      "outputs": []
+    },
+    "lint:staged": {
+      "outputs": []
+    },
     "typecheck": {
       "outputs": []
+    },
+    "typecheck:watch": {
+      "cache": false,
+      "persistent": true
     },
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**", ".next/**"]
     },
+    "build:js": {
+      "dependsOn": ["^build:js"],
+      "outputs": ["dist/**/*.js", "dist/**/*.cjs"]
+    },
+    "build:types": {
+      "dependsOn": ["^build:types"],
+      "outputs": ["dist/types/**"]
+    },
+    "build:watch": {
+      "cache": false,
+      "persistent": true
+    },
     "test": {
       "outputs": ["coverage/**"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:ui": {
+      "cache": false,
+      "persistent": true
+    },
+    "test:coverage": {
+      "outputs": ["coverage/**"]
+    },
+    "test:ci": {
+      "outputs": ["test-results.json", "coverage/**"]
+    },
+    "validate": {
+      "dependsOn": ["lint", "typecheck", "test"]
+    },
+    "size": {
+      "dependsOn": ["build"]
+    },
+    "analyze": {
+      "dependsOn": ["build"]
     },
     "clean": {
       "cache": false

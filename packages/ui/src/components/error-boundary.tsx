@@ -38,12 +38,12 @@ const DefaultFallback: React.FC<ErrorBoundaryFallbackProperties> = ({
   errorId,
   resetError,
 }) => (
-  <div className="flex min-h-screen items-center justify-center bg-gray-50">
-    <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+  <div className="bg-semantic-background flex min-h-screen items-center justify-center">
+    <div className="bg-semantic-surface shadow-elev-2 w-full max-w-md rounded-lg p-6">
       <div className="mb-4 flex items-center">
         <div className="flex-shrink-0">
           <svg
-            className="h-8 w-8 text-red-500"
+            className="text-semantic-destructive h-8 w-8"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -57,18 +57,18 @@ const DefaultFallback: React.FC<ErrorBoundaryFallbackProperties> = ({
           </svg>
         </div>
         <div className="ml-3">
-          <h3 className="text-lg font-medium text-gray-900">Something went wrong</h3>
-          <p className="text-sm text-gray-500">Error ID: {errorId}</p>
+          <h3 className="text-semantic-foreground text-lg font-medium">Something went wrong</h3>
+          <p className="text-semantic-muted-foreground text-sm">Error ID: {errorId}</p>
         </div>
       </div>
 
       <div className="mb-4">
-        <p className="mb-2 text-sm text-gray-700">
+        <p className="text-semantic-foreground mb-2 text-sm">
           We're sorry, but something unexpected happened. Please try refreshing the page.
         </p>
-        <details className="text-xs text-gray-600">
+        <details className="text-semantic-muted-foreground text-xs">
           <summary className="cursor-pointer font-medium">Technical Details</summary>
-          <div className="mt-2 rounded bg-gray-100 p-2">
+          <div className="bg-semantic-muted mt-2 rounded p-2">
             <p>
               <strong>Error:</strong> {error.message}
             </p>
@@ -87,13 +87,13 @@ const DefaultFallback: React.FC<ErrorBoundaryFallbackProperties> = ({
       <div className="flex space-x-3">
         <button
           onClick={resetError}
-          className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="bg-semantic-primary text-semantic-primary-foreground hover:bg-semantic-primary/90 focus:ring-semantic-primary flex-1 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           Try Again
         </button>
         <button
           onClick={() => window.location.reload()}
-          className="flex-1 rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          className="bg-semantic-secondary text-semantic-secondary-foreground hover:bg-semantic-secondary/90 focus:ring-semantic-secondary flex-1 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
         >
           Reload Page
         </button>

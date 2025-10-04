@@ -12,7 +12,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const checkboxVariants = cva(
-  'peer h-4 w-4 shrink-0 rounded-sm border border-semantic-border bg-semantic-background ring-offset-semantic-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-semantic-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-semantic-primary data-[state=checked]:bg-semantic-primary data-[state=checked]:text-semantic-primary-foreground',
+  'border-semantic-border bg-semantic-background ring-offset-semantic-background focus-visible:ring-semantic-ring data-[state=checked]:border-semantic-primary data-[state=checked]:bg-semantic-primary data-[state=checked]:text-semantic-primary-foreground peer h-4 w-4 shrink-0 rounded-sm border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {
