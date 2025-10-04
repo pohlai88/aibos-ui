@@ -39,33 +39,37 @@ export interface BadgeProperties
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProperties): React.ReactElement {
-  if (isPerfMode()) {
-    // Keep the same element as prod (DIV), avoid cn()/variant churn,
-    // and make styling static + perf-pinned.
-    return (
-      <div
-        className={[
-          'badge',
-          'inline-flex',
-          'items-center',
-          'rounded',
-          'px-1.5',
-          'py-0.5',
-          'text-xs',
-          'font-medium',
-          'perf-static',
-          className,
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        {...varianceAttributes()}
-        {...props}
-      />
-    );
-  }
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
-}
+const Badge = React.forwardRef<HTMLDivElement, BadgeProperties>(
+  ({ className, variant, ...props }, reference) => {
+    if (isPerfMode()) {
+      // Keep the same element as prod (DIV), avoid cn()/variant churn,
+      // and make styling static + perf-pinned.
+      return (
+        <div
+          ref={reference}
+          className={[
+            'badge',
+            'inline-flex',
+            'items-center',
+            'rounded',
+            'px-1.5',
+            'py-0.5',
+            'text-xs',
+            'font-medium',
+            'perf-static',
+            className,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          {...varianceAttributes()}
+          {...props}
+        />
+      );
+    }
+    return <div ref={reference} className={cn(badgeVariants({ variant }), className)} {...props} />;
+  },
+);
+Badge.displayName = 'Badge';
 
 export { Badge, badgeVariants };
 export type BadgeReference = React.ElementRef<typeof Badge>;
