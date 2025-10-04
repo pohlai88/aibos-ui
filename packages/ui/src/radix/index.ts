@@ -52,5 +52,8 @@ export { Toggle } from './toggle';
 // Toggle Group exports
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 
+// Avatar exports
+export { Avatar, AvatarImage, AvatarFallback } from './avatar';
+
 // Combobox exports
 export { Combobox, ComboboxItem } from './combobox';

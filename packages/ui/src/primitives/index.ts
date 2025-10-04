@@ -84,6 +84,25 @@ export {
   type ToggleGroupItemElement,
 } from './toggle-group';
 
+// Avatar exports
+export {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  avatarVariants,
+  avatarImageVariants,
+  avatarFallbackVariants,
+  type AvatarProperties,
+  type AvatarImageProperties,
+  type AvatarFallbackProperties,
+  type AvatarReference,
+  type AvatarImageReference,
+  type AvatarFallbackReference,
+  type AvatarElement,
+  type AvatarImageElement,
+  type AvatarFallbackElement,
+} from './avatar';
+
 // Combobox exports
 export {
   Combobox,
