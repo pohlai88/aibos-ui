@@ -78,3 +78,17 @@ export {
   Progress as ProgressPrimitive, 
   CircularProgress as CircularProgressPrimitive 
 } from './progress';
+
+// Context Menu exports (Radix primitives)
+export {
+  ContextMenu as ContextMenuPrimitive,
+  ContextMenuTrigger as ContextMenuTriggerPrimitive,
+  ContextMenuContent as ContextMenuContentPrimitive,
+  ContextMenuItem as ContextMenuItemPrimitive,
+  ContextMenuSeparator as ContextMenuSeparatorPrimitive,
+  ContextMenuLabel as ContextMenuLabelPrimitive,
+  ContextMenuGroup as ContextMenuGroupPrimitive,
+  ContextMenuSub as ContextMenuSubPrimitive,
+  ContextMenuSubTrigger as ContextMenuSubTriggerPrimitive,
+  ContextMenuSubContent as ContextMenuSubContentPrimitive,
+} from './context-menu';
