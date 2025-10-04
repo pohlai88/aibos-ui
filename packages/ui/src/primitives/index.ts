@@ -119,18 +119,19 @@ export {
   type AvatarFallbackElement,
 } from './avatar';
 
-// Combobox exports
+// Progress exports
 export {
-  Combobox,
-  ComboboxItem,
-  comboboxVariants,
-  comboboxTriggerVariants,
-  comboboxContentVariants,
-  comboboxItemVariants,
-  type ComboboxProperties,
-  type ComboboxItemProperties,
-  type ComboboxReference,
-  type ComboboxItemReference,
-  type ComboboxElement,
-  type ComboboxItemElement,
-} from './combobox';
+  Progress,
+  CircularProgress,
+  progressVariants,
+  progressIndicatorVariants,
+  circularProgressVariants,
+  circularProgressSvgVariants,
+  circularProgressCircleVariants,
+  type ProgressProperties,
+  type CircularProgressProperties,
+  type ProgressReference,
+  type CircularProgressReference,
+  type ProgressElement,
+  type CircularProgressElement,
+} from './progress';

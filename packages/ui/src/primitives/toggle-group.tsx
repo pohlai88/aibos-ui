@@ -190,7 +190,7 @@ const ToggleGroup = React.forwardRef<
         defaultValue={multipleProps.defaultValue}
         onValueChange={multipleProps.onValueChange}
         disabled={multipleProps.disabled}
-        {...(multipleProps as Record<string, unknown>)}
+        {...(multipleProps as unknown as Record<string, unknown>)}
       >
         {multipleProps.children}
       </ToggleGroupPrimitive.Root>

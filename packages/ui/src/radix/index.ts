@@ -73,8 +73,8 @@ export {
   AvatarFallback as AvatarFallbackPrimitive 
 } from './avatar';
 
-// Combobox exports (Radix primitives)
+// Progress exports (Radix primitives)
 export { 
-  Combobox as ComboboxPrimitive, 
-  ComboboxItem as ComboboxItemPrimitive 
-} from './combobox';
+  Progress as ProgressPrimitive, 
+  CircularProgress as CircularProgressPrimitive 
+} from './progress';
