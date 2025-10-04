@@ -5,7 +5,7 @@
  * accessibility features.
  */
 
-import { ChevronRightIcon } from '../icons/internal';
+import { ChevronRightIcon } from '../icons';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';
 
@@ -95,7 +95,15 @@ const BreadcrumbSeparator = React.forwardRef<HTMLSpanElement, BreadcrumbSeparato
       className={cn('icon-sm', className)}
       {...props}
     >
-      {children ?? <ChevronRightIcon />}
+      {children ?? (
+        <ChevronRightIcon 
+          context="dashboards"
+          semanticColor="text-gray-500"
+          enableAnimations={true}
+          enableAdaptiveStyling={true}
+          enableSemanticColors={true}
+        />
+      )}
     </span>
   ),
 );

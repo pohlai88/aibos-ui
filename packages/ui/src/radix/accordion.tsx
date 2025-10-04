@@ -5,7 +5,7 @@
  * premium animations, and comprehensive accessibility features.
  */
 
-import { ChevronDownIcon } from '@icons/internal/chevron-down';
+import { ChevronDownIcon } from '../icons';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { isPerfMode, varianceAttributes, cn } from '../utils';
 import { cva, type VariantProps } from 'class-variance-authority';

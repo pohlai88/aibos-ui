@@ -9,7 +9,7 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { ChevronDown, Search, X } from 'lucide-react';
+import { ChevronDownIcon, SearchIcon, CloseIcon } from '../icons';
 
 const comboboxVariants = cva(
   'relative flex w-full flex-col',

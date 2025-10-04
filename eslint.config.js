@@ -181,6 +181,11 @@ export default [
           message:
             'Use semantic tokens (e.g., semantic-text-primary) — raw Tailwind color utilities are forbidden in UI code.',
         },
+        {
+          // Ban raw <svg> elements outside icons package
+          selector: "JSXOpeningElement[name.name='svg']",
+          message: 'Use @icons/internal/* components, not raw <svg> elements.',
+        },
       ],
     },
     settings: {
@@ -218,6 +223,14 @@ export default [
       // React hooks rules
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+
+  // Icons package - allow raw SVG elements
+  {
+    files: ['packages/ui/src/icons/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': 'off', // Allow raw <svg> in icons package
     },
   },
 

@@ -5,7 +5,7 @@
  * and comprehensive accessibility features.
  */
 
-import { ChevronDownIcon } from '@icons/internal';
+import { ChevronDownIcon } from '../icons';
 import {
   Accordion as AccordionPrimitive,
   AccordionItem as AccordionItemPrimitive,
@@ -71,7 +71,14 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      <ChevronDownIcon className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      <ChevronDownIcon 
+        className="h-4 w-4 shrink-0 transition-transform duration-200" 
+        context="dashboards"
+        semanticColor="text-gray-500"
+        enableAnimations={true}
+        enableAdaptiveStyling={true}
+        enableSemanticColors={true}
+      />
     </AccordionTriggerPrimitive>
   );
 });

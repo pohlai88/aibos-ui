@@ -5,7 +5,7 @@
  * Provides accessible menu components with proper keyboard navigation.
  */
 
-import { Check, ChevronRight, Circle } from '@icons/lucide';
+import { CheckIcon, ChevronRightIcon, CircleIcon } from '../icons';
 import * as MenuPrimitive from '@radix-ui/react-menu';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';
@@ -36,7 +36,7 @@ const MenuSubTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronRight className="ml-auto h-4 w-4" />
+    <ChevronRightIcon className="ml-auto h-4 w-4" />
   </MenuPrimitive.SubTrigger>
 ));
 MenuSubTrigger.displayName = MenuPrimitive.SubTrigger.displayName;
@@ -109,7 +109,7 @@ const MenuCheckboxItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <MenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <CheckIcon className="h-4 w-4" />
       </MenuPrimitive.ItemIndicator>
     </span>
     {children}
@@ -131,7 +131,7 @@ const MenuRadioItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <MenuPrimitive.ItemIndicator>
-        <Circle className="h-2 w-2 fill-current" />
+        <CircleIcon className="h-2 w-2 fill-current" />
       </MenuPrimitive.ItemIndicator>
     </span>
     {children}

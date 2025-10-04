@@ -5,7 +5,7 @@
  * premium animations, and comprehensive accessibility features.
  */
 
-import { CloseIcon } from '@icons/internal/close';
+import { CloseIcon } from '../icons';
 import * as ToastPrimitives from '@radix-ui/react-toast';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';

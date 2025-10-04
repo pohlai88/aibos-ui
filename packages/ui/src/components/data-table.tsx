@@ -30,7 +30,7 @@ import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { UnsafeAny } from '../types';
 import * as React from 'react';
-import { ChevronDown, ChevronUp, Download, Filter, Search } from '@icons/lucide';
+import { ChevronDownIcon, ChevronUpIcon, DownloadIcon, FilterIcon, SearchIcon } from '../icons';
 
 const dataTableVariants = cva('w-full', {
   variants: {
@@ -267,7 +267,14 @@ const DataTable = React.forwardRef<HTMLDivElement, DataTableProperties<UnsafeAny
             </div>
             <div className="data-table-actions perf-static">
               <Button variant="outline" size="sm" disabled>
-                <Download className="h-4 w-4" />
+                <DownloadIcon 
+                  className="h-4 w-4" 
+                  context="dense-tables"
+                  semanticColor="text-green-500"
+                  enableAnimations={true}
+                  enableAdaptiveStyling={true}
+                  enableSemanticColors={true}
+                />
               </Button>
             </div>
           </div>
@@ -467,7 +474,14 @@ const DataTableToolbar = React.forwardRef<HTMLDivElement, DataTableToolbarProper
         <div className="flex flex-1 items-center space-x-2">
           {enableGlobalFilter && (
             <div className="flex items-center space-x-2">
-              <Search className="text-semantic-muted-foreground h-4 w-4" />
+              <SearchIcon 
+                className="h-4 w-4" 
+                context="dense-tables"
+                semanticColor="text-blue-500"
+                enableAnimations={true}
+                enableAdaptiveStyling={true}
+                enableSemanticColors={true}
+              />
               <Input
                 placeholder={searchPlaceholder}
                 value={(table.getColumn('globalFilter')?.getFilterValue() as string) ?? ''}
@@ -484,7 +498,14 @@ const DataTableToolbar = React.forwardRef<HTMLDivElement, DataTableToolbarProper
               size="sm"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
-              <Filter className="h-4 w-4" />
+              <FilterIcon 
+                className="h-4 w-4" 
+                context="dense-tables"
+                semanticColor="text-purple-500"
+                enableAnimations={true}
+                enableAdaptiveStyling={true}
+                enableSemanticColors={true}
+              />
               View
             </Button>
           )}
@@ -495,7 +516,14 @@ const DataTableToolbar = React.forwardRef<HTMLDivElement, DataTableToolbarProper
                 size="sm"
                 onClick={() => handleExport('csv')}
               >
-                <Download className="h-4 w-4" />
+                <DownloadIcon 
+                  className="h-4 w-4" 
+                  context="dense-tables"
+                  semanticColor="text-green-500"
+                  enableAnimations={true}
+                  enableAdaptiveStyling={true}
+                  enableSemanticColors={true}
+                />
                 CSV
               </Button>
               <Button
@@ -503,7 +531,14 @@ const DataTableToolbar = React.forwardRef<HTMLDivElement, DataTableToolbarProper
                 size="sm"
                 onClick={() => handleExport('json')}
               >
-                <Download className="h-4 w-4" />
+                <DownloadIcon 
+                  className="h-4 w-4" 
+                  context="dense-tables"
+                  semanticColor="text-green-500"
+                  enableAnimations={true}
+                  enableAdaptiveStyling={true}
+                  enableSemanticColors={true}
+                />
                 JSON
               </Button>
             </div>
@@ -551,9 +586,23 @@ const DataTableColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataT
         >
           <span>{title}</span>
           {column.getIsSorted() === 'asc' ? (
-            <ChevronUp className="ml-2 h-4 w-4" />
+            <ChevronUpIcon 
+              className="ml-2 h-4 w-4" 
+              context="dense-tables"
+              semanticColor="text-blue-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+            />
           ) : column.getIsSorted() === 'desc' ? (
-            <ChevronDown className="ml-2 h-4 w-4" />
+            <ChevronDownIcon 
+              className="ml-2 h-4 w-4" 
+              context="dense-tables"
+              semanticColor="text-blue-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+            />
           ) : (
             <div className="ml-2 h-4 w-4" />
           )}

@@ -9,7 +9,7 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDownIcon, CheckIcon } from '../icons';
 
 const dropdownMenuVariants = cva(
   'bg-semantic-background text-semantic-foreground border-semantic-border min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-md',
@@ -207,7 +207,7 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
           {...props}
         >
           {children}
-          <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+          <ChevronDownIcon className="ml-2 h-4 w-4 opacity-50" />
         </button>
       );
     }
@@ -219,7 +219,7 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
         {...props}
       >
         {children}
-        <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+        <ChevronDownIcon className="ml-2 h-4 w-4 opacity-50" />
       </button>
     );
   }
@@ -384,7 +384,7 @@ const DropdownMenuSubTrigger = React.forwardRef<HTMLDivElement, DropdownMenuSubT
           {...props}
         >
           {children}
-          <ChevronDown className="ml-auto h-4 w-4" />
+          <ChevronDownIcon className="ml-auto h-4 w-4" />
         </div>
       );
     }
@@ -399,7 +399,7 @@ const DropdownMenuSubTrigger = React.forwardRef<HTMLDivElement, DropdownMenuSubT
         {...props}
       >
         {children}
-        <ChevronDown className="ml-auto h-4 w-4" />
+        <ChevronDownIcon className="ml-auto h-4 w-4" />
       </div>
     );
   }
@@ -470,7 +470,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<HTMLDivElement, DropdownMenuIt
           {...varianceAttributes()}
           {...props}
         >
-          <Check className="mr-2 h-4 w-4" />
+          <CheckIcon className="mr-2 h-4 w-4" />
           {children}
         </div>
       );
@@ -489,7 +489,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<HTMLDivElement, DropdownMenuIt
         aria-checked={checked}
         {...props}
       >
-        <Check className={cn('mr-2 h-4 w-4', !checked && 'opacity-0')} />
+        <CheckIcon className={cn('mr-2 h-4 w-4', !checked && 'opacity-0')} />
         {children}
       </div>
     );

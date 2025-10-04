@@ -18,7 +18,7 @@ export { Badge, badgeVariants } from './primitives/badge';
 export { Card } from './components/card';
 
 // Essential icons only
-export { X, Check, ChevronRight, ChevronDown, ChevronUp } from './icons/lucide';
+export { CloseIcon, CheckIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 
 // Essential design tokens
 export { colors } from './tokens/colors';

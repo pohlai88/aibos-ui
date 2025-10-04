@@ -5,7 +5,7 @@
  * premium animations, and comprehensive accessibility features.
  */
 
-import { CheckIcon } from '@icons/internal/check';
+import { CheckIcon } from '../icons';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { isPerfMode, varianceAttributes } from '../utils';
 import { cva, type VariantProps } from 'class-variance-authority';

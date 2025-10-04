@@ -10,7 +10,7 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDownIcon } from '../icons';
 
 const navigationMenuVariants = cva(
   'relative z-10 flex max-w-max flex-1 items-center justify-center',
@@ -241,7 +241,7 @@ const NavigationMenuTrigger = React.memo(
         {...props}
       >
         {children}{' '}
-        <ChevronDown
+        <ChevronDownIcon
           className="relative top-[1px] ml-1 h-3 w-3 transition duration-200 group-data-[state=open]:rotate-180"
           aria-hidden="true"
         />

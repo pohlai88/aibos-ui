@@ -5,7 +5,7 @@
  * and comprehensive accessibility features.
  */
 
-import { CloseIcon } from '@icons/internal';
+import { CloseIcon } from '../icons';
 import {
   Toast as ToastPrimitive,
   ToastViewport as ToastViewportPrimitive,
@@ -104,7 +104,14 @@ const ToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <CloseIcon className="h-4 w-4" />
+    <CloseIcon 
+      className="h-4 w-4" 
+      context="dashboards"
+      semanticColor="text-gray-500"
+      enableAnimations={true}
+      enableAdaptiveStyling={true}
+      enableSemanticColors={true}
+    />
   </ToastClosePrimitive>
 ));
 ToastClose.displayName = ToastClosePrimitive.displayName;

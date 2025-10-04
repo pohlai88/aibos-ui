@@ -12,7 +12,7 @@ import {
   PADDING_SMALL,
 } from '../constants/class-names';
 import { narrowToElements } from '../utils/internal';
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from '@icons/internal';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from '../icons';
 import {
   Select as SelectPrimitive,
   SelectGroup as SelectGroupPrimitive,
@@ -107,7 +107,14 @@ const SelectTrigger = React.forwardRef<
     {...props}
   >
     {children}
-    <ChevronDownIcon className={`${ICON_SIZE_SMALL} opacity-50`} />
+    <ChevronDownIcon 
+      className={`${ICON_SIZE_SMALL} opacity-50`} 
+      context="dashboards"
+      semanticColor="text-gray-500"
+      enableAnimations={true}
+      enableAdaptiveStyling={true}
+      enableSemanticColors={true}
+    />
   </SelectTriggerPrimitive>
 ));
 SelectTrigger.displayName = SelectTriggerPrimitive.displayName;
@@ -121,7 +128,14 @@ const SelectScrollUpButton = React.forwardRef<
     className={cn('flex cursor-default items-center justify-center py-1', className)}
     {...props}
   >
-    <ChevronUpIcon className={ICON_SIZE_SMALL} />
+    <ChevronUpIcon 
+      className={ICON_SIZE_SMALL} 
+      context="dashboards"
+      semanticColor="text-gray-500"
+      enableAnimations={true}
+      enableAdaptiveStyling={true}
+      enableSemanticColors={true}
+    />
   </SelectScrollUpButtonPrimitive>
 ));
 SelectScrollUpButton.displayName = SelectScrollUpButtonPrimitive.displayName;
@@ -135,7 +149,14 @@ const SelectScrollDownButton = React.forwardRef<
     className={cn('flex cursor-default items-center justify-center py-1', className)}
     {...props}
   >
-    <ChevronDownIcon className={ICON_SIZE_SMALL} />
+    <ChevronDownIcon 
+      className={ICON_SIZE_SMALL} 
+      context="dashboards"
+      semanticColor="text-gray-500"
+      enableAnimations={true}
+      enableAdaptiveStyling={true}
+      enableSemanticColors={true}
+    />
   </SelectScrollDownButtonPrimitive>
 ));
 SelectScrollDownButton.displayName = SelectScrollDownButtonPrimitive.displayName;
@@ -217,7 +238,14 @@ const SelectItem = React.forwardRef<
     {...props}
   >
     <span className={SELECT_ITEM_ICON_CONTAINER}>
-      <CheckIcon className={SELECT_ITEM_ICON} />
+      <CheckIcon 
+        className={SELECT_ITEM_ICON} 
+        context="dashboards"
+        semanticColor="text-green-500"
+        enableAnimations={true}
+        enableAdaptiveStyling={true}
+        enableSemanticColors={true}
+      />
     </span>
     {children}
   </SelectItemPrimitive>

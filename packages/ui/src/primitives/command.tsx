@@ -9,7 +9,7 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { Search, Command as CommandIcon } from 'lucide-react';
+import { SearchIcon, CommandIcon } from '../icons';
 
 const commandVariants = cva(
   'bg-semantic-background text-semantic-foreground flex h-full w-full flex-col overflow-hidden rounded-md',

@@ -10,7 +10,7 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-import { X } from 'lucide-react';
+import { CloseIcon } from '../icons';
 
 const sheetVariants = cva(
   'fixed inset-0 z-50',
@@ -274,7 +274,7 @@ const SheetContent = React.memo(
         >
           {children}
           <SheetPrimitive.Close className="ring-offset-semantic-background focus:ring-semantic-ring data-[state=open]:bg-semantic-accent absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none">
-            <X className="h-4 w-4" />
+            <CloseIcon className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         </SheetPrimitive.Content>

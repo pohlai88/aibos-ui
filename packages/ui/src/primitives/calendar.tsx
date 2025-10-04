@@ -10,7 +10,7 @@ import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { Button } from './button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon } from '../icons';
 
 const calendarVariants = cva(
   'bg-semantic-popover text-semantic-popover-foreground shadow-elev-2 relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border p-1',

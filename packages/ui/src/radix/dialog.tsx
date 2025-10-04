@@ -5,7 +5,7 @@
  * Provides accessible modal dialogs with proper focus management.
  */
 
-import { X } from '../icons/lucide';
+import { CloseIcon } from '../icons';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';

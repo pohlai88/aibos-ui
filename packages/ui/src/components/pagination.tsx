@@ -5,7 +5,7 @@
  * accessibility features.
  */
 
-import { ChevronLeftIcon, ChevronRightIcon } from '../icons/internal';
+import { ChevronLeftIcon, ChevronRightIcon } from '../icons';
 import { Button } from '../primitives/button';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';
@@ -110,7 +110,14 @@ const PreviousNextButton = ({
       onClick={() => onPageChange(page)}
       aria-label={label}
     >
-      <Icon className="h-4 w-4" />
+      <Icon 
+        className="h-4 w-4" 
+        context="dashboards"
+        semanticColor="text-gray-500"
+        enableAnimations={true}
+        enableAdaptiveStyling={true}
+        enableSemanticColors={true}
+      />
       <span className="sr-only">{text}</span>
     </PaginationItem>
   );
