@@ -206,3 +206,111 @@ export {
   type CommandGroupProperties,
   type CommandSeparatorProperties,
 } from './command';
+
+// Dropdown Menu exports
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuCheckboxItem,
+  dropdownMenuVariants,
+  dropdownMenuTriggerVariants,
+  dropdownMenuItemVariants,
+  dropdownMenuSeparatorVariants,
+  dropdownMenuLabelVariants,
+  dropdownMenuSubTriggerVariants,
+  type DropdownMenuProperties,
+  type DropdownMenuTriggerProperties,
+  type DropdownMenuContentProperties,
+  type DropdownMenuItemProperties,
+  type DropdownMenuSeparatorProperties,
+  type DropdownMenuLabelProperties,
+  type DropdownMenuSubTriggerProperties,
+  type DropdownMenuSubContentProperties,
+} from './dropdown-menu';
+
+// Hover Card exports
+export {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardContent,
+  hoverCardVariants,
+  hoverCardTriggerVariants,
+  hoverCardContentVariants,
+  type HoverCardProperties,
+  type HoverCardTriggerProperties,
+  type HoverCardContentProperties,
+} from './hover-card';
+
+// Navigation Menu exports
+export {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuTrigger,
+  NavigationMenuContent,
+  NavigationMenuLink,
+  navigationMenuVariants,
+  navigationMenuListVariants,
+  navigationMenuItemVariants,
+  navigationMenuTriggerVariants,
+  navigationMenuContentVariants,
+  navigationMenuLinkVariants,
+  type NavigationMenuProperties,
+  type NavigationMenuListProperties,
+  type NavigationMenuItemProperties,
+  type NavigationMenuTriggerProperties,
+  type NavigationMenuContentProperties,
+  type NavigationMenuLinkProperties,
+} from './navigation-menu';
+
+// Scroll Area exports
+export {
+  ScrollArea,
+  ScrollAreaViewport,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaCorner,
+  scrollAreaVariants,
+  scrollAreaViewportVariants,
+  scrollAreaScrollbarVariants,
+  scrollAreaThumbVariants,
+  scrollAreaCornerVariants,
+  type ScrollAreaProperties,
+  type ScrollAreaViewportProperties,
+  type ScrollAreaScrollbarProperties,
+  type ScrollAreaThumbProperties,
+  type ScrollAreaCornerProperties,
+} from './scroll-area';
+
+// Sheet exports
+export {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+  sheetVariants,
+  sheetOverlayVariants,
+  sheetContentVariants,
+  sheetHeaderVariants,
+  sheetFooterVariants,
+  sheetTitleVariants,
+  sheetDescriptionVariants,
+  type SheetProperties,
+  type SheetTriggerProperties,
+  type SheetCloseProperties,
+  type SheetContentProperties,
+  type SheetHeaderProperties,
+  type SheetFooterProperties,
+  type SheetTitleProperties,
+  type SheetDescriptionProperties,
+} from './sheet';

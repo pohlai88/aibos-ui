@@ -102,3 +102,60 @@ export {
   CommandGroupPrimitive,
   CommandSeparatorPrimitive,
 } from './command';
+
+// Dropdown Menu exports (Radix primitives)
+export {
+  DropdownMenuPrimitive,
+  DropdownMenuTriggerPrimitive,
+  DropdownMenuContentPrimitive,
+  DropdownMenuItemPrimitive,
+  DropdownMenuCheckboxItemPrimitive,
+  DropdownMenuRadioItemPrimitive,
+  DropdownMenuLabelPrimitive,
+  DropdownMenuSeparatorPrimitive,
+  DropdownMenuShortcutPrimitive,
+  DropdownMenuGroupPrimitive,
+  DropdownMenuPortalPrimitive,
+  DropdownMenuSubPrimitive,
+  DropdownMenuSubContentPrimitive,
+  DropdownMenuSubTriggerPrimitive,
+  DropdownMenuRadioGroupPrimitive,
+} from './dropdown-menu';
+
+// Hover Card exports (Radix primitives)
+export {
+  HoverCard as HoverCardPrimitive,
+  HoverCardTrigger as HoverCardTriggerPrimitive,
+  HoverCardContent as HoverCardContentPrimitive,
+} from './hover-card';
+
+// Navigation Menu exports (Radix primitives)
+export {
+  NavigationMenu as NavigationMenuPrimitive,
+  NavigationMenuList as NavigationMenuListPrimitive,
+  NavigationMenuItem as NavigationMenuItemPrimitive,
+  NavigationMenuTrigger as NavigationMenuTriggerPrimitive,
+  NavigationMenuContent as NavigationMenuContentPrimitive,
+  NavigationMenuLink as NavigationMenuLinkPrimitive,
+} from './navigation-menu';
+
+// Scroll Area exports (Radix primitives)
+export {
+  ScrollArea as ScrollAreaPrimitive,
+  ScrollAreaViewport as ScrollAreaViewportPrimitive,
+  ScrollAreaScrollbar as ScrollAreaScrollbarPrimitive,
+  ScrollAreaThumb as ScrollAreaThumbPrimitive,
+  ScrollAreaCorner as ScrollAreaCornerPrimitive,
+} from './scroll-area';
+
+// Sheet exports (Radix primitives)
+export {
+  Sheet as SheetPrimitive,
+  SheetTrigger as SheetTriggerPrimitive,
+  SheetClose as SheetClosePrimitive,
+  SheetContent as SheetContentPrimitive,
+  SheetHeader as SheetHeaderPrimitive,
+  SheetFooter as SheetFooterPrimitive,
+  SheetTitle as SheetTitlePrimitive,
+  SheetDescription as SheetDescriptionPrimitive,
+} from './sheet';

@@ -258,26 +258,33 @@ const Command = React.forwardRef<HTMLDivElement, CommandProperties>(
           {React.Children.map(children, (child) => {
             if (React.isValidElement(child) && child.type === CommandList) {
               // If it's a CommandList, recursively process its children
+              const childProps = child.props as Record<string, unknown>;
               return React.cloneElement(child, {
-                ...child.props,
-                children: React.Children.map(child.props.children, (grandChild) => {
-                  if (React.isValidElement(grandChild) && grandChild.props.value !== undefined) {
-                    return React.cloneElement(grandChild, {
-                      ...grandChild.props,
-                      size,
-                      onSelect: handleItemSelect,
-                    });
+                ...childProps,
+                children: React.Children.map(childProps.children as React.ReactNode, (grandChild) => {
+                  if (React.isValidElement(grandChild)) {
+                    const grandChildProps = grandChild.props as Record<string, unknown>;
+                    if (grandChildProps.value !== undefined) {
+                      return React.cloneElement(grandChild, {
+                        ...grandChildProps,
+                        size,
+                        onSelect: handleItemSelect,
+                      } as React.ReactElement);
+                    }
                   }
                   return grandChild;
                 }),
               });
-            } else if (React.isValidElement(child) && child.props.value !== undefined) {
-              // Direct CommandItem
-              return React.cloneElement(child, {
-                ...child.props,
-                size,
-                onSelect: handleItemSelect,
-              });
+            } else if (React.isValidElement(child)) {
+              const childProps = child.props as Record<string, unknown>;
+              if (childProps.value !== undefined) {
+                // Direct CommandItem
+                return React.cloneElement(child, {
+                  ...childProps,
+                  size,
+                  onSelect: handleItemSelect,
+                } as React.ReactElement);
+              }
             }
             return child;
           })}

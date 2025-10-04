@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { DataTable, DataTableToolbar, DataTableColumnHeader, DataTableRow } from '../../components';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, Table as TanStackTable } from '@tanstack/react-table';
 import { useReactTable } from '@tanstack/react-table';
 
 // Mock utility functions
@@ -64,7 +64,7 @@ describe('DataTable Component', () => {
   ];
 
   // Helper function to create mock table with data
-  const createMockTableWithData = (data = mockData) => ({
+  const createMockTableWithData = (data = mockData): TanStackTable<unknown> => ({
     getHeaderGroups: vi.fn(() => [
       {
         id: 'header-group-1',
@@ -141,10 +141,10 @@ describe('DataTable Component', () => {
     })),
     toggleAllPageRowsSelected: vi.fn(),
     getIsAllPageRowsSelected: vi.fn(() => false),
-  });
+  } as unknown as TanStackTable<unknown>);
 
   // Helper function to create mock table with empty data
-  const createMockTableWithEmptyData = () => ({
+  const createMockTableWithEmptyData = (): TanStackTable<unknown> => ({
     getHeaderGroups: vi.fn(() => [
       {
         id: 'header-group-1',
@@ -181,7 +181,7 @@ describe('DataTable Component', () => {
     })),
     toggleAllPageRowsSelected: vi.fn(),
     getIsAllPageRowsSelected: vi.fn(() => false),
-  });
+  } as unknown as TanStackTable<unknown>);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -337,7 +337,7 @@ describe('DataTable Component', () => {
             },
           ],
         })),
-      };
+      } as unknown as TanStackTable<unknown>;
       
       vi.mocked(useReactTable).mockReturnValue(mockTableWithSelection);
 
