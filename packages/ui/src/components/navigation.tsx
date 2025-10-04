@@ -8,6 +8,7 @@
 import { Button } from '../primitives/button';
 import { polymorphic, type PolymorphicProperties } from '../utils/polymorphic.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Menu, X } from '@icons/lucide';
 import * as React from 'react';
 
 const navigationVariants = cva(
@@ -84,20 +85,7 @@ const MobileMenuButton = ({
   onToggle: () => void;
 }) => (
   <Button variant="ghost" size="sm" className={`${mobileBreakpoint}:hidden`} onClick={onToggle}>
-    <svg
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M4 6h16M4 12h16M4 18h16"
-      />
-    </svg>
+    <Menu className="h-5 w-5" />
   </Button>
 );
 
@@ -129,14 +117,7 @@ const MobileMenu = ({
         <div className="border-semantic-border flex items-center justify-between border-b px-4 py-3">
           {logo}
           <Button variant="ghost" size="sm" onClick={onClose}>
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="h-5 w-5" />
           </Button>
         </div>
         <div className="flex-1 space-y-1 p-4">

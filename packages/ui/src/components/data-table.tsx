@@ -30,7 +30,7 @@ import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { UnsafeAny } from '../types';
 import * as React from 'react';
-import { ChevronDown, ChevronUp, Download, Filter, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Filter, Search } from '@icons/lucide';
 
 const dataTableVariants = cva('w-full', {
   variants: {

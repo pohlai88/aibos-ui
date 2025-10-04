@@ -165,3 +165,85 @@ export {
   type DataTableColumnHeaderProperties,
   type DataTableRowProperties,
 } from './data-table';
+
+// Command Palette exports
+export {
+  CommandPalette,
+  commandPaletteVariants,
+  commandPaletteContentVariants,
+  commandPaletteOverlayVariants,
+  fuzzySearch,
+  getRecentCommands,
+  addRecentCommand,
+  type CommandPaletteCommand,
+} from './command-palette';
+
+// Data Grid exports
+export {
+  DataGrid,
+  DataGridToolbar,
+  DataGridColumnHeader,
+  DataGridRow,
+  dataGridVariants,
+  dataGridToolbarVariants,
+  dataGridHeaderVariants,
+  dataGridCellVariants,
+  type DataGridProperties,
+  type DataGridToolbarProperties,
+  type DataGridColumnHeaderProperties,
+  type DataGridRowProperties,
+} from './data-grid';
+
+// Multi-select exports
+export {
+  MultiSelect,
+  MultiSelectTrigger,
+  MultiSelectContent,
+  MultiSelectItem,
+  multiSelectVariants,
+  multiSelectTriggerVariants,
+  multiSelectContentVariants,
+  multiSelectItemVariants,
+  type MultiSelectOption,
+  type MultiSelectProperties,
+  type MultiSelectTriggerProperties,
+  type MultiSelectContentProperties,
+  type MultiSelectItemProperties,
+} from './multi-select';
+
+// Date Range Picker exports
+export {
+  DateRangePicker,
+  DateRangePickerTrigger,
+  DateRangePickerContent,
+  dateRangePickerVariants,
+  dateRangePickerTriggerVariants,
+  dateRangePickerContentVariants,
+  dateRangePickerCalendarVariants,
+  defaultPresets as dateRangePresets,
+  type DateRange,
+  type DateRangePickerProperties,
+  type DateRangePickerTriggerProperties,
+  type DateRangePickerContentProperties,
+  type DateRangePreset,
+} from './date-range-picker';
+
+// Color Picker exports
+export {
+  ColorPicker,
+  ColorPickerTrigger,
+  ColorPickerContent,
+  colorPickerVariants,
+  colorPickerTriggerVariants,
+  colorPickerContentVariants,
+  colorPickerSwatchVariants,
+  defaultPresets as colorPresets,
+  hexToRgb,
+  rgbToHex,
+  isValidHex,
+  normalizeHex,
+  type ColorPickerProperties,
+  type ColorPickerTriggerProperties,
+  type ColorPickerContentProperties,
+  type ColorPreset,
+} from './color-picker';
