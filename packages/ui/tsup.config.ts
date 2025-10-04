@@ -45,7 +45,7 @@ export default defineConfig({
   minify: true,
   target: 'es2022',
   // Enhanced code splitting configuration
-  chunkSizeWarningLimit: 1000, // Warn if chunks exceed 1MB
+  // chunkSizeWarningLimit: 1000, // Warn if chunks exceed 1MB - not supported in this version
   metafile: true, // Generate bundle analysis metadata
   external: [
     'react', 'react-dom',

@@ -239,6 +239,9 @@ const Combobox = React.forwardRef<
             value={searchValue}
             readOnly
             className="combobox-input perf-static"
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls={isOpen ? 'combobox-listbox' : undefined}
           />
         </div>
         <div className="combobox-content perf-static">

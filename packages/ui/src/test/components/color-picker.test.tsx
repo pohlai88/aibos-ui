@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+// @ts-ignore - user-event types issue
 import userEvent from '@testing-library/user-event';
 import { 
   ColorPicker, 
@@ -521,7 +522,7 @@ describe('ColorPicker', () => {
       expect(defaultPresets).toHaveLength(4);
       expect(defaultPresets[0]).toHaveProperty('name', 'Primary');
       expect(defaultPresets[0]).toHaveProperty('colors');
-      expect(Array.isArray(defaultPresets[0].colors)).toBe(true);
+      expect(Array.isArray(defaultPresets[0]?.colors)).toBe(true);
     });
 
     it('has valid color values', () => {

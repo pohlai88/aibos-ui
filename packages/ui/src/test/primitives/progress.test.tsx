@@ -161,19 +161,20 @@ describe('CircularProgress', () => {
       expect(progress).toHaveClass('h-16', 'w-16');
     });
 
-    it('renders SVG element', () => {
+    it('renders CSS-based circular progress', () => {
       render(<CircularProgress data-testid="circular-progress" />);
       const progress = screen.getByTestId('circular-progress');
-      const svg = progress.querySelector('svg');
-      expect(svg).toBeInTheDocument();
-      expect(svg).toHaveClass('transform', '-rotate-90');
+      const circularDiv = progress.querySelector('div');
+      expect(circularDiv).toBeInTheDocument();
+      expect(circularDiv).toHaveStyle('border-radius: 50%');
     });
 
-    it('renders circles in SVG', () => {
+    it('renders inner circle for background', () => {
       render(<CircularProgress data-testid="circular-progress" />);
       const progress = screen.getByTestId('circular-progress');
-      const circles = progress.querySelectorAll('circle');
-      expect(circles).toHaveLength(2);
+      const innerCircle = progress.querySelector('.bg-semantic-background');
+      expect(innerCircle).toBeInTheDocument();
+      expect(innerCircle).toHaveClass('bg-semantic-background', 'rounded-full');
     });
   });
 

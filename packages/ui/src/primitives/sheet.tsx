@@ -178,7 +178,6 @@ const Sheet = React.memo(
 
     return (
       <SheetPrimitive.Root
-        className={cn(sheetVariants({ side }), className)}
         {...props}
       />
     );

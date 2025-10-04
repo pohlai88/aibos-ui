@@ -212,11 +212,8 @@ Progress.displayName = 'Progress';
 const CircularProgress = React.forwardRef<
   HTMLDivElement,
   CircularProgressProperties
->(({ className, value = 0, max = 100, indeterminate = false, size = 'md', variant = 'default', showPercentage = false, ...props }, reference) => {
+>(({ className, value = 0, max = 100, indeterminate = false, size = 'md', showPercentage = false, ...props }, reference) => {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
-  const circumference = 2 * Math.PI * 18; // radius = 18
-  const strokeDasharray = circumference;
-  const strokeDashoffset = indeterminate ? circumference * 0.25 : circumference - (percentage / 100) * circumference;
 
   if (isPerfMode()) {
     // Performance mode: minimal DOM, static classes
@@ -243,33 +240,26 @@ const CircularProgress = React.forwardRef<
       aria-label={indeterminate ? 'Loading...' : `${percentage}% complete`}
       {...props}
     >
-      <svg
+      <div
         className={cn(circularProgressSvgVariants({ size }))}
-        viewBox="0 0 36 36"
+        style={{
+          background: `conic-gradient(from 0deg, currentColor ${percentage}%, transparent ${percentage}%)`,
+          borderRadius: '50%',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <circle
-          cx="18"
-          cy="18"
-          r="16"
-          fill="none"
-          className="stroke-semantic-muted"
-          strokeWidth="2"
-        />
-        <circle
-          cx="18"
-          cy="18"
-          r="16"
-          fill="none"
-          className={cn(circularProgressCircleVariants({ variant, size }))}
-          strokeWidth="2"
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
+        <div
+          className="bg-semantic-background rounded-full"
           style={{
-            transition: indeterminate ? 'none' : 'stroke-dashoffset 0.3s ease-in-out',
+            width: 'calc(100% - 4px)',
+            height: 'calc(100% - 4px)',
           }}
         />
-      </svg>
+      </div>
       {showPercentage && (
         <span className="text-semantic-foreground absolute text-sm font-medium">
           {indeterminate ? '...' : `${Math.round(percentage)}%`}

@@ -9,13 +9,13 @@ import React from 'react';
 import { performanceConfig } from '../dev.config';
 
 // Web Vitals types
-interface WebVitalMetric {
-  name: string;
-  value: number;
-  delta: number;
-  id: string;
-  navigationType: string;
-}
+// interface WebVitalMetric {
+//   name: string;
+//   value: number;
+//   delta: number;
+//   id: string;
+//   navigationType: string;
+// }
 
 interface PerformanceObserver {
   observe: (options: { entryTypes: string[] }) => void;
@@ -48,17 +48,17 @@ class EnhancedPerformanceMonitor {
 
   private observeWebVitals() {
     // LCP - Largest Contentful Paint
-    this.observeMetric('largest-contentful-paint', (entry: any) => {
+    this.observeMetric('largest-contentful-paint', (entry: PerformanceEntry) => {
       this.recordMetric('LCP', entry.startTime);
     });
 
     // FID - First Input Delay
-    this.observeMetric('first-input', (entry: any) => {
+    this.observeMetric('first-input', (entry: PerformanceEventTiming) => {
       this.recordMetric('FID', entry.processingStart - entry.startTime);
     });
 
     // CLS - Cumulative Layout Shift
-    this.observeMetric('layout-shift', (entry: any) => {
+    this.observeMetric('layout-shift', (entry: PerformanceEntry & { value: number; hadRecentInput: boolean }) => {
       if (!entry.hadRecentInput) {
         this.recordMetric('CLS', entry.value);
       }
@@ -69,9 +69,9 @@ class EnhancedPerformanceMonitor {
     // Monitor React component render times
     const originalCreateElement = React.createElement;
     
-    (React as any).createElement = (...args: any[]) => {
+    (React as typeof React & { createElement: typeof React.createElement }).createElement = (...args: Parameters<typeof React.createElement>) => {
       const start = performance.now();
-      const result = originalCreateElement.apply(React, args as any);
+      const result = originalCreateElement.apply(React, args);
       const end = performance.now();
       
       const renderTime = end - start;
@@ -94,7 +94,7 @@ class EnhancedPerformanceMonitor {
     });
   }
 
-  private observeMetric(entryType: string, callback: (entry: any) => void) {
+  private observeMetric(entryType: string, callback: (entry: PerformanceEntry) => void) {
     if (!('PerformanceObserver' in window)) return;
 
     try {
@@ -138,6 +138,7 @@ class EnhancedPerformanceMonitor {
       ScriptLoad: 1000, // 1s
     };
 
+    // eslint-disable-next-line security/detect-object-injection
     return value > (thresholds[name] || 0);
   }
 
@@ -153,6 +154,7 @@ class EnhancedPerformanceMonitor {
       CLS: '',
       ScriptLoad: 'ms',
     };
+    // eslint-disable-next-line security/detect-object-injection
     return units[name] || '';
   }
 
@@ -160,6 +162,7 @@ class EnhancedPerformanceMonitor {
   public getMetrics(): Record<string, number[]> {
     const result: Record<string, number[]> = {};
     this.metrics.forEach((values, name) => {
+      // eslint-disable-next-line security/detect-object-injection
       result[name] = [...values];
     });
     return result;

@@ -127,14 +127,19 @@ export interface SliderProperties
 
 const Slider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
-  SliderProperties
->(({ className, orientation, size, disabled, readOnly, min, max, step, defaultValue, value, onValueChange, onValueCommit, inverted, asChild, name, minStepsBetweenThumbs, ...props }, reference) => {
+  SliderProperties & { 'data-testid'?: string }
+>(({ className, orientation, size, disabled, readOnly, min, max, step, defaultValue, value, onValueChange, onValueCommit, inverted, asChild, name, minStepsBetweenThumbs, 'data-testid': dataTestId, ...props }, reference) => {
   if (isPerfMode()) {
     // Performance mode: minimal DOM, static classes
     return (
       <div
         ref={reference as React.Ref<HTMLDivElement>}
         className={cn('slider perf-static', className)}
+        role="slider"
+        aria-valuemin={min || 0}
+        aria-valuemax={max || 100}
+        aria-valuenow={defaultValue?.[0] || 0}
+        data-testid={dataTestId}
         {...varianceAttributes()}
         {...props}
       >
@@ -149,6 +154,7 @@ const Slider = React.forwardRef<
     <SliderPrimitive.Root
       ref={reference}
       className={cn(sliderVariants({ orientation, size }), className)}
+      data-testid={dataTestId}
       {...props}
     >
       <SliderPrimitive.Track className={sliderTrackVariants({ orientation, size })}>

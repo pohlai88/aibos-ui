@@ -24,8 +24,8 @@ const colorPickerVariants = cva(
         lg: 'h-12 px-4 text-base',
       },
       variant: {
-        default: 'bg-semantic-background border border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground',
-        outline: 'border border-semantic-border bg-transparent hover:bg-semantic-accent hover:text-semantic-accent-foreground',
+        default: 'bg-semantic-background border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground border',
+        outline: 'border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground border bg-transparent',
         ghost: 'hover:bg-semantic-accent hover:text-semantic-accent-foreground',
       },
     },
@@ -37,7 +37,7 @@ const colorPickerVariants = cva(
 );
 
 const colorPickerTriggerVariants = cva(
-  'flex h-full w-full items-center justify-between rounded-md border border-semantic-border bg-semantic-background px-3 py-2 text-sm ring-offset-background placeholder:text-semantic-muted-foreground focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'border-semantic-border bg-semantic-background ring-offset-background placeholder:text-semantic-muted-foreground focus:ring-semantic-ring flex h-full w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {
@@ -53,7 +53,7 @@ const colorPickerTriggerVariants = cva(
 );
 
 const colorPickerContentVariants = cva(
-  'bg-semantic-popover text-semantic-popover-foreground shadow-elev-2 z-50 w-80 p-4 rounded-md border',
+  'bg-semantic-popover text-semantic-popover-foreground shadow-elev-2 z-50 w-80 rounded-md border p-4',
   {
     variants: {
       size: {
@@ -69,16 +69,16 @@ const colorPickerContentVariants = cva(
 );
 
 const colorPickerSwatchVariants = cva(
-  'w-8 h-8 rounded-md border border-semantic-border cursor-pointer transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-semantic-ring',
+  'border-semantic-border focus:ring-semantic-ring h-8 w-8 cursor-pointer rounded-md border transition-all hover:scale-105 focus:outline-none focus:ring-2',
   {
     variants: {
       size: {
-        sm: 'w-6 h-6',
-        md: 'w-8 h-8',
-        lg: 'w-10 h-10',
+        sm: 'h-6 w-6',
+        md: 'h-8 w-8',
+        lg: 'h-10 w-10',
       },
       selected: {
-        true: 'ring-2 ring-semantic-ring ring-offset-2',
+        true: 'ring-semantic-ring ring-2 ring-offset-2',
         false: '',
       },
     },
@@ -216,7 +216,7 @@ const ColorPickerTrigger = React.forwardRef<
     >
       <div className="flex items-center gap-2">
         <div
-          className="w-4 h-4 rounded border border-semantic-border"
+          className="border-semantic-border h-4 w-4 rounded border"
           style={{ backgroundColor: value || 'transparent' }}
         />
         <span className="flex-1 text-left">
@@ -321,7 +321,7 @@ const ColorPickerContent = React.forwardRef<
                 className="flex-1"
               />
               <div
-                className="w-10 h-10 rounded border border-semantic-border"
+                className="border-semantic-border h-10 w-10 rounded border"
                 style={{ backgroundColor: selectedColor || 'transparent' }}
               />
             </div>
@@ -350,7 +350,7 @@ const ColorPickerContent = React.forwardRef<
                     >
                       {selectedColor === color && (
                         <CheckIcon 
-                          className="w-4 h-4 text-white drop-shadow-sm" 
+                          className="h-4 w-4 text-white drop-shadow-sm" 
                           context="dashboards"
                           semanticColor="text-white"
                           enableAnimations={true}
@@ -386,7 +386,7 @@ const ColorPickerContent = React.forwardRef<
                 >
                   {selectedColor === color && (
                     <CheckIcon 
-                      className="w-4 h-4 text-white drop-shadow-sm" 
+                      className="h-4 w-4 text-white drop-shadow-sm" 
                       context="dashboards"
                       semanticColor="text-white"
                       enableAnimations={true}
@@ -402,7 +402,7 @@ const ColorPickerContent = React.forwardRef<
 
         {/* Action Buttons */}
         {(showClearButton || showResetButton) && (
-          <div className="flex justify-between pt-3 border-t border-semantic-border">
+          <div className="border-semantic-border flex justify-between border-t pt-3">
             {showClearButton && (
               <Button
                 variant="outline"
@@ -411,7 +411,7 @@ const ColorPickerContent = React.forwardRef<
                 disabled={!selectedColor}
               >
                 <CloseIcon 
-                  className="h-4 w-4 mr-2" 
+                  className="mr-2 h-4 w-4" 
                   context="dashboards"
                   semanticColor="text-red-500"
                   enableAnimations={true}
@@ -428,7 +428,7 @@ const ColorPickerContent = React.forwardRef<
                 onClick={handleReset}
               >
                 <RotateCcwIcon 
-                  className="h-4 w-4 mr-2" 
+                  className="mr-2 h-4 w-4" 
                   context="dashboards"
                   semanticColor="text-blue-500"
                   enableAnimations={true}

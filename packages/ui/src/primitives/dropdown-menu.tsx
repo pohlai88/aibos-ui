@@ -203,6 +203,7 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
         <button
           ref={reference}
           className={cn('dropdown-menu-trigger perf-static', className)}
+          aria-haspopup="menu"
           {...varianceAttributes()}
           {...props}
         >
@@ -216,6 +217,7 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
       <button
         ref={reference}
         className={cn(dropdownMenuTriggerVariants({ size, variant }), className)}
+        aria-haspopup="menu"
         {...props}
       >
         {children}

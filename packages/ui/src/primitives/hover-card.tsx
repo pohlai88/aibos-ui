@@ -87,7 +87,6 @@ const HoverCard = React.memo(
 
     return (
       <HoverCardPrimitive.Root
-        className={cn(hoverCardVariants({ size }), className)}
         {...props}
       />
     );
@@ -106,7 +105,9 @@ const HoverCardTrigger = React.memo(
           className={cn('perf-static', className)}
           {...varianceAttributes()}
           {...props}
-        />
+        >
+          {props.children || 'Hover trigger'}
+        </a>
       );
     }
 

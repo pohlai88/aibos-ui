@@ -279,7 +279,7 @@ const DataTable = React.forwardRef<HTMLDivElement, DataTableProperties<UnsafeAny
             </div>
           </div>
           <div className="data-table-content perf-static">
-            <table className="data-table-table perf-static">
+            <table className="data-table-table perf-static" role="table">
               <thead className="data-table-header perf-static">
                 <tr>
                   {enhancedColumns.map((column) => (
@@ -325,7 +325,7 @@ const DataTable = React.forwardRef<HTMLDivElement, DataTableProperties<UnsafeAny
 
         {/* Table */}
         <div className="rounded-md border">
-          <table className="w-full">
+          <table className="w-full" role="table">
             <thead>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>

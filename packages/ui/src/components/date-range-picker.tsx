@@ -25,8 +25,8 @@ const dateRangePickerVariants = cva(
         lg: 'h-12 px-4 text-base',
       },
       variant: {
-        default: 'bg-semantic-background border border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground',
-        outline: 'border border-semantic-border bg-transparent hover:bg-semantic-accent hover:text-semantic-accent-foreground',
+        default: 'bg-semantic-background border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground border',
+        outline: 'border-semantic-border hover:bg-semantic-accent hover:text-semantic-accent-foreground border bg-transparent',
         ghost: 'hover:bg-semantic-accent hover:text-semantic-accent-foreground',
       },
     },
@@ -38,7 +38,7 @@ const dateRangePickerVariants = cva(
 );
 
 const dateRangePickerTriggerVariants = cva(
-  'flex h-full w-full items-center justify-between rounded-md border border-semantic-border bg-semantic-background px-3 py-2 text-sm ring-offset-background placeholder:text-semantic-muted-foreground focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'border-semantic-border bg-semantic-background ring-offset-background placeholder:text-semantic-muted-foreground focus:ring-semantic-ring flex h-full w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {
@@ -54,7 +54,7 @@ const dateRangePickerTriggerVariants = cva(
 );
 
 const dateRangePickerContentVariants = cva(
-  'bg-semantic-popover text-semantic-popover-foreground shadow-elev-2 z-50 w-auto p-0 rounded-md border',
+  'bg-semantic-popover text-semantic-popover-foreground shadow-elev-2 z-50 w-auto rounded-md border p-0',
   {
     variants: {
       size: {
@@ -368,7 +368,7 @@ const DateRangePickerContent = React.forwardRef<
     >
       <div className="flex">
         {showPresets && presets.length > 0 && (
-          <div className="border-r border-semantic-border p-3">
+          <div className="border-semantic-border border-r p-3">
             <div className="space-y-1">
               {presets.map((preset, index) => (
                 <Button
@@ -397,7 +397,7 @@ const DateRangePickerContent = React.forwardRef<
           />
           
           {(showClearButton || showTodayButton) && (
-            <div className="flex justify-between pt-3 border-t border-semantic-border">
+            <div className="border-semantic-border flex justify-between border-t pt-3">
               {showClearButton && (
                 <Button
                   variant="outline"
@@ -406,7 +406,7 @@ const DateRangePickerContent = React.forwardRef<
                   disabled={!selectedRange.from && !selectedRange.to}
                 >
                   <CloseIcon 
-                    className="h-4 w-4 mr-2" 
+                    className="mr-2 h-4 w-4" 
                     context="dashboards"
                     semanticColor="text-red-500"
                     enableAnimations={true}

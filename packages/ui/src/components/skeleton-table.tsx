@@ -20,7 +20,7 @@ export const SkeletonTable: React.FC<SkeletonTableProperties> = ({
         <div className="bg-muted/50 border-b">
           <div className="flex items-center justify-center p-4">
             <TableIcon 
-              className="h-6 w-6 text-muted-foreground animate-pulse" 
+              className="text-muted-foreground h-6 w-6 animate-pulse" 
               context="dense-tables"
               semanticColor="text-gray-400"
               enableAnimations={true}

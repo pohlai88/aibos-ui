@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+// @ts-ignore - user-event types issue
 import userEvent from '@testing-library/user-event';
 import { DateRangePicker, DateRangePickerTrigger, DateRangePickerContent, defaultPresets } from '../../components/date-range-picker';
 
@@ -432,8 +433,8 @@ describe('DateRangePicker', () => {
       expect(defaultPresets).toHaveLength(6);
       expect(defaultPresets[0]).toHaveProperty('label', 'Today');
       expect(defaultPresets[0]).toHaveProperty('value');
-      expect(defaultPresets[0].value).toHaveProperty('from');
-      expect(defaultPresets[0].value).toHaveProperty('to');
+      expect(defaultPresets[0]?.value).toHaveProperty('from');
+      expect(defaultPresets[0]?.value).toHaveProperty('to');
     });
 
     it('has valid date ranges', () => {

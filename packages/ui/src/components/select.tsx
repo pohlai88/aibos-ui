@@ -34,8 +34,9 @@ const Select = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive> & {
     children?: React.ReactNode;
     placeholder?: string;
+    'data-testid'?: string;
   }
->(({ children, placeholder, ...props }, reference) => {
+>(({ children, placeholder, 'data-testid': dataTestId, ...props }, reference) => {
   const { value, onValueChange } = props;
 
   // Expect children to be <SelectItem value="...">label</SelectItem>
@@ -67,6 +68,7 @@ const Select = React.forwardRef<
         onChange={(e) => onValueChange?.(e.currentTarget.value)}
         aria-label={placeholder || 'Select'}
         className="border-semantic-border bg-semantic-background text-semantic-foreground flex h-10 w-full items-center justify-between rounded-md border px-3 py-2 text-sm"
+        data-testid={dataTestId}
       >
         {showPlaceholder ? (
           <option value="" disabled>
@@ -87,7 +89,7 @@ const Select = React.forwardRef<
     );
   }
 
-  return <SelectPrimitive {...props} />;
+  return <SelectPrimitive {...props} data-testid={dataTestId} />;
 });
 
 const SelectGroup = SelectGroupPrimitive;

@@ -184,7 +184,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
           {...props}
         >
           <div className="calendar-header perf-static">
-            <div className="calendar-grid perf-static">
+            <div className="calendar-grid perf-static" role="grid">
               {Array.from({ length: 42 }, (_, i) => (
                 <div key={i} className="calendar-day perf-static" />
               ))}
@@ -257,7 +257,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
             ))}
           </div>
           
-          <div className={cn(calendarGridVariants({ size }))}>
+          <div className={cn(calendarGridVariants({ size }))} role="grid">
             {days.map((day, index) => (
               <CalendarDay
                 key={index}

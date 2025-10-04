@@ -33,7 +33,7 @@ export type IconDefaults = {
 };
 
 // ── Intelligent Icon Caching System ─────────
-const IconCache = new Map<string, React.ComponentType<any>>();
+const IconCache = new Map<string, React.ComponentType<React.SVGProps<SVGSVGElement>>>();
 const PreloadQueue = new Set<string>();
 const SpriteCache = new Map<string, string>();
 

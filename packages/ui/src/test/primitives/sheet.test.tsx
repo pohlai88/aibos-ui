@@ -388,9 +388,9 @@ describe('Sheet Component', () => {
 
     it('applies custom className', () => {
       render(
-        <Sheet className="custom-class">
+        <Sheet>
           <SheetTrigger>Open</SheetTrigger>
-          <SheetContent>
+          <SheetContent className="custom-class">
             <SheetHeader>
               <SheetTitle>Title</SheetTitle>
               <SheetDescription>Description</SheetDescription>
@@ -399,8 +399,8 @@ describe('Sheet Component', () => {
         </Sheet>
       );
 
-      const root = screen.getByTestId('sheet-root');
-      expect(root).toHaveClass('custom-class');
+      const content = screen.getByTestId('sheet-content');
+      expect(content).toHaveClass('custom-class');
     });
   });
 });

@@ -80,7 +80,7 @@ const dataGridVariants = cva('w-full', {
 });
 
 const dataGridToolbarVariants = cva(
-  'flex items-center justify-between space-x-2 py-4 border-b border-semantic-border',
+  'border-semantic-border flex items-center justify-between space-x-2 border-b py-4',
   {
     variants: {
       size: {
@@ -96,7 +96,7 @@ const dataGridToolbarVariants = cva(
 );
 
 const dataGridHeaderVariants = cva(
-  'bg-semantic-muted/50 text-semantic-foreground font-medium border-b border-semantic-border',
+  'bg-semantic-muted/50 text-semantic-foreground border-semantic-border border-b font-medium',
   {
     variants: {
       size: {
@@ -118,7 +118,7 @@ const dataGridHeaderVariants = cva(
 );
 
 const dataGridCellVariants = cva(
-  'text-semantic-foreground border-b border-semantic-border/50',
+  'text-semantic-foreground border-semantic-border/50 border-b',
   {
     variants: {
       size: {
@@ -494,7 +494,7 @@ const DataGrid = React.forwardRef<HTMLDivElement, DataGridProperties<UnsafeAny>>
         {/* Table Container */}
         <div
           ref={tableContainerRef}
-          className="relative overflow-auto border border-semantic-border rounded-md"
+          className="border-semantic-border relative overflow-auto rounded-md border"
           style={{ height: Math.min(height, maxHeight) }}
         >
           {enableVirtualization ? (
@@ -506,7 +506,7 @@ const DataGrid = React.forwardRef<HTMLDivElement, DataGridProperties<UnsafeAny>>
               }}
             >
               <table className="w-full">
-                <thead className="sticky top-0 z-10 bg-semantic-background">
+                <thead className="bg-semantic-background sticky top-0 z-10">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1018,10 +1018,36 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
               </div>
             )}
             {enableResizing && (
-              <div
-                className="cursor-col-resize hover:bg-semantic-accent/20 w-1 h-full"
+              <button
+                className="hover:bg-semantic-accent/20 h-full w-1 cursor-col-resize"
                 onMouseDown={handleResize}
-                role="separator"
+                aria-label="Resize column"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    // Create a synthetic mouse event for keyboard activation
+                    const syntheticEvent = {
+                      ...e,
+                      type: 'mousedown',
+                      button: 0,
+                      buttons: 1,
+                      clientX: 0,
+                      clientY: 0,
+                      screenX: 0,
+                      screenY: 0,
+                      pageX: 0,
+                      pageY: 0,
+                      movementX: 0,
+                      movementY: 0,
+                      relatedTarget: null,
+                      ctrlKey: e.ctrlKey,
+                      shiftKey: e.shiftKey,
+                      altKey: e.altKey,
+                      metaKey: e.metaKey,
+                    } as unknown as React.MouseEvent;
+                    handleResize(syntheticEvent);
+                  }
+                }}
                 aria-label="Resize column"
               />
             )}

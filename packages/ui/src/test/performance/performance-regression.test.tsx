@@ -8,6 +8,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { performance } from 'perf_hooks';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 // Import components for performance testing
 import { Button } from '../../primitives/button';
@@ -37,7 +39,9 @@ describe('Performance Regression Tests', () => {
 
   beforeEach(() => {
     // Record initial memory usage
-    if (global.gc) {
+    // eslint-disable-next-line no-undef
+    if (typeof global !== 'undefined' && global.gc) {
+      // eslint-disable-next-line no-undef
       global.gc();
       initialMemory = process.memoryUsage().heapUsed / 1024 / 1024;
     }
@@ -47,7 +51,9 @@ describe('Performance Regression Tests', () => {
 
   afterEach(() => {
     // Check memory usage after each test
-    if (global.gc) {
+    // eslint-disable-next-line no-undef
+    if (typeof global !== 'undefined' && global.gc) {
+      // eslint-disable-next-line no-undef
       global.gc();
       const currentMemory = process.memoryUsage().heapUsed / 1024 / 1024;
       const memoryIncrease = currentMemory - initialMemory;
@@ -113,9 +119,9 @@ describe('Performance Regression Tests', () => {
         <Table
           data={testData}
           columns={[
-            { id: 'id', key: 'id', title: 'ID' },
-            { id: 'name', key: 'name', title: 'Name' },
-            { id: 'value', key: 'value', title: 'Value' },
+            { id: 'id', accessorKey: 'id', header: 'ID' },
+            { id: 'name', accessorKey: 'name', header: 'Name' },
+            { id: 'value', accessorKey: 'value', header: 'Value' },
           ]}
         />
       );
@@ -138,10 +144,10 @@ describe('Performance Regression Tests', () => {
         <DataTable
           data={testData}
           columns={[
-            { id: 'id', key: 'id', title: 'ID', sortable: true },
-            { id: 'name', key: 'name', title: 'Name', sortable: true },
-            { id: 'value', key: 'value', title: 'Value', sortable: true },
-            { id: 'category', key: 'category', title: 'Category', filterable: true },
+            { id: 'id', accessorKey: 'id', header: 'ID', enableSorting: true },
+            { id: 'name', accessorKey: 'name', header: 'Name', enableSorting: true },
+            { id: 'value', accessorKey: 'value', header: 'Value', enableSorting: true },
+            { id: 'category', accessorKey: 'category', header: 'Category', enableColumnFilter: true },
           ]}
         />
       );
@@ -155,11 +161,8 @@ describe('Performance Regression Tests', () => {
     it('should maintain bundle size within limits', () => {
       // This test would typically run in CI/CD
       // For now, we'll just verify the bundle analysis script exists
-      const fs = require('fs');
-      const path = require('path');
-      
-      const scriptPath = path.join(process.cwd(), 'scripts', 'check-bundle-budgets.mjs');
-      expect(fs.existsSync(scriptPath)).toBe(true);
+      const scriptPath = join(process.cwd(), 'scripts', 'check-bundle-budgets.mjs');
+      expect(existsSync(scriptPath)).toBe(true);
     });
   });
 
@@ -173,7 +176,9 @@ describe('Performance Regression Tests', () => {
       }
       
       // Force garbage collection if available
-      if (global.gc) {
+      // eslint-disable-next-line no-undef
+      if (typeof global !== 'undefined' && global.gc) {
+        // eslint-disable-next-line no-undef
         global.gc();
       }
       
@@ -210,7 +215,9 @@ export const performanceTestUtils = {
   },
 
   measureMemoryUsage: () => {
-    if (global.gc) {
+    // eslint-disable-next-line no-undef
+    if (typeof global !== 'undefined' && global.gc) {
+      // eslint-disable-next-line no-undef
       global.gc();
     }
     return process.memoryUsage().heapUsed / 1024 / 1024; // MB

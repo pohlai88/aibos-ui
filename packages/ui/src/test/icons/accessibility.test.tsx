@@ -241,6 +241,7 @@ describe('Icon Accessibility System', () => {
         const { unmount } = render(<CloseIcon size={size} data-testid={`size-${size}`} />);
         
         const icon = screen.getByTestId(`size-${size}`);
+        // eslint-disable-next-line security/detect-object-injection
         const expectedClasses = {
           xs: ['h-3', 'w-3'],
           sm: ['h-4', 'w-4'],
@@ -283,6 +284,7 @@ describe('Icon Accessibility System', () => {
         const { unmount } = render(<CloseIcon variant={variant} data-testid={`variant-${variant}`} />);
         
         const icon = screen.getByTestId(`variant-${variant}`);
+        // eslint-disable-next-line security/detect-object-injection
         const expectedClasses = {
           default: 'text-semantic-foreground',
           muted: 'text-semantic-muted-foreground',

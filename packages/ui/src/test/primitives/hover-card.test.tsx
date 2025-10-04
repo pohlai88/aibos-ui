@@ -85,14 +85,14 @@ describe('HoverCard Component', () => {
   describe('Size Variants', () => {
     it('applies small size variant', () => {
       render(
-        <HoverCard size="sm">
-          <HoverCardTrigger size="sm">Trigger</HoverCardTrigger>
+        <HoverCard>
+          <HoverCardTrigger>Trigger</HoverCardTrigger>
           <HoverCardContent size="sm">Content</HoverCardContent>
         </HoverCard>
       );
 
-      const root = screen.getByTestId('hover-card-root');
-      expect(root).toHaveClass('w-48', 'p-3', 'text-xs');
+      const content = screen.getByTestId('hover-card-content');
+      expect(content).toHaveClass('w-48', 'p-3', 'text-xs');
     });
 
     it('applies medium size variant (default)', () => {
@@ -103,20 +103,20 @@ describe('HoverCard Component', () => {
         </HoverCard>
       );
 
-      const root = screen.getByTestId('hover-card-root');
-      expect(root).toHaveClass('w-64', 'p-4', 'text-sm');
+      const content = screen.getByTestId('hover-card-content');
+      expect(content).toHaveClass('w-64', 'p-4', 'text-sm');
     });
 
     it('applies large size variant', () => {
       render(
-        <HoverCard size="lg">
-          <HoverCardTrigger size="lg">Trigger</HoverCardTrigger>
+        <HoverCard>
+          <HoverCardTrigger>Trigger</HoverCardTrigger>
           <HoverCardContent size="lg">Content</HoverCardContent>
         </HoverCard>
       );
 
-      const root = screen.getByTestId('hover-card-root');
-      expect(root).toHaveClass('w-80', 'p-6', 'text-base');
+      const content = screen.getByTestId('hover-card-content');
+      expect(content).toHaveClass('w-80', 'p-6', 'text-base');
     });
   });
 
@@ -166,14 +166,14 @@ describe('HoverCard Component', () => {
 
     it('applies custom className', () => {
       render(
-        <HoverCard className="custom-class">
+        <HoverCard>
           <HoverCardTrigger>Trigger</HoverCardTrigger>
-          <HoverCardContent>Content</HoverCardContent>
+          <HoverCardContent className="custom-class">Content</HoverCardContent>
         </HoverCard>
       );
 
-      const root = screen.getByTestId('hover-card-root');
-      expect(root).toHaveClass('custom-class');
+      const content = screen.getByTestId('hover-card-content');
+      expect(content).toHaveClass('custom-class');
     });
   });
 });

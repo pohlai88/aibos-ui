@@ -28,7 +28,7 @@ const multiSelectVariants = cva('relative', {
   variants: {
     variant: {
       default: '',
-      outline: 'border border-semantic-border rounded-md',
+      outline: 'border-semantic-border rounded-md border',
       ghost: 'bg-transparent',
     },
     size: {
@@ -44,7 +44,7 @@ const multiSelectVariants = cva('relative', {
 });
 
 const multiSelectTriggerVariants = cva(
-  'flex items-center justify-between w-full px-3 py-2 text-sm bg-semantic-background border border-semantic-input rounded-md focus:outline-none focus:ring-2 focus:ring-semantic-ring focus:border-semantic-ring disabled:cursor-not-allowed disabled:opacity-50',
+  'bg-semantic-background border-semantic-input focus:ring-semantic-ring focus:border-semantic-ring flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       size: {
@@ -66,7 +66,7 @@ const multiSelectTriggerVariants = cva(
 );
 
 const multiSelectContentVariants = cva(
-  'z-50 min-w-[8rem] overflow-hidden rounded-md border border-semantic-border bg-semantic-popover p-1 text-semantic-popover-foreground shadow-md',
+  'border-semantic-border bg-semantic-popover text-semantic-popover-foreground z-50 min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-md',
   {
     variants: {
       size: {
@@ -82,7 +82,7 @@ const multiSelectContentVariants = cva(
 );
 
 const multiSelectItemVariants = cva(
-  'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-semantic-accent hover:text-semantic-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+  'hover:bg-semantic-accent hover:text-semantic-accent-foreground relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
   {
     variants: {
       size: {
@@ -271,7 +271,9 @@ const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProperties>(
       const groups: Record<string, MultiSelectOption[]> = {};
       filteredOptions.forEach(option => {
         const group = option.group || '';
+        // eslint-disable-next-line security/detect-object-injection
         if (!groups[group]) groups[group] = [];
+        // eslint-disable-next-line security/detect-object-injection
         groups[group].push(option);
       });
 
@@ -400,7 +402,7 @@ const MultiSelect = React.forwardRef<HTMLDivElement, MultiSelectProperties>(
         </Popover>
         
         {error && errorMessage && (
-          <p className="text-semantic-destructive text-sm mt-1">{errorMessage}</p>
+          <p className="text-semantic-destructive mt-1 text-sm">{errorMessage}</p>
         )}
       </div>
     );
@@ -441,11 +443,15 @@ const MultiSelectTrigger = React.forwardRef<HTMLButtonElement, MultiSelectTrigge
             className
           )}
           disabled={disabled}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-controls={isOpen ? 'multiselect-listbox' : undefined}
           {...props}
         >
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             {selectedOptions.length > 0 ? (
-              <div className="flex items-center gap-1 flex-1 min-w-0">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
                 {selectedOptions.slice(0, 2).map(option => (
                   <Badge
                     key={option.value}
@@ -469,7 +475,7 @@ const MultiSelectTrigger = React.forwardRef<HTMLButtonElement, MultiSelectTrigge
           </div>
           <ChevronDownIcon
             className={cn(
-              'h-4 w-4 text-semantic-muted-foreground transition-transform',
+              'text-semantic-muted-foreground h-4 w-4 transition-transform',
               isOpen && 'rotate-180'
             )}
             context="dashboards"
@@ -563,7 +569,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
           <div className="p-2">
             <div className="relative">
               <SearchIcon 
-                className="absolute left-2 top-2.5 h-4 w-4 text-semantic-muted-foreground" 
+                className="text-semantic-muted-foreground absolute left-2 top-2.5 h-4 w-4" 
                 context="dashboards"
                 semanticColor="text-blue-500"
                 enableAnimations={true}
@@ -582,7 +588,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
 
         {/* Actions */}
         {(enableClearAll || enableSelectAll) && (
-          <div className="flex items-center justify-between p-2 border-b border-semantic-border">
+          <div className="border-semantic-border flex items-center justify-between border-b p-2">
             <div className="flex items-center gap-2">
               {enableSelectAll && (
                 <Button
@@ -592,7 +598,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
                   disabled={maxSelections ? selectedValues.length >= maxSelections : false}
                 >
                   <CheckIcon 
-                    className="h-4 w-4 mr-1" 
+                    className="mr-1 h-4 w-4" 
                     context="dashboards"
                     semanticColor="text-green-500"
                     enableAnimations={true}
@@ -609,7 +615,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
                   onClick={onClearAll}
                 >
                   <CloseIcon 
-                    className="h-4 w-4 mr-1" 
+                    className="mr-1 h-4 w-4" 
                     context="dashboards"
                     semanticColor="text-red-500"
                     enableAnimations={true}
@@ -621,7 +627,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
               )}
             </div>
             {maxSelections && (
-              <span className="text-xs text-semantic-muted-foreground">
+              <span className="text-semantic-muted-foreground text-xs">
                 {selectedValues.length}/{maxSelections}
               </span>
             )}
@@ -634,7 +640,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
             Object.entries(groupedOptions).map(([groupName, groupOptions]) => (
               <div key={groupName}>
                 {groupName && (
-                  <div className="px-2 py-1.5 text-xs font-medium text-semantic-muted-foreground">
+                  <div className="text-semantic-muted-foreground px-2 py-1.5 text-xs font-medium">
                     {groupName}
                   </div>
                 )}
@@ -670,7 +676,7 @@ const MultiSelectContent = React.forwardRef<HTMLDivElement, MultiSelectContentPr
           )}
           
           {options.length === 0 && (
-            <div className="px-2 py-6 text-center text-sm text-semantic-muted-foreground">
+            <div className="text-semantic-muted-foreground px-2 py-6 text-center text-sm">
               {emptyMessage}
             </div>
           )}
@@ -737,7 +743,7 @@ const MultiSelectItem = React.forwardRef<HTMLDivElement, MultiSelectItemProperti
         ref={reference}
         className={cn(
           multiSelectItemVariants({ size }),
-          isDisabled && 'opacity-50 cursor-not-allowed',
+          isDisabled && 'cursor-not-allowed opacity-50',
           className
         )}
         onClick={handleClick}
@@ -751,22 +757,22 @@ const MultiSelectItem = React.forwardRef<HTMLDivElement, MultiSelectItemProperti
         tabIndex={0}
         {...props}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Checkbox
             checked={isSelected}
             disabled={isDisabled}
             className="shrink-0"
           />
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             {option.icon && (
-              <div className="shrink-0 text-semantic-muted-foreground">
+              <div className="text-semantic-muted-foreground shrink-0">
                 {option.icon}
               </div>
             )}
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="truncate">{option.label}</div>
               {option.description && (
-                <div className="text-xs text-semantic-muted-foreground truncate">
+                <div className="text-semantic-muted-foreground truncate text-xs">
                   {option.description}
                 </div>
               )}

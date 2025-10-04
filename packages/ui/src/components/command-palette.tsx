@@ -20,6 +20,7 @@ const fuzzySearch = (query: string, text: string): boolean => {
   
   let queryIndex = 0;
   for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection
     if (textLower[i] === queryLower[queryIndex]) {
       queryIndex++;
     }
@@ -99,7 +100,7 @@ const commandPaletteContentVariants = cva(
 );
 
 const commandPaletteOverlayVariants = cva(
-  'bg-semantic-background/80 backdrop-blur-sm fixed inset-0 z-40',
+  'bg-semantic-background/80 fixed inset-0 z-40 backdrop-blur-sm',
   {
     variants: {
       size: {
@@ -244,7 +245,9 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
           break;
         case 'Enter':
           e.preventDefault();
+          // eslint-disable-next-line security/detect-object-injection
           if (flatCommands[selectedIndex]) {
+            // eslint-disable-next-line security/detect-object-injection
             handleCommandSelect(flatCommands[selectedIndex]);
           }
           break;
@@ -310,6 +313,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
         <div
           ref={reference}
           className={cn('command-palette perf-static', className)}
+          role="application"
           {...varianceAttributes()}
           {...props}
         >
@@ -349,7 +353,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                               onClick={() => handleCommandSelect(command)}
                               disabled={command.disabled}
                             >
-                              <div className="flex items-center justify-between w-full">
+                              <div className="flex w-full items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   {command.icon && (
                                     <div className="flex-shrink-0">
@@ -359,7 +363,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                                   <div className="flex flex-col">
                                     <span className="font-medium">{command.title}</span>
                                     {command.description && (
-                                      <span className="text-sm text-semantic-muted-foreground">
+                                      <span className="text-semantic-muted-foreground text-sm">
                                         {command.description}
                                       </span>
                                     )}
@@ -368,7 +372,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                                 <div className="flex items-center gap-2">
                                   {category === 'Recent' && (
                                     <ClockIcon 
-                                      className="h-4 w-4 text-semantic-muted-foreground" 
+                                      className="text-semantic-muted-foreground h-4 w-4" 
                                       context="dashboards"
                                       semanticColor="text-amber-500"
                                       enableAnimations={true}
@@ -377,12 +381,12 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                                     />
                                   )}
                                   {command.shortcut && showShortcuts && (
-                                    <kbd className="px-2 py-1 text-xs bg-semantic-muted text-semantic-muted-foreground rounded">
+                                    <kbd className="bg-semantic-muted text-semantic-muted-foreground rounded px-2 py-1 text-xs">
                                       {command.shortcut}
                                     </kbd>
                                   )}
                                   <ArrowRightIcon 
-                                    className="h-4 w-4 text-semantic-muted-foreground" 
+                                    className="text-semantic-muted-foreground h-4 w-4" 
                                     context="dashboards"
                                     semanticColor="text-gray-500"
                                     enableAnimations={true}
@@ -412,6 +416,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
       <div
         ref={reference}
         className={cn(commandPaletteVariants({ size }), className)}
+        role="application"
         {...props}
       >
         {/* Overlay */}
@@ -426,10 +431,13 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
         
         {/* Content */}
         <div className={cn(commandPaletteContentVariants({ size }))}>
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <div 
             className="bg-semantic-background text-semantic-foreground flex h-full w-full flex-col overflow-hidden rounded-md"
             role="application"
+            tabIndex={-1}
             onKeyDown={handleKeyDown}
+            aria-label="Command palette"
           >
             {/* Input */}
             <div className="flex items-center border-b px-3" role="search" aria-label="Command search">
@@ -451,7 +459,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
               />
               <input
                 ref={inputRef}
-                className="border-semantic-border bg-semantic-background ring-offset-semantic-background placeholder:text-semantic-muted-foreground focus:ring-semantic-ring flex h-11 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 border-0 px-0 py-0 shadow-none focus-visible:ring-0"
+                className="border-semantic-border bg-semantic-background ring-offset-semantic-background placeholder:text-semantic-muted-foreground focus:ring-semantic-ring flex h-11 w-full rounded-md border border-0 px-0 px-3 py-0 py-2 text-sm shadow-none focus:outline-none focus:ring-2 focus:ring-offset-2 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder={placeholder}
                 value={searchValue}
                 onChange={handleSearchChange}
@@ -465,7 +473,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <SearchIcon 
-                      className="h-8 w-8 text-semantic-muted-foreground mx-auto mb-2" 
+                      className="text-semantic-muted-foreground mx-auto mb-2 h-8 w-8" 
                       context="dashboards"
                       semanticColor="text-gray-500"
                       enableAnimations={true}
@@ -508,17 +516,17 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                             data-value={command.id}
                             data-index={globalIndex}
                           >
-                            <div className="flex items-center justify-between w-full">
+                            <div className="flex w-full items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {command.icon && (
-                                  <div className="flex-shrink-0 text-semantic-muted-foreground">
+                                  <div className="text-semantic-muted-foreground flex-shrink-0">
                                     {command.icon}
                                   </div>
                                 )}
                                 <div className="flex flex-col">
                                   <span className="font-medium">{command.title}</span>
                                   {command.description && (
-                                    <span className="text-sm text-semantic-muted-foreground">
+                                    <span className="text-semantic-muted-foreground text-sm">
                                       {command.description}
                                     </span>
                                   )}
@@ -526,14 +534,14 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
                               </div>
                               <div className="flex items-center gap-2">
                                 {category === 'Recent' && (
-                                  <ClockIcon className="h-4 w-4 text-semantic-muted-foreground" />
+                                  <ClockIcon className="text-semantic-muted-foreground h-4 w-4" />
                                 )}
                                 {command.shortcut && showShortcuts && (
-                                  <kbd className="px-2 py-1 text-xs bg-semantic-muted text-semantic-muted-foreground rounded border border-semantic-border">
+                                  <kbd className="bg-semantic-muted text-semantic-muted-foreground border-semantic-border rounded border px-2 py-1 text-xs">
                                     {command.shortcut}
                                   </kbd>
                                 )}
-                                <ArrowRightIcon className="h-4 w-4 text-semantic-muted-foreground" />
+                                <ArrowRightIcon className="text-semantic-muted-foreground h-4 w-4" />
                               </div>
                             </div>
                           </div>

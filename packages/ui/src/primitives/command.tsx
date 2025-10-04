@@ -329,6 +329,9 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProperties>(
             className={cn('command-input perf-static', className)}
             placeholder={placeholder}
             disabled={disabled}
+            role="combobox"
+            aria-expanded={false}
+            aria-controls="command-listbox"
             {...varianceAttributes()}
             {...props}
           />
@@ -357,6 +360,9 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProperties>(
           placeholder={placeholder}
           disabled={disabled}
           onKeyDown={onKeyDown}
+          role="combobox"
+          aria-expanded={false}
+          aria-controls="command-listbox"
           {...props}
         />
       </div>
@@ -373,6 +379,7 @@ const CommandList = React.forwardRef<HTMLDivElement, CommandListProperties>(
         <div
           ref={reference}
           className={cn('command-list perf-static', className)}
+          role="listbox"
           {...varianceAttributes()}
           {...props}
         />
@@ -383,6 +390,7 @@ const CommandList = React.forwardRef<HTMLDivElement, CommandListProperties>(
       <div
         ref={reference}
         className={cn(commandListVariants({ size }), className)}
+        role="listbox"
         {...props}
       />
     );

@@ -136,6 +136,7 @@ const ModalImpl = React.forwardRef<HTMLDivElement, ModalBaseProperties>(
           className={modalVariants({ size, variant, className })}
           ref={reference}
           container={container || getPortalElement()}
+          aria-modal="true"
           {...props}
         >
           <ModalHeader title={title} description={description} />

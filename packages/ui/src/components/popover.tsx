@@ -32,7 +32,6 @@ const Popover = React.forwardRef<
 
   return (
     <PopoverPrimitive
-      ref={reference}
       data-testid="popover"
       {...props}
     />

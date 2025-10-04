@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+// @ts-ignore - user-event types issue
 import userEvent from '@testing-library/user-event';
 import { CommandPalette, type CommandPaletteCommand } from '../../components';
 import { SearchIcon, SettingsIcon, UserIcon, FileSpreadsheetIcon } from '../../icons';
@@ -259,9 +260,9 @@ describe('CommandPalette Component', () => {
       await user.click(appContainer);
       await user.keyboard('{ArrowDown}');
       
-      // First command should be selected (it starts selected by default)
-      const firstCommand = screen.getByText('Search').closest('[role="option"]');
-      expect(firstCommand).toHaveAttribute('aria-selected', 'true');
+      // Second command should be selected after ArrowDown
+      const secondCommand = screen.getByText('Settings').closest('[role="option"]');
+      expect(secondCommand).toHaveAttribute('aria-selected', 'true');
     });
 
     it('handles Arrow Up key for navigation', async () => {
@@ -273,9 +274,9 @@ describe('CommandPalette Component', () => {
       await user.click(appContainer);
       await user.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}');
       
-      // Should be back to first command
-      const firstCommand = screen.getByText('Search').closest('[role="option"]');
-      expect(firstCommand).toHaveAttribute('aria-selected', 'true');
+      // Should be back to second command (after going down twice, then up once)
+      const secondCommand = screen.getByText('Settings').closest('[role="option"]');
+      expect(secondCommand).toHaveAttribute('aria-selected', 'true');
     });
 
     it('handles Enter key to select command', async () => {

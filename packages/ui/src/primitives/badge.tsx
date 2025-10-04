@@ -61,12 +61,13 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProperties>(
           ]
             .filter(Boolean)
             .join(' ')}
+          role="status"
           {...varianceAttributes()}
           {...props}
         />
       );
     }
-    return <div ref={reference} className={cn(badgeVariants({ variant }), className)} {...props} />;
+    return <div ref={reference} className={cn(badgeVariants({ variant }), className)} role="status" {...props} />;
   },
 );
 Badge.displayName = 'Badge';

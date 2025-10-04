@@ -30,9 +30,9 @@ import { lazy } from 'react';
 // Dynamic import utilities
 export const dynamicImport = {
   // Load component with loading fallback
-  withLoading: (importFn: () => Promise<any>, LoadingComponent: React.ComponentType) => {
+  withLoading: (importFn: () => Promise<{ default: React.ComponentType }>, LoadingComponent: React.ComponentType) => {
     return lazy(() => 
-      importFn().then((module: any) => ({
+      importFn().then((module: { default: React.ComponentType }) => ({
         default: module.default,
         LoadingComponent
       }))
@@ -40,7 +40,7 @@ export const dynamicImport = {
   },
 
   // Load component with error boundary
-  withErrorBoundary: (importFn: () => Promise<any>, ErrorComponent: React.ComponentType) => {
+  withErrorBoundary: (importFn: () => Promise<{ default: React.ComponentType }>, ErrorComponent: React.ComponentType) => {
     return lazy(() => 
       importFn().catch(() => ({
         default: ErrorComponent
@@ -49,7 +49,7 @@ export const dynamicImport = {
   },
 
   // Preload component for better UX
-  preload: (importFn: () => Promise<any>) => {
+  preload: (importFn: () => Promise<unknown>) => {
     return () => {
       importFn();
     };

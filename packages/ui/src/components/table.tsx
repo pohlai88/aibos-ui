@@ -86,6 +86,7 @@ export type TableProperties<TData> = VariantProps<typeof tableVariants> & {
   onRowClick?: (row: TData) => void;
   'aria-label'?: string;
   size?: 'sm' | 'md' | 'lg';
+  'data-testid'?: string;
 };
 
 // Optimized Cell and Row components for performance
@@ -427,6 +428,7 @@ export function Table<TData>({
   className,
   onRowClick,
   'aria-label': ariaLabel,
+  'data-testid': dataTestId,
 }: TableProperties<TData>): React.ReactElement {
   const PERF = isPerfMode();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -477,6 +479,7 @@ export function Table<TData>({
           }
           {...(PERF ? varianceAttributes() : {})}
           aria-label={ariaLabel}
+          data-testid={dataTestId}
         >
           <TableHeader<TData> table={table} PERF={PERF} enableSorting={enableSorting} size={size} />
           <TableBody<TData>

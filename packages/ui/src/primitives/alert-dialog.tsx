@@ -237,6 +237,7 @@ const AlertDialogContent = React.forwardRef<
       <AlertDialogPrimitive.Content
         ref={reference}
         className={cn(alertDialogVariants({ size, variant }), alertDialogContentVariants(), className)}
+        aria-modal="true"
         {...props}
       >
         <div className="flex items-start space-x-4">
