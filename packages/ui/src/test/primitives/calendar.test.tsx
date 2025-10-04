@@ -15,10 +15,10 @@ vi.mock('../../../utils', () => ({
   varianceAttributes: vi.fn(() => ({ 'data-test': 'mocked' })),
 }));
 
-// Mock lucide-react icons
-vi.mock('lucide-react', () => ({
-  ChevronLeft: () => <div data-testid="chevron-left">←</div>,
-  ChevronRight: () => <div data-testid="chevron-right">→</div>,
+// Mock internal icons
+vi.mock('../../icons', () => ({
+  ChevronLeftIcon: () => <div data-testid="chevron-left">←</div>,
+  ChevronRightIcon: () => <div data-testid="chevron-right">→</div>,
 }));
 
 describe('Calendar', () => {

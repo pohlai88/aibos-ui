@@ -16,22 +16,22 @@ vi.mock('../../utils', () => ({
   varianceAttributes: vi.fn(() => ({})),
 }));
 
-// Mock Lucide React icons
-vi.mock('lucide-react', () => ({
-  ChevronDown: () => <div data-testid="chevron-down" />,
-  ChevronUp: () => <div data-testid="chevron-up" />,
-  X: () => <div data-testid="x" />,
-  Search: () => <div data-testid="search" />,
-  Check: () => <div data-testid="check" />,
-  Plus: () => <div data-testid="plus" />,
-  Minus: () => <div data-testid="minus" />,
-  Filter: () => <div data-testid="filter" />,
-  SortAsc: () => <div data-testid="sort-asc" />,
-  SortDesc: () => <div data-testid="sort-desc" />,
-  Users: () => <div data-testid="users" />,
-  Tag: () => <div data-testid="tag" />,
-  Calendar: () => <div data-testid="calendar" />,
-  Star: () => <div data-testid="star" />,
+// Mock internal icons
+vi.mock('../../icons', () => ({
+  ChevronDownIcon: () => <div data-testid="chevron-down" />,
+  ChevronUpIcon: () => <div data-testid="chevron-up" />,
+  CloseIcon: () => <div data-testid="x" />,
+  SearchIcon: () => <div data-testid="search" />,
+  CheckIcon: () => <div data-testid="check" />,
+  PlusIcon: () => <div data-testid="plus" />,
+  MinusIcon: () => <div data-testid="minus" />,
+  FilterIcon: () => <div data-testid="filter" />,
+  SortAscIcon: () => <div data-testid="sort-asc" />,
+  SortDescIcon: () => <div data-testid="sort-desc" />,
+  UsersIcon: () => <div data-testid="users" />,
+  TagIcon: () => <div data-testid="tag" />,
+  CalendarIcon: () => <div data-testid="calendar" />,
+  StarIcon: () => <div data-testid="star" />,
 }));
 
 // Sample options for testing
@@ -109,8 +109,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Select first option
@@ -131,8 +131,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Select multiple options
@@ -154,8 +154,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Deselect first option - be more specific to avoid multiple matches
@@ -179,8 +179,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Select first two options
@@ -200,8 +200,8 @@ describe('MultiSelect', () => {
     it('renders search input when enabled', () => {
       render(<MultiSelect options={sampleOptions} enableSearch />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
@@ -210,8 +210,8 @@ describe('MultiSelect', () => {
     it('filters options based on search query', async () => {
       render(<MultiSelect options={sampleOptions} enableSearch />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       const searchInput = screen.getByPlaceholderText('Search...');
@@ -227,8 +227,8 @@ describe('MultiSelect', () => {
       const onSearch = vi.fn();
       render(<MultiSelect options={sampleOptions} enableSearch onSearch={onSearch} />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       const searchInput = screen.getByPlaceholderText('Search...');
@@ -244,8 +244,8 @@ describe('MultiSelect', () => {
     it('renders grouped options when enabled', () => {
       render(<MultiSelect options={sampleOptions} enableGrouping />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('Engineering')).toBeInTheDocument();
@@ -257,8 +257,8 @@ describe('MultiSelect', () => {
     it('groups options correctly', () => {
       render(<MultiSelect options={sampleOptions} enableGrouping />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Check that Engineering group header exists
@@ -274,8 +274,8 @@ describe('MultiSelect', () => {
     it('renders select all button when enabled', () => {
       render(<MultiSelect options={simpleOptions} enableSelectAll />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('Select All')).toBeInTheDocument();
@@ -290,8 +290,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('Clear All')).toBeInTheDocument();
@@ -307,8 +307,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Click select all
@@ -330,8 +330,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Click clear all
@@ -369,8 +369,8 @@ describe('MultiSelect', () => {
 
       render(<MultiSelect options={optionsWithDisabled} />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       // Option 2 should be disabled - check for disabled attribute or data attribute
@@ -401,8 +401,8 @@ describe('MultiSelect', () => {
     it('renders empty message when no options', () => {
       render(<MultiSelect options={[]} emptyMessage="No options available" />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('No options available')).toBeInTheDocument();
@@ -411,8 +411,8 @@ describe('MultiSelect', () => {
     it('renders empty message when search yields no results', async () => {
       render(<MultiSelect options={sampleOptions} enableSearch emptyMessage="No matches found" />);
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       const searchInput = screen.getByPlaceholderText('Search...');
@@ -457,8 +457,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('Custom: Option 1')).toBeInTheDocument();
@@ -539,8 +539,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Check for the chevron icon by looking for the SVG element
-      const chevronIcon = screen.getByRole('button').querySelector('svg');
+      // Check for the chevron icon by looking for the test ID
+      const chevronIcon = screen.getByTestId('chevron-down');
       expect(chevronIcon).toBeInTheDocument();
     });
   });
@@ -554,8 +554,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByText('Option 1')).toBeInTheDocument();
@@ -572,8 +572,8 @@ describe('MultiSelect', () => {
         />
       );
       
-      // Click to open - use button role instead of text
-      const trigger = screen.getByRole('button');
+      // Click to open - use combobox role (correct ARIA role)
+      const trigger = screen.getByRole('combobox');
       fireEvent.click(trigger);
       
       expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();

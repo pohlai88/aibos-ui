@@ -57,7 +57,7 @@ export default defineConfig({
     '@radix-ui/react-switch', '@radix-ui/react-tabs',
     '@radix-ui/react-toast', '@radix-ui/react-tooltip',
     '@tanstack/react-table', '@tanstack/react-virtual',
-    'class-variance-authority', 'clsx', 'tailwind-merge', 'lucide-react',
+    'class-variance-authority', 'clsx', 'tailwind-merge',
     'react-hook-form', '@hookform/resolvers', 'zod',
   ],
   esbuildOptions(options) {

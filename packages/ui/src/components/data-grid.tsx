@@ -1048,7 +1048,6 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
                     handleResize(syntheticEvent);
                   }
                 }}
-                aria-label="Resize column"
               />
             )}
           </div>

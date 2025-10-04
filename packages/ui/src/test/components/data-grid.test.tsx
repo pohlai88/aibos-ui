@@ -27,27 +27,25 @@ vi.mock('@tanstack/react-virtual', () => ({
   })),
 }));
 
-// Mock Lucide React icons
-vi.mock('lucide-react', () => ({
-  ChevronDown: () => <div data-testid="chevron-down" />,
-  ChevronUp: () => <div data-testid="chevron-up" />,
-  ChevronRight: () => <div data-testid="chevron-right" />,
-  Download: () => <div data-testid="download" />,
-  Filter: () => <div data-testid="filter" />,
-  Search: () => <div data-testid="search" />,
-  Settings: () => <div data-testid="settings" />,
-  Eye: () => <div data-testid="eye" />,
-  EyeOff: () => <div data-testid="eye-off" />,
-  GripVertical: () => <div data-testid="grip-vertical" />,
-  ArrowUpDown: () => <div data-testid="arrow-up-down" />,
-  ArrowUp: () => <div data-testid="arrow-up" />,
-  ArrowDown: () => <div data-testid="arrow-down" />,
-  MoreHorizontal: () => <div data-testid="more-horizontal" />,
-  RefreshCw: () => <div data-testid="refresh" />,
-  Columns: () => <div data-testid="columns" />,
-  Group: () => <div data-testid="group" />,
-  SortAsc: () => <div data-testid="sort-asc" />,
-  SortDesc: () => <div data-testid="sort-desc" />,
+// Mock internal icons
+vi.mock('../../icons', () => ({
+  ChevronDownIcon: () => <div data-testid="chevron-down" />,
+  ChevronUpIcon: () => <div data-testid="chevron-up" />,
+  ChevronRightIcon: () => <div data-testid="chevron-right" />,
+  DownloadIcon: () => <div data-testid="download" />,
+  FilterIcon: () => <div data-testid="filter" />,
+  SearchIcon: () => <div data-testid="search" />,
+  SettingsIcon: () => <div data-testid="settings" />,
+  GripVerticalIcon: () => <div data-testid="grip-vertical" />,
+  ArrowUpDownIcon: () => <div data-testid="arrow-up-down" />,
+  ArrowUpIcon: () => <div data-testid="arrow-up" />,
+  ArrowDownIcon: () => <div data-testid="arrow-down" />,
+  RefreshCwIcon: () => <div data-testid="refresh" />,
+  ColumnsIcon: () => <div data-testid="columns" />,
+  GroupIcon: () => <div data-testid="group" />,
+  SortAscIcon: () => <div data-testid="sort-asc" />,
+  SortDescIcon: () => <div data-testid="sort-desc" />,
+  CheckIcon: () => <div data-testid="check" />,
 }));
 
 // Sample data for testing

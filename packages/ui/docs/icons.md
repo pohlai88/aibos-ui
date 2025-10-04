@@ -264,25 +264,39 @@ function Component() {
 
 ## Adding New Icons
 
-### 1. Add to Allowlist
+### 1. Add Icon Component
 
-Add the icon to the `ALLOWED_LUCIDE_ICONS` object in `src/icons/lucide.tsx`:
+Create a new icon component in `src/icons/` directory:
 
 ```tsx
-const ALLOWED_LUCIDE_ICONS = {
-  // ... existing icons
-  NewIcon: () => import('lucide-react').then((m) => ({ default: m.NewIcon })),
-} as const;
+// src/icons/new-icon.tsx
+import { BaseIconProps } from './_base';
+
+export const NewIcon = ({ size = 24, ...props }: BaseIconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* SVG path for the new icon */}
+    <path d="..." />
+  </svg>
+);
 ```
 
-### 2. Add Individual Export
+### 2. Add to Index Export
 
-Add the individual export:
+Add the icon to the main exports in `src/icons/index.ts`:
 
 ```tsx
-export const NewIcon = (
-  props: Omit<React.ComponentProps<typeof LucideIcon>, 'name'>,
-): React.ReactElement => <LucideIcon name="NewIcon" {...props} />;
+// Add to the appropriate section
+export { NewIcon } from './new-icon';
 ```
 
 ### 3. Update Documentation

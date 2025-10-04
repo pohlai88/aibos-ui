@@ -1,0 +1,66 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs/api",
+  "theme": "default",
+  "name": "AIBOS UI API Documentation",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true,
+  "readme": "README.md",
+  "categorizeByGroup": true,
+  "defaultCategory": "Other",
+  "categoryOrder": [
+    "Components",
+    "Primitives", 
+    "Hooks",
+    "Utils",
+    "Types",
+    "Performance",
+    "Tokens",
+    "*"
+  ],
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method"
+  ],
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "searchInComments": true,
+  "cleanOutputDir": true,
+  "plugin": [],
+  "externalPattern": [
+    "**/node_modules/**"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "sourceLinkTemplate": "https://github.com/pohlai88/aibos-ui/blob/main/packages/ui/{path}#L{line}",
+  "gitRevision": "main",
+  "gitRemote": "origin"
+}
