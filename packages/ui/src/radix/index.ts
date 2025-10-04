@@ -42,3 +42,15 @@ export { RadixLabel, radixLabelVariants, type RadixLabelProperties } from './lab
 
 // Slot export (already exists, re-export for completeness)
 export { Slot } from './slot';
+
+// Slider exports
+export { Slider, SliderTrack, SliderRange, SliderThumb } from './slider';
+
+// Toggle exports
+export { Toggle } from './toggle';
+
+// Toggle Group exports
+export { ToggleGroup, ToggleGroupItem } from './toggle-group';
+
+// Combobox exports
+export { Combobox, ComboboxItem } from './combobox';

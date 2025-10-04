@@ -51,3 +51,51 @@ export { LoadingSpinner, type LoadingSpinnerProperties } from './loading-spinner
 
 // Label exports
 export { Label, labelVariants, type LabelProperties } from './label';
+
+// Slider exports
+export {
+  Slider,
+  sliderVariants,
+  type SliderProperties,
+  type SliderReference,
+  type SliderElement,
+} from './slider';
+
+// Toggle exports
+export {
+  Toggle,
+  toggleVariants,
+  type ToggleProperties,
+  type ToggleReference,
+  type ToggleElement,
+} from './toggle';
+
+// Toggle Group exports
+export {
+  ToggleGroup,
+  ToggleGroupItem,
+  toggleGroupVariants,
+  toggleGroupItemVariants,
+  type ToggleGroupProperties,
+  type ToggleGroupItemProperties,
+  type ToggleGroupReference,
+  type ToggleGroupItemReference,
+  type ToggleGroupElement,
+  type ToggleGroupItemElement,
+} from './toggle-group';
+
+// Combobox exports
+export {
+  Combobox,
+  ComboboxItem,
+  comboboxVariants,
+  comboboxTriggerVariants,
+  comboboxContentVariants,
+  comboboxItemVariants,
+  type ComboboxProperties,
+  type ComboboxItemProperties,
+  type ComboboxReference,
+  type ComboboxItemReference,
+  type ComboboxElement,
+  type ComboboxItemElement,
+} from './combobox';
