@@ -184,3 +184,25 @@ export {
   type ContextMenuSubTriggerElement,
   type ContextMenuSubContentElement,
 } from './context-menu';
+
+// Command exports
+export {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+  CommandGroup,
+  CommandSeparator,
+  commandVariants,
+  commandInputVariants,
+  commandListVariants,
+  commandItemVariants,
+  commandGroupVariants,
+  commandSeparatorVariants,
+  type CommandProperties,
+  type CommandInputProperties,
+  type CommandListProperties,
+  type CommandItemProperties,
+  type CommandGroupProperties,
+  type CommandSeparatorProperties,
+} from './command';

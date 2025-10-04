@@ -9,7 +9,9 @@ export function reduceVariance<T extends number>(items: T[], _threshold: number 
   const sorted = [...items].sort((a, b) => a - b);
   const q1Index = Math.floor(sorted.length * 0.25);
   const q3Index = Math.floor(sorted.length * 0.75);
+  // eslint-disable-next-line security/detect-object-injection
   const q1 = sorted[q1Index];
+  // eslint-disable-next-line security/detect-object-injection
   const q3 = sorted[q3Index];
   
   if (q1 === undefined || q3 === undefined) return items;

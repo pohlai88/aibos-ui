@@ -92,3 +92,13 @@ export {
   ContextMenuSubTrigger as ContextMenuSubTriggerPrimitive,
   ContextMenuSubContent as ContextMenuSubContentPrimitive,
 } from './context-menu';
+
+// Command exports
+export {
+  CommandPrimitive,
+  CommandInputPrimitive,
+  CommandListPrimitive,
+  CommandItemPrimitive,
+  CommandGroupPrimitive,
+  CommandSeparatorPrimitive,
+} from './command';

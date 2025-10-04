@@ -149,3 +149,19 @@ export {
   type VirtualTableProperties,
   type VirtualTableColumn,
 } from '@components/virtual-table';
+
+// Data Table exports
+export {
+  DataTable,
+  DataTableToolbar,
+  DataTableColumnHeader,
+  DataTableRow,
+  dataTableVariants,
+  dataTableToolbarVariants,
+  dataTableHeaderVariants,
+  dataTableCellVariants,
+  type DataTableProperties,
+  type DataTableToolbarProperties,
+  type DataTableColumnHeaderProperties,
+  type DataTableRowProperties,
+} from './data-table';

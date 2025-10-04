@@ -156,8 +156,10 @@ export function useMediaQueries(queries: Record<string, string>): Record<string,
       (accumulator, key) => {
         const query = safeGet(queries, key) as string | undefined;
         if (query) {
+          // eslint-disable-next-line security/detect-object-injection
           accumulator[key] = MEDIA_STATE_KEYS.includes(key) ? window.matchMedia(query).matches : false;
         } else {
+          // eslint-disable-next-line security/detect-object-injection
           accumulator[key] = false;
         }
         return accumulator;

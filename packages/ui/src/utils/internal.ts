@@ -20,6 +20,7 @@ export function safeGet<T = unknown>(obj: unknown, path: string | string[], defa
     if (current == null || typeof current !== 'object') {
       return defaultValue;
     }
+    // eslint-disable-next-line security/detect-object-injection
     current = (current as Record<string, unknown>)[key];
   }
   
