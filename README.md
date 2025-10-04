@@ -4,6 +4,14 @@
 
 A comprehensive, enterprise-grade React component library built with TypeScript, Tailwind CSS, and accessibility-first principles. **100% test coverage, zero technical debt, and industry-leading performance.**
 
+### 📦 **Now Available on NPM!**
+
+```bash
+npm install aibos-ui
+```
+
+**Package**: [aibos-ui on NPM](https://www.npmjs.com/package/aibos-ui) | **Repository**: [GitHub](https://github.com/pohlai88/aibos-ui)
+
 ---
 
 ## 📋 **Table of Contents**
@@ -34,19 +42,19 @@ A comprehensive, enterprise-grade React component library built with TypeScript,
 
 ```bash
 # Install AIBOS UI
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 # Or with npm
-npm install @aibos/ui
+npm install aibos-ui
 
 # Or with yarn
-yarn add @aibos/ui
+yarn add aibos-ui
 ```
 
 ### **Basic Usage**
 
 ```tsx
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 function App() {
   return (
@@ -62,8 +70,8 @@ function App() {
 
 ```css
 /* In your main CSS file */
-@import '@aibos/ui/styles/globals.css';
-@import '@aibos/ui/styles/utilities.css';
+@import 'aibos-ui/styles/globals.css';
+@import 'aibos-ui/styles/utilities.css';
 ```
 
 ---
@@ -74,7 +82,7 @@ function App() {
 
 ```bash
 # Install the UI package
-pnpm add @aibos/ui
+pnpm add aibos-ui
 
 # Install peer dependencies
 pnpm add react react-dom
@@ -97,14 +105,14 @@ pnpm add react react-dom
 
 ```tsx
 // ✅ Recommended: Tree-shakable imports
-import { Button, Card, Input } from '@aibos/ui';
+import { Button, Card, Input } from 'aibos-ui';
 
 // ✅ Also supported: Individual component imports
-import { Button } from '@aibos/ui/primitives/button';
-import { Card } from '@aibos/ui/components/card';
+import { Button } from 'aibos-ui/primitives/button';
+import { Card } from 'aibos-ui/components/card';
 
 // ❌ Avoid: Source imports
-import { Button } from '@aibos/ui/src/primitives/button';
+import { Button } from 'aibos-ui/src/primitives/button';
 ```
 
 ---
@@ -201,7 +209,7 @@ import { Button, TextField, Card } from '@mui/material';
 </Button>
 
 // After
-import { Button, Input, Card } from '@aibos/ui';
+import { Button, Input, Card } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -237,7 +245,7 @@ import { Button, Input, Card } from 'antd';
 </Button>
 
 // After
-import { Button, Input, Card } from '@aibos/ui';
+import { Button, Input, Card } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -273,7 +281,7 @@ import { Button, Input, Card } from 'semantic-ui-react';
 </Button>
 
 // After
-import { Button, Input, Card } from '@aibos/ui';
+import { Button, Input, Card } from 'aibos-ui';
 
 <Button variant="primary" size="lg">
   AIBOS Button
@@ -296,7 +304,7 @@ import { Button, Input, Card } from '@aibos/ui';
 ### **Performance Monitoring**
 
 ```tsx
-import { PerformanceMonitor } from '@aibos/ui';
+import { PerformanceMonitor } from 'aibos-ui';
 
 function App() {
   return (
@@ -313,8 +321,8 @@ function App() {
 // Heavy components loaded on-demand
 import { lazy, Suspense } from 'react';
 
-const DataGrid = lazy(() => import('@aibos/ui/components/data-grid'));
-const DataTable = lazy(() => import('@aibos/ui/components/data-table'));
+const DataGrid = lazy(() => import('aibos-ui/components/data-grid'));
+const DataTable = lazy(() => import('aibos-ui/components/data-table'));
 
 function App() {
   return (
@@ -383,7 +391,7 @@ All components meet WCAG 2.2 AAA standards:
 ### **Usage Tracking**
 
 ```tsx
-import { trackComponentUsage } from '@aibos/ui';
+import { trackComponentUsage } from 'aibos-ui';
 
 function TrackedComponent() {
   useEffect(() => {
@@ -400,7 +408,7 @@ function TrackedComponent() {
 ### **Error Tracking**
 
 ```tsx
-import { ErrorBoundary } from '@aibos/ui';
+import { ErrorBoundary } from 'aibos-ui';
 
 function App() {
   return (
@@ -429,13 +437,25 @@ function App() {
 
 ### **NPM Publishing**
 
-```bash
-# Publish to npm
-pnpm publish
+✅ **Published**: The package is now live on NPM!
 
-# Publish with validation
-pnpm run prepublishOnly
+```bash
+# Install the published package
+npm install aibos-ui
+
+# Check package info
+npm info aibos-ui
+
+# View on NPM
+# https://www.npmjs.com/package/aibos-ui
 ```
+
+### **Package Details**
+- **Name**: `aibos-ui`
+- **Version**: `0.1.0`
+- **Size**: 1.9 MB (compressed), 10.9 MB (unpacked)
+- **Files**: 1,943 total files
+- **Dependencies**: 34 dependencies
 
 ### **Docker Deployment**
 
@@ -661,9 +681,14 @@ AIBOS UI is now **production-ready** with:
 - ✅ **Complete Documentation** - Comprehensive API and migration guides
 - ✅ **Performance Optimized** - Industry-leading bundle size
 - ✅ **Accessibility Compliant** - WCAG 2.2 AAA standards
-- ✅ **Production Deployed** - CDN, NPM, and Docker ready
+- ✅ **NPM Published** - Available at `npm install aibos-ui`
+- ✅ **GitHub Repository** - Complete source code and documentation
 
 **Start building with AIBOS UI today!** 🎯
+
+```bash
+npm install aibos-ui
+```
 
 ---
 
