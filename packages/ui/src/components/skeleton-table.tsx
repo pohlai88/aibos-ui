@@ -1,4 +1,5 @@
 import { cn } from '../utils/cn.utility';
+import { TableIcon } from '../icons';
 import React from 'react';
 
 export interface SkeletonTableProperties {
@@ -17,6 +18,16 @@ export const SkeletonTable: React.FC<SkeletonTableProperties> = ({
       <div className="rounded-md border">
         {/* Header */}
         <div className="bg-muted/50 border-b">
+          <div className="flex items-center justify-center p-4">
+            <TableIcon 
+              className="h-6 w-6 text-muted-foreground animate-pulse" 
+              context="dense-tables"
+              semanticColor="text-gray-400"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+            />
+          </div>
           <div className="flex">
             {Array.from({ length: columns }).map((_, colIndex) => (
               <div key={colIndex} className="flex-1 p-4">

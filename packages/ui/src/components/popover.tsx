@@ -14,7 +14,31 @@ import { isPerfMode, varianceAttributes } from '../utils';
 import { cn } from '../utils/cn.utility';
 import * as React from 'react';
 
-const Popover = PopoverPrimitive;
+const Popover = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive>
+>(({ ...props }, reference) => {
+  if (isPerfMode()) {
+    return (
+      <div
+        ref={reference}
+        className="popover perf-static"
+        {...varianceAttributes()}
+        data-testid="popover"
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <PopoverPrimitive
+      ref={reference}
+      data-testid="popover"
+      {...props}
+    />
+  );
+});
+Popover.displayName = 'Popover';
 
 const PopoverTrigger = PopoverTriggerPrimitive;
 
@@ -42,6 +66,7 @@ const PopoverContent = React.forwardRef<
         'bg-semantic-popover text-semantic-popover-foreground state-open:animate-premium-fade state-closed:animate-premium-fade z-50 w-72 rounded-md border p-4 shadow-md outline-none',
         className,
       )}
+      data-testid="popover-content"
       {...props}
     />
   );

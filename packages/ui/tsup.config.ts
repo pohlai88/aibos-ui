@@ -44,6 +44,9 @@ export default defineConfig({
   skipNodeModulesBundle: true,
   minify: true,
   target: 'es2022',
+  // Enhanced code splitting configuration
+  chunkSizeWarningLimit: 1000, // Warn if chunks exceed 1MB
+  metafile: true, // Generate bundle analysis metadata
   external: [
     'react', 'react-dom',
     '@radix-ui/react-accordion', '@radix-ui/react-checkbox',

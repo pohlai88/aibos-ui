@@ -60,7 +60,7 @@ const hoverCardContentVariants = cva(
 );
 
 export interface HoverCardProperties
-  extends React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Root>,
+  extends React.ComponentPropsWithoutRef<'div'>,
     VariantProps<typeof hoverCardVariants> {}
 
 export interface HoverCardTriggerProperties
@@ -72,10 +72,8 @@ export interface HoverCardContentProperties
     VariantProps<typeof hoverCardContentVariants> {}
 
 const HoverCard = React.memo(
-  React.forwardRef<
-    React.ElementRef<typeof HoverCardPrimitive.Root>,
-    HoverCardProperties
-  >(({ className, size, ...props }, reference) => {
+  React.forwardRef<HTMLDivElement, HoverCardProperties>(
+    ({ className, size, ...props }, reference) => {
     if (isPerfMode()) {
       return (
         <div
@@ -89,7 +87,6 @@ const HoverCard = React.memo(
 
     return (
       <HoverCardPrimitive.Root
-        ref={reference}
         className={cn(hoverCardVariants({ size }), className)}
         {...props}
       />
@@ -100,13 +97,11 @@ const HoverCard = React.memo(
 HoverCard.displayName = 'HoverCard';
 
 const HoverCardTrigger = React.memo(
-  React.forwardRef<
-    React.ElementRef<typeof HoverCardPrimitive.Trigger>,
-    HoverCardTriggerProperties
-  >(({ className, size, ...props }, reference) => {
+  React.forwardRef<HTMLAnchorElement, HoverCardTriggerProperties>(
+    ({ className, size, ...props }, reference) => {
     if (isPerfMode()) {
       return (
-        <div
+        <a
           ref={reference}
           className={cn('perf-static', className)}
           {...varianceAttributes()}

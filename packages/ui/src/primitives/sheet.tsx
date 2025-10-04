@@ -133,7 +133,7 @@ const sheetDescriptionVariants = cva(
 );
 
 export interface SheetProperties
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Root>,
+  extends React.ComponentPropsWithoutRef<'div'>,
     VariantProps<typeof sheetVariants> {}
 
 export interface SheetTriggerProperties
@@ -163,10 +163,8 @@ export interface SheetDescriptionProperties
     VariantProps<typeof sheetDescriptionVariants> {}
 
 const Sheet = React.memo(
-  React.forwardRef<
-    React.ElementRef<typeof SheetPrimitive.Root>,
-    SheetProperties
-  >(({ className, side, ...props }, reference) => {
+  React.forwardRef<HTMLDivElement, SheetProperties>(
+    ({ className, side, ...props }, reference) => {
     if (isPerfMode()) {
       return (
         <div
@@ -180,7 +178,6 @@ const Sheet = React.memo(
 
     return (
       <SheetPrimitive.Root
-        ref={reference}
         className={cn(sheetVariants({ side }), className)}
         {...props}
       />

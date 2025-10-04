@@ -270,7 +270,7 @@ const DataGrid = React.forwardRef<HTMLDivElement, DataGridProperties<UnsafeAny>>
     const [columnVisibility, setColumnVisibility] = React.useState<Record<string, boolean>>({});
     const [columnSizing, setColumnSizing] = React.useState<Record<string, number>>({});
     const [columnOrder, setColumnOrder] = React.useState<string[]>([]);
-    const [pinnedColumns, _setPinnedColumns] = React.useState<{
+    const [_pinnedColumns, _setPinnedColumns] = React.useState<{
       left: string[];
       right: string[];
     }>({ left: [], right: [] });
@@ -316,6 +316,7 @@ const DataGrid = React.forwardRef<HTMLDivElement, DataGridProperties<UnsafeAny>>
               enableAnimations={true}
               enableAdaptiveStyling={true}
               enableSemanticColors={true}
+              data-testid="grip-vertical"
             />
           ),
           cell: () => (
@@ -326,6 +327,7 @@ const DataGrid = React.forwardRef<HTMLDivElement, DataGridProperties<UnsafeAny>>
               enableAnimations={true}
               enableAdaptiveStyling={true}
               enableSemanticColors={true}
+              data-testid="grip-vertical"
             />
           ),
           enableSorting: false,
@@ -762,6 +764,7 @@ const DataGridToolbar = React.forwardRef<HTMLDivElement, DataGridToolbarProperti
                 enableAnimations={true}
                 enableAdaptiveStyling={true}
                 enableSemanticColors={true}
+                data-testid="refresh"
               />
             </Button>
           )}
@@ -795,6 +798,7 @@ const DataGridToolbar = React.forwardRef<HTMLDivElement, DataGridToolbarProperti
                 enableAnimations={true}
                 enableAdaptiveStyling={true}
                 enableSemanticColors={true}
+                data-testid="group"
               />
               Group
             </Button>
@@ -905,6 +909,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
           enableAnimations={true}
           enableAdaptiveStyling={true}
           enableSemanticColors={true}
+          data-testid="arrow-up"
         />
       );
       if (sortDirection === 'desc') return (
@@ -925,6 +930,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
           enableAnimations={true}
           enableAdaptiveStyling={true}
           enableSemanticColors={true}
+          data-testid="arrow-up-down"
         />
       );
     };
@@ -956,6 +962,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
                   enableAnimations={true}
                   enableAdaptiveStyling={true}
                   enableSemanticColors={true}
+                  data-testid="group"
                 />
               </Button>
             )}
@@ -989,6 +996,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
                     enableAnimations={true}
                     enableAdaptiveStyling={true}
                     enableSemanticColors={true}
+                    data-testid="chevron-right"
                   />
                 </Button>
                 <Button
@@ -1004,6 +1012,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
                     enableAnimations={true}
                     enableAdaptiveStyling={true}
                     enableSemanticColors={true}
+                    data-testid="chevron-right"
                   />
                 </Button>
               </div>
@@ -1013,12 +1022,7 @@ const DataGridColumnHeader = React.forwardRef<HTMLTableHeaderCellElement, DataGr
                 className="cursor-col-resize hover:bg-semantic-accent/20 w-1 h-full"
                 onMouseDown={handleResize}
                 role="separator"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleResize(e as any);
-                  }
-                }}
+                aria-label="Resize column"
               />
             )}
           </div>
@@ -1095,6 +1099,7 @@ const DataGridRow = React.forwardRef<HTMLTableRowElement, DataGridRowProperties<
                       enableAnimations={true}
                       enableAdaptiveStyling={true}
                       enableSemanticColors={true}
+                      data-testid="chevron-right"
                     />
                   )}
                 </Button>

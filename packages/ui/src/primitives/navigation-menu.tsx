@@ -129,8 +129,10 @@ export interface NavigationMenuContentProperties
     VariantProps<typeof navigationMenuContentVariants> {}
 
 export interface NavigationMenuLinkProperties
-  extends React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Link>,
-    VariantProps<typeof navigationMenuLinkVariants> {}
+  extends Omit<React.ComponentPropsWithoutRef<'a'>, 'onSelect'>,
+    VariantProps<typeof navigationMenuLinkVariants> {
+  asChild?: boolean;
+}
 
 const NavigationMenu = React.memo(
   React.forwardRef<

@@ -1,4 +1,5 @@
 import { LoadingSpinner } from '@primitives/loading-spinner';
+import { RefreshCwIcon } from '../icons';
 import { cn } from '../utils/cn.utility';
 import { cva, type VariantProps } from 'class-variance-authority';
 import React from 'react';
@@ -48,7 +49,16 @@ export const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonPr
         disabled={disabled || loading}
         {...props}
       >
-        {loading && <LoadingSpinner size="sm" className="mr-2" />}
+        {loading && (
+          <RefreshCwIcon 
+            className="mr-2 h-4 w-4 animate-spin" 
+            context="dashboards"
+            semanticColor="text-current"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />
+        )}
         {loading ? loadingText || 'Loading...' : children}
       </button>
     );

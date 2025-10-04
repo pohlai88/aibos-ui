@@ -85,15 +85,50 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProperties>(
       
       switch (variant) {
         case 'destructive':
-          return <AlertCircle className="h-4 w-4" />;
+          return <AlertCircleIcon 
+            className="h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-red-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />;
         case 'warning':
-          return <AlertTriangle className="h-4 w-4" />;
+          return <AlertTriangleIcon 
+            className="h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-amber-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />;
         case 'info':
-          return <Info className="h-4 w-4" />;
+          return <InfoIcon 
+            className="h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-blue-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />;
         case 'success':
-          return <CheckCircle className="h-4 w-4" />;
+          return <CheckCircleIcon 
+            className="h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-green-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />;
         default:
-          return <Info className="h-4 w-4" />;
+          return <InfoIcon 
+            className="h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-blue-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />;
       }
     };
 

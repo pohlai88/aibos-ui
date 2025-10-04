@@ -180,6 +180,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
           {...varianceAttributes()}
           data-size={size}
           data-disabled={disabled}
+          data-testid="calendar"
           {...props}
         >
           <div className="calendar-header perf-static">
@@ -204,6 +205,7 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
         ref={reference}
         className={cn(calendarVariants({ size }), className)}
         data-disabled={disabled}
+        data-testid="calendar"
         {...props}
       >
         <div className={cn(calendarHeaderVariants({ size }))}>
@@ -214,7 +216,15 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
             disabled={disabled}
             className="h-7 w-7"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeftIcon 
+              className="h-4 w-4" 
+              context="dashboards"
+              semanticColor="text-gray-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+              data-testid="chevron-left"
+            />
           </Button>
           <div className="text-sm font-medium">
             {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
@@ -226,7 +236,15 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProperties>(
             disabled={disabled}
             className="h-7 w-7"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRightIcon 
+              className="h-4 w-4" 
+              context="dashboards"
+              semanticColor="text-gray-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+              data-testid="chevron-right"
+            />
           </Button>
         </div>
         

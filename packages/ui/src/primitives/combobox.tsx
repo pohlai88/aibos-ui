@@ -268,7 +268,14 @@ const Combobox = React.forwardRef<
         role="combobox"
       >
         <div className="flex flex-1 items-center gap-2">
-          {showSearchIcon && <Search className="text-semantic-muted-foreground h-4 w-4" />}
+          {showSearchIcon && <SearchIcon 
+            className="text-semantic-muted-foreground h-4 w-4" 
+            context="dashboards"
+            semanticColor="text-blue-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />}
           <input
             type="text"
             placeholder={placeholder}
@@ -297,13 +304,26 @@ const Combobox = React.forwardRef<
                 }
               }}
             >
-              <X className="h-3 w-3" />
+              <CloseIcon 
+                className="h-3 w-3" 
+                context="dashboards"
+                semanticColor="text-gray-500"
+                enableAnimations={true}
+                enableAdaptiveStyling={true}
+                enableSemanticColors={true}
+              />
             </div>
           )}
-          <ChevronDown className={cn(
+          <ChevronDownIcon className={cn(
             "text-semantic-muted-foreground h-4 w-4 transition-transform",
             isOpen && "rotate-180"
-          )} />
+          )} 
+            context="dashboards"
+            semanticColor="text-gray-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />
         </div>
       </button>
 

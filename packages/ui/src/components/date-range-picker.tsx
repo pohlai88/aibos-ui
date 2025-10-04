@@ -13,7 +13,7 @@ import { Button } from '../primitives/button';
 import { Calendar } from '../primitives/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { CalendarIcon, CloseIcon } from '../icons';
-import { format, addDays, subDays, startOfDay, endOfDay, isWithinInterval, isSameDay, type Locale } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, isWithinInterval, isSameDay, type Locale } from 'date-fns';
 
 const dateRangePickerVariants = cva(
   'inline-flex items-center justify-center gap-2',
@@ -229,6 +229,10 @@ const DateRangePickerTrigger = React.forwardRef<
 
   const formatDateRange = (range: DateRange | undefined): string => {
     if (!range?.from) return placeholder;
+    
+    // Check if dates are valid
+    if (isNaN(range.from.getTime())) return placeholder;
+    if (range.to && isNaN(range.to.getTime())) return placeholder;
     
     if (!range.to) {
       return format(range.from, dateFormat);

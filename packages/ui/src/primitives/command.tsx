@@ -211,7 +211,14 @@ const Command = React.forwardRef<HTMLDivElement, CommandProperties>(
         >
           <div className="command-input-wrapper perf-static">
             {showCommandIcon && <CommandIcon className="command-icon perf-static" />}
-            {showSearchIcon && <Search className="search-icon perf-static" />}
+            {showSearchIcon && <SearchIcon 
+              className="search-icon perf-static" 
+              context="dashboards"
+              semanticColor="text-blue-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+            />}
             <input
               ref={inputRef}
               className="command-input perf-static"
@@ -240,7 +247,14 @@ const Command = React.forwardRef<HTMLDivElement, CommandProperties>(
             <CommandIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           )}
           {showSearchIcon && (
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+            <SearchIcon 
+              className="mr-2 h-4 w-4 shrink-0 opacity-50" 
+              context="dashboards"
+              semanticColor="text-blue-500"
+              enableAnimations={true}
+              enableAdaptiveStyling={true}
+              enableSemanticColors={true}
+            />
           )}
           <input
             ref={inputRef}
@@ -265,11 +279,11 @@ const Command = React.forwardRef<HTMLDivElement, CommandProperties>(
                   if (React.isValidElement(grandChild)) {
                     const grandChildProps = grandChild.props as Record<string, unknown>;
                     if (grandChildProps.value !== undefined) {
-                      return React.cloneElement(grandChild, {
+                      return React.cloneElement(grandChild as React.ReactElement, {
                         ...grandChildProps,
                         size,
                         onSelect: handleItemSelect,
-                      } as React.ReactElement);
+                      });
                     }
                   }
                   return grandChild;
@@ -279,11 +293,11 @@ const Command = React.forwardRef<HTMLDivElement, CommandProperties>(
               const childProps = child.props as Record<string, unknown>;
               if (childProps.value !== undefined) {
                 // Direct CommandItem
-                return React.cloneElement(child, {
+                return React.cloneElement(child as React.ReactElement, {
                   ...childProps,
                   size,
                   onSelect: handleItemSelect,
-                } as React.ReactElement);
+                });
               }
             }
             return child;
@@ -302,7 +316,14 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProperties>(
       return (
         <div className="command-input-wrapper perf-static">
           {showCommandIcon && <CommandIcon className="command-icon perf-static" />}
-          {showSearchIcon && <Search className="search-icon perf-static" />}
+          {showSearchIcon && <SearchIcon 
+            className="search-icon perf-static" 
+            context="dashboards"
+            semanticColor="text-blue-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />}
           <input
             ref={reference}
             className={cn('command-input perf-static', className)}
@@ -321,7 +342,14 @@ const CommandInput = React.forwardRef<HTMLInputElement, CommandInputProperties>(
           <CommandIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
         )}
         {showSearchIcon && (
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <SearchIcon 
+            className="mr-2 h-4 w-4 shrink-0 opacity-50" 
+            context="dashboards"
+            semanticColor="text-blue-500"
+            enableAnimations={true}
+            enableAdaptiveStyling={true}
+            enableSemanticColors={true}
+          />
         )}
         <input
           ref={reference}

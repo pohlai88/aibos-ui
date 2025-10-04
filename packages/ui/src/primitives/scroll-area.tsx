@@ -105,8 +105,10 @@ export interface ScrollAreaViewportProperties
     VariantProps<typeof scrollAreaViewportVariants> {}
 
 export interface ScrollAreaScrollbarProperties
-  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Scrollbar>,
-    VariantProps<typeof scrollAreaScrollbarVariants> {}
+  extends Omit<React.ComponentPropsWithoutRef<'div'>, 'orientation'>,
+    VariantProps<typeof scrollAreaScrollbarVariants> {
+  orientation?: 'vertical' | 'horizontal';
+}
 
 export interface ScrollAreaThumbProperties
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Thumb>,

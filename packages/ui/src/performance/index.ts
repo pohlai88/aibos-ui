@@ -6,8 +6,8 @@
  */
 
 export * from './performance-monitor';
+export * from './performance-monitor-enhanced';
 export * from '../utils/perf.utility';
-export * from '../utils/variance-reduction.utility';
 
 // Re-export for convenience
 export {

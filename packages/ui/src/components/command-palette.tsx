@@ -432,7 +432,7 @@ const CommandPalette = React.forwardRef<HTMLDivElement, CommandPaletteProperties
             onKeyDown={handleKeyDown}
           >
             {/* Input */}
-            <div className="flex items-center border-b px-3" role="search">
+            <div className="flex items-center border-b px-3" role="search" aria-label="Command search">
               <CommandIcon 
                 className="mr-2 h-4 w-4 shrink-0 opacity-50" 
                 context="dashboards"

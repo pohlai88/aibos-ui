@@ -83,27 +83,27 @@ const adaptiveStyling = {
 
 // ── Semantic Color Mapping System ─────────
 const semanticColors = {
-  'check': 'text-emerald-500',
-  'check-circle': 'text-emerald-500',
-  'warning': 'text-amber-500',
-  'alert-triangle': 'text-amber-500',
-  'alert-circle': 'text-red-500',
-  'error': 'text-red-500',
-  'info': 'text-blue-500',
-  'close': 'text-gray-500',
-  'trash': 'text-red-500',
-  'edit': 'text-blue-500',
-  'plus': 'text-green-500',
-  'minus': 'text-red-500',
-  'settings': 'text-gray-600',
-  'home': 'text-blue-500',
-  'user': 'text-purple-500',
-  'users': 'text-purple-500',
-  'search': 'text-gray-500',
-  'filter': 'text-gray-500',
-  'refresh': 'text-blue-500',
-  'download': 'text-green-500',
-  'upload': 'text-blue-500',
+  'check': 'text-semantic-success',
+  'check-circle': 'text-semantic-success',
+  'warning': 'text-semantic-warning',
+  'alert-triangle': 'text-semantic-warning',
+  'alert-circle': 'text-semantic-destructive',
+  'error': 'text-semantic-destructive',
+  'info': 'text-semantic-info',
+  'close': 'text-semantic-muted-foreground',
+  'trash': 'text-semantic-destructive',
+  'edit': 'text-semantic-primary',
+  'plus': 'text-semantic-success',
+  'minus': 'text-semantic-destructive',
+  'settings': 'text-semantic-muted-foreground',
+  'home': 'text-semantic-primary',
+  'user': 'text-semantic-primary',
+  'users': 'text-semantic-primary',
+  'search': 'text-semantic-muted-foreground',
+  'filter': 'text-semantic-muted-foreground',
+  'refresh': 'text-semantic-primary',
+  'download': 'text-semantic-success',
+  'upload': 'text-semantic-primary',
 } as const;
 
 export const IconContext = React.createContext<IconDefaults | undefined>(undefined);
@@ -440,8 +440,9 @@ export function createIcon(
       })();
       
       // ── v2.0 Semantic Color System ─────────
-      const semanticColorClass = enableSemanticColors 
-        ? (semanticColor || getSemanticColor(displayName, context))
+      // Only apply semantic colors when explicitly enabled and no variant is provided
+      const semanticColorClass = enableSemanticColors && !variant && !defaults.variant && semanticColor
+        ? semanticColor
         : '';
       
       // ── v2.0 Animation System ─────────

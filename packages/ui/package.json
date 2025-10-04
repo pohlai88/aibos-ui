@@ -99,8 +99,9 @@
     "validate": "pnpm run typecheck && pnpm run lint && pnpm run test",
     "clean": "rimraf dist coverage .turbo",
     "prepublishOnly": "pnpm run validate && pnpm run build",
-    "size": "echo 'Bundle size analysis not available - use build output for size checking'",
-    "analyze": "pnpm run build && echo 'Build completed - check dist/ folder for bundle analysis'"
+    "size": "node scripts/check-bundle-budgets.mjs",
+    "analyze": "pnpm run build && pnpm run size",
+    "build:ci": "pnpm run build && pnpm run size"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",
