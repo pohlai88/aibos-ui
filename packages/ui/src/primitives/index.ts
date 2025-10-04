@@ -84,6 +84,22 @@ export {
   type ToggleGroupItemElement,
 } from './toggle-group';
 
+// Calendar exports
+export {
+  Calendar,
+  CalendarDay,
+  calendarVariants,
+  calendarHeaderVariants,
+  calendarGridVariants,
+  calendarDayVariants,
+  type CalendarProperties,
+  type CalendarDayProperties,
+  type CalendarReference,
+  type CalendarDayReference,
+  type CalendarElement,
+  type CalendarDayElement,
+} from './calendar';
+
 // Avatar exports
 export {
   Avatar,

@@ -52,6 +52,9 @@ export { Toggle } from './toggle';
 // Toggle Group exports
 export { ToggleGroup, ToggleGroupItem } from './toggle-group';
 
+// Calendar exports
+export { Calendar, CalendarDay } from './calendar';
+
 // Avatar exports
 export { Avatar, AvatarImage, AvatarFallback } from './avatar';
 
