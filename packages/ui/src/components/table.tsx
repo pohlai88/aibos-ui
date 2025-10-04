@@ -7,6 +7,7 @@
 
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input';
+import { ChevronUpIcon, ChevronDownIcon, ArrowUpDownIcon } from '../icons';
 import {
   useReactTable,
   getCoreRowModel,
@@ -253,11 +254,34 @@ const TableHeader = <TData,>({
               : flexRender(header.column.columnDef.header, header.getContext())}
             {!PERF && enableSorting && header.column.getCanSort() && (
               <span className="ml-2">
-                {header.column.getIsSorted() === 'desc'
-                  ? '↓'
-                  : header.column.getIsSorted() === 'asc'
-                    ? '↑'
-                    : '↕'}
+                {header.column.getIsSorted() === 'desc' ? (
+                  <ChevronDownIcon 
+                    className="h-4 w-4" 
+                    context="dense-tables"
+                    semanticColor="text-blue-500"
+                    enableAnimations={true}
+                    enableAdaptiveStyling={true}
+                    enableSemanticColors={true}
+                  />
+                ) : header.column.getIsSorted() === 'asc' ? (
+                  <ChevronUpIcon 
+                    className="h-4 w-4" 
+                    context="dense-tables"
+                    semanticColor="text-blue-500"
+                    enableAnimations={true}
+                    enableAdaptiveStyling={true}
+                    enableSemanticColors={true}
+                  />
+                ) : (
+                  <ArrowUpDownIcon 
+                    className="h-4 w-4 opacity-50" 
+                    context="dense-tables"
+                    semanticColor="text-gray-400"
+                    enableAnimations={true}
+                    enableAdaptiveStyling={true}
+                    enableSemanticColors={true}
+                  />
+                )}
               </span>
             )}
           </th>
