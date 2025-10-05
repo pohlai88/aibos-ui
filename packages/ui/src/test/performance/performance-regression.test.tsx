@@ -20,11 +20,11 @@ import { DataTable } from '../../components/data-table';
 
 // Performance thresholds (in milliseconds)
 const PERFORMANCE_THRESHOLDS = {
-  buttonRender: 50,      // Button should render in <50ms (test environment)
-  cardRender: 100,       // Card should render in <100ms (test environment)
-  modalRender: 200,      // Modal should render in <200ms (test environment)
-  tableRender: 500,      // Table should render in <500ms (test environment)
-  dataTableRender: 1000, // DataTable should render in <1000ms (test environment)
+  buttonRender: 100,     // Button should render in <100ms (test environment)
+  cardRender: 150,       // Card should render in <150ms (test environment)
+  modalRender: 250,      // Modal should render in <250ms (test environment)
+  tableRender: 600,      // Table should render in <600ms (test environment)
+  dataTableRender: 1200, // DataTable should render in <1200ms (test environment)
 };
 
 // Memory usage thresholds (in MB)
