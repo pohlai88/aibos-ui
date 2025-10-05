@@ -41,8 +41,6 @@ export default [
       // Documentation files (generated)
       '**/docs/**',
       '**/coverage/**',
-      // Monitor dashboard files
-      'monitor/**',
       // JSON files (handled separately)
       '**/*.json'
     ],

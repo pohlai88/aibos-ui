@@ -169,6 +169,7 @@ describe('ColorPicker', () => {
       await user.click(trigger);
       
       const firstSwatch = screen.getAllByLabelText(/Select color/)[0];
+      if (!firstSwatch) throw new Error('First swatch not found');
       await user.click(firstSwatch);
       
       expect(onValueChange).toHaveBeenCalled();

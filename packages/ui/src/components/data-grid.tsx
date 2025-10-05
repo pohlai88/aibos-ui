@@ -1133,7 +1133,7 @@ const DataGridRow = React.forwardRef<HTMLTableRowElement, DataGridRowProperties<
                 </Badge>
               </div>
             ) : (
-              flexRender(cell.column.columnDef.cell, cell.getContext())
+              flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode
             )}
           </td>
         ))}

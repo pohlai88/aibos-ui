@@ -84,7 +84,7 @@
     "build:js": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",
-    "dev": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1",
+    "dev": "tsup --watch",
     "dev:tsup": "tsup --watch",
     "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
@@ -105,11 +105,7 @@
     "docs:generate": "typedoc",
     "docs:serve": "pnpm run docs:generate && npx serve docs/api",
     "docs:build": "pnpm run docs:generate && pnpm run build:ci",
-    "deploy:docs": "pnpm run docs:build && pnpm run deploy:production",
-    "dev:build": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action build",
-    "dev:test": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action test",
-    "dev:monitor": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action monitor",
-    "dev:help": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Help"
+    "deploy:docs": "pnpm run docs:build && pnpm run deploy:production"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",

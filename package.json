@@ -12,7 +12,7 @@
     "build": "turbo run build --filter=aibos-ui",
     "test": "turbo run test --filter=aibos-ui",
     "clean": "turbo run clean && rimraf node_modules .turbo packages/*/dist packages/*/.tsbuildinfo",
-    "dev": "powershell -ExecutionPolicy Bypass -File monitor.ps1",
+    "dev": "turbo run dev --filter=aibos-ui",
     "dev:turbo": "turbo run dev --filter=aibos-ui",
     "format": "prettier --cache --write .",
     "format:check": "prettier --check .",
@@ -23,12 +23,7 @@
     "test:ui": "turbo run test:ui --filter=aibos-ui",
     "typecheck:watch": "turbo run typecheck:watch --filter=aibos-ui",
     "size": "turbo run size --filter=aibos-ui",
-    "analyze": "turbo run analyze --filter=aibos-ui",
-    "dashboard": "turbo run dashboard --filter=aibos-ui",
-    "dev:build": "powershell -ExecutionPolicy Bypass -File monitor.ps1 -Action build",
-    "dev:test": "powershell -ExecutionPolicy Bypass -File monitor.ps1 -Action test",
-    "dev:monitor": "powershell -ExecutionPolicy Bypass -File monitor.ps1 -Action monitor",
-    "dev:help": "powershell -ExecutionPolicy Bypass -File monitor.ps1 -Help"
+    "analyze": "turbo run analyze --filter=aibos-ui"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",

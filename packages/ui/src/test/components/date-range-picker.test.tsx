@@ -160,7 +160,9 @@ describe('DateRangePicker', () => {
       const todayButtons = screen.getAllByRole('button', { name: 'Today' });
       expect(todayButtons.length).toBeGreaterThan(0);
       // Click the first Today button (preset)
-      await userEvent.click(todayButtons[0]);
+      const firstTodayButton = todayButtons[0];
+      if (!firstTodayButton) throw new Error('First Today button not found');
+      await userEvent.click(firstTodayButton);
       
       expect(onValueChange).toHaveBeenCalled();
     });

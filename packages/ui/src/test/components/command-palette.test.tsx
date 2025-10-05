@@ -159,6 +159,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'search');
       
       await waitFor(() => {
@@ -173,6 +174,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'stng'); // Fuzzy match for "Settings"
       
       await waitFor(() => {
@@ -186,6 +188,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'files'); // From "Search for files and content"
       
       await waitFor(() => {
@@ -199,6 +202,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'find'); // From keywords
       
       await waitFor(() => {
@@ -212,6 +216,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'nonexistent');
       
       await waitFor(() => {
@@ -257,6 +262,7 @@ describe('CommandPalette Component', () => {
       
       // Focus the application container first
       const appContainer = screen.getAllByRole('application')[1]; // Use the inner application container
+      if (!appContainer) throw new Error('App container not found');
       await user.click(appContainer);
       await user.keyboard('{ArrowDown}');
       
@@ -272,6 +278,7 @@ describe('CommandPalette Component', () => {
       // Focus the input first for proper keyboard navigation
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0];
+      if (!input) throw new Error('Input not found');
       await user.click(input);
       
       // Navigate down twice, then up once
@@ -291,6 +298,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.click(input);
       await user.keyboard('{Enter}');
       
@@ -418,6 +426,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.click(input);
       await user.keyboard('{ArrowDown}');
       
@@ -431,6 +440,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'nonexistent');
       
       await waitFor(() => {
@@ -452,6 +462,7 @@ describe('CommandPalette Component', () => {
       
       const inputs = screen.getAllByPlaceholderText('Type a command or search...');
       const input = inputs[0]; // Use the first input
+      if (!input) throw new Error('Input not found');
       await user.type(input, 'nonexistent');
       
       await waitFor(() => {

@@ -252,7 +252,7 @@ const TableHeader = <TData,>({
           >
             {header.isPlaceholder
               ? undefined
-              : flexRender(header.column.columnDef.header, header.getContext())}
+              : (flexRender(header.column.columnDef.header, header.getContext()) as React.ReactNode)}
             {!PERF && enableSorting && header.column.getCanSort() && (
               <span className="ml-2">
                 {header.column.getIsSorted() === 'desc' ? (
@@ -347,7 +347,7 @@ const VirtualTableBody = <TData,>({
         >
           {row.getVisibleCells().map((cell: UnsafeAny) => (
             <td key={cell.id} className={tableCellVariants({ size })}>
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              {flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode}
             </td>
           ))}
         </tr>
@@ -375,7 +375,7 @@ const RegularTableBody = <TData,>({
       >
         {row.getVisibleCells().map((cell: UnsafeAny) => (
           <td key={cell.id} className={tableCellVariants({ size })}>
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            {flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode}
           </td>
         ))}
       </tr>

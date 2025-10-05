@@ -645,7 +645,7 @@ const DataTableRow = React.forwardRef<HTMLTableRowElement, DataTableRowPropertie
             key={cell.id}
             className={cn(dataTableCellVariants({ size }), className)}
           >
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            {flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode}
           </td>
         ))}
       </tr>
