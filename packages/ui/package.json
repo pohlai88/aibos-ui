@@ -84,7 +84,8 @@
     "build:js": "tsup",
     "build:types": "tsc -p tsconfig.types.json",
     "build:watch": "tsup --watch",
-    "dev": "tsup --watch",
+    "dev": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1",
+    "dev:tsup": "tsup --watch",
     "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "lint:staged": "eslint --max-warnings 0",
@@ -104,7 +105,11 @@
     "docs:generate": "typedoc",
     "docs:serve": "pnpm run docs:generate && npx serve docs/api",
     "docs:build": "pnpm run docs:generate && pnpm run build:ci",
-    "deploy:docs": "pnpm run docs:build && pnpm run deploy:production"
+    "deploy:docs": "pnpm run docs:build && pnpm run deploy:production",
+    "dev:build": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action build",
+    "dev:test": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action test",
+    "dev:monitor": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Action monitor",
+    "dev:help": "powershell -ExecutionPolicy Bypass -File ../../monitor.ps1 -Help"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.1",
@@ -161,6 +166,7 @@
     "@vitest/coverage-v8": "2.1.9",
     "@vitest/ui": "2.1.9",
     "autoprefixer": "10.4.0",
+    "axe-core": "^4.10.3",
     "eslint": "9.36.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.2",

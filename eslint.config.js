@@ -38,6 +38,11 @@ export default [
       '**/.next/**',
       '**/.vite/**',
       '**/.storybook/**',
+      // Documentation files (generated)
+      '**/docs/**',
+      '**/coverage/**',
+      // Monitor dashboard files
+      'monitor/**',
       // JSON files (handled separately)
       '**/*.json'
     ],
@@ -278,6 +283,7 @@ export default [
       '**/tsconfig*.json',
       '**/vite.config.ts',
       'scripts/**/*.{js,ts,cjs,mjs}',
+      'packages/ui/scripts/**/*.{js,ts,cjs,mjs}',
       // Root level config files
       'eslint.config.js',
       'pnpm-workspace.yaml',

@@ -8,7 +8,11 @@
 import '@testing-library/jest-dom';
 import { createSafeSet } from '../utils/internal';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, vi, expect } from 'vitest';
+import { toHaveNoViolations } from 'jest-axe';
+
+// Extend expect with axe matchers
+expect.extend(toHaveNoViolations);
 
 /**
  * matchMedia polyfill with proper "change" event behavior.

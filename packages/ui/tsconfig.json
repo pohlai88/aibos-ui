@@ -8,6 +8,7 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "baseUrl": ".",
     "paths": {
       "@icons/internal": ["./src/icons/internal"],
@@ -16,6 +17,7 @@
       "@radix/accordion": ["./src/radix/accordion"],
       "@radix/checkbox": ["./src/radix/checkbox"],
       "@radix/dialog": ["./src/radix/dialog"],
+      "@primitives/dialog": ["./src/radix/dialog"],
       "@radix/menu": ["./src/radix/menu"],
       "@radix/popover": ["./src/radix/popover"],
       "@radix/radio": ["./src/radix/radio"],

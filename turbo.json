@@ -59,6 +59,10 @@
     "analyze": {
       "dependsOn": ["build"]
     },
+    "dashboard": {
+      "cache": false,
+      "persistent": true
+    },
     "clean": {
       "cache": false
     }

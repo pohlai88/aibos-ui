@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-env node */
 
 /**
  * Bundle Budget Checker - Milestone 8 Performance Optimization
