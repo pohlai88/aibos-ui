@@ -97,58 +97,62 @@
     --aibos-spacing-unit: 4px;
   }
 
-  /* ===== Dark Theme ===== */
+  /* ===== Dark Theme - AI-BOS Premium Color Palette ===== */
   .dark {
-    --aibos-neutral-0: 220 18% 10%;
-    --aibos-neutral-50: 220 18% 12%;
-    --aibos-neutral-100: 220 18% 14%;
-    --aibos-neutral-200: 220 18% 16%;
-    --aibos-neutral-300: 220 18% 18%;
-    --aibos-neutral-400: 220 18% 25%;
-    --aibos-neutral-500: 220 18% 35%;
-    --aibos-neutral-600: 220 18% 45%;
-    --aibos-neutral-700: 220 18% 55%;
-    --aibos-neutral-800: 220 18% 65%;
-    --aibos-neutral-900: 220 18% 75%;
+    /* Premium Neutral Palette - Deep Dark Theme */
+    --aibos-neutral-0: 220 15% 6%;      /* #0b0c10 - Deep background */
+    --aibos-neutral-50: 220 14% 7%;     /* #111217 - Panel */
+    --aibos-neutral-100: 220 25% 8%;    /* #141722 - Card */
+    --aibos-neutral-200: 220 25% 10%;   /* #1a1f2b - Chip */
+    --aibos-neutral-300: 220 17% 13%;   /* #232634 - Border */
+    --aibos-neutral-400: 220 5% 55%;    /* #8a8f98 - Muted */
+    --aibos-neutral-500: 220 22% 91%;   /* #e8e9ed - Text */
+    --aibos-neutral-600: 220 22% 91%;   /* #e8e9ed - Text */
+    --aibos-neutral-700: 220 22% 91%;   /* #e8e9ed - Text */
+    --aibos-neutral-800: 220 22% 91%;   /* #e8e9ed - Text */
+    --aibos-neutral-900: 220 22% 91%;   /* #e8e9ed - Text */
 
-    --aibos-brand-400: 220 14% 64%;
-    --aibos-brand-500: 220 14% 58%;
-    --aibos-brand-600: 220 14% 52%;
-    --aibos-accent-500: 268 14% 64%;
+    /* Premium Brand Colors - Blue Primary */
+    --aibos-brand-400: 213 100% 65%;    /* #4ea1ff - Brand Blue */
+    --aibos-brand-500: 213 100% 65%;    /* #4ea1ff - Brand Blue */
+    --aibos-brand-600: 258 86% 66%;     /* #8b5cf6 - Purple Gradient */
+    --aibos-accent-500: 189 95% 43%;    /* #06b6d4 - Cyan Accent */
 
-    --aibos-semantic-background: 220 18% 10%;
-    --aibos-semantic-foreground: 220 15% 92%;
-    --aibos-semantic-card: 220 16% 12%;
-    --aibos-semantic-card-foreground: 220 15% 92%;
-    --aibos-semantic-popover: 220 16% 12%;
-    --aibos-semantic-popover-foreground: 220 15% 92%;
-    --aibos-semantic-border: 220 14% 24%;
-    --aibos-semantic-input: 220 13% 20%;
-    --aibos-semantic-ring: var(--aibos-brand-400);
-    --aibos-semantic-primary: 220 14% 64%;
-    --aibos-semantic-primary-foreground: 220 22% 12%;
-    --aibos-semantic-muted: 220 18% 14%;
-    --aibos-semantic-muted-foreground: 220 14% 66%;
-    --aibos-semantic-accent: 268 14% 64%;
-    --aibos-semantic-accent-foreground: 220 22% 12%;
-    --aibos-semantic-destructive: 0 62.8% 30.6%;
-    --aibos-semantic-destructive-foreground: 210 40% 98%;
+    /* Premium Semantic Colors */
+    --aibos-semantic-background: 220 15% 6%;      /* #0b0c10 */
+    --aibos-semantic-foreground: 220 22% 91%;     /* #e8e9ed */
+    --aibos-semantic-card: 220 25% 8%;            /* #141722 */
+    --aibos-semantic-card-foreground: 220 22% 91%; /* #e8e9ed */
+    --aibos-semantic-popover: 220 25% 8%;         /* #141722 */
+    --aibos-semantic-popover-foreground: 220 22% 91%;
+    --aibos-semantic-border: 220 17% 13%;         /* #232634 */
+    --aibos-semantic-input: 220 25% 10%;          /* #1a1f2b */
+    --aibos-semantic-ring: 213 100% 65%;          /* #4ea1ff */
+    --aibos-semantic-primary: 213 100% 65%;       /* #4ea1ff - Blue */
+    --aibos-semantic-primary-foreground: 0 0% 100%; /* white */
+    --aibos-semantic-muted: 220 25% 10%;          /* #1a1f2b */
+    --aibos-semantic-muted-foreground: 220 5% 55%; /* #8a8f98 */
+    --aibos-semantic-accent: 189 95% 43%;         /* #06b6d4 */
+    --aibos-semantic-accent-foreground: 0 0% 100%;
+    --aibos-semantic-destructive: 357 100% 64%;   /* #ff4757 */
+    --aibos-semantic-destructive-foreground: 0 0% 100%;
 
-    --aibos-shadow-elev-1: 0 1px 2px 0 rgb(0 0 0 / 0.15);
-    --aibos-shadow-elev-2: 0 4px 10px -2px rgb(0 0 0 / 0.25);
-    --aibos-shadow-elev-3: 0 16px 40px -12px rgb(0 0 0 / 0.35);
+    /* Premium Shadows - Enhanced for dark theme */
+    --aibos-shadow-elev-1: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --aibos-shadow-elev-2: 0 16px 40px rgba(0, 0, 0, 0.45);
+    --aibos-shadow-elev-3: 0 24px 50px rgba(0, 0, 0, 0.55);
 
+    /* Premium Gradients */
     --aibos-bg-gradient: linear-gradient(
-      to bottom,
-      hsl(var(--aibos-semantic-background)),
-      hsl(220 18% 12%) 40%,
-      hsl(220 18% 14%) 100%
+      180deg,
+      #0b0c10 0%,
+      #0e1117 100%
     );
 
     --aibos-card-gradient: linear-gradient(
-      to bottom,
-      hsl(var(--aibos-semantic-card)),
-      hsl(220 18% 10%) 100%
+      135deg,
+      #141722 0%,
+      #1a1f2b 100%
     );
   }
 
