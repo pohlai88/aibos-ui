@@ -399,116 +399,118 @@ module.exports = {
        
       for (const b of bases) {
         for (const a of attrs) {
-          // normal token (…-semantic-<base>)
+          // normal token (…-semantic-<base>) → uses --aibos-semantic-<base>
           const cls = `.${e(`${a}-semantic-${b}`)}`;
-           
+          const varName = `--aibos-semantic-${b}`;
+          
           if (a === 'bg')
             utils[cls] = {
               '--tw-bg-opacity': '1',
-              backgroundColor: `hsl(var(--${b}) / var(--tw-bg-opacity))`,
+              backgroundColor: `hsl(var(${varName}) / var(--tw-bg-opacity))`,
             };
           else if (a === 'text')
             utils[cls] = {
               '--tw-text-opacity': '1',
-              color: `hsl(var(--${b}) / var(--tw-text-opacity))`,
+              color: `hsl(var(${varName}) / var(--tw-text-opacity))`,
             };
           else if (a === 'border')
             utils[cls] = {
               '--tw-border-opacity': '1',
-              borderColor: `hsl(var(--${b}) / var(--tw-border-opacity))`,
+              borderColor: `hsl(var(${varName}) / var(--tw-border-opacity))`,
             };
           else if (a === 'ring')
             utils[cls] = {
               '--tw-ring-opacity': '1',
-              '--tw-ring-color': `hsl(var(--${b}) / var(--tw-ring-opacity))`,
+              '--tw-ring-color': `hsl(var(${varName}) / var(--tw-ring-opacity))`,
             };
           else if (a === 'ring-offset')
             utils[cls] = {
               '--tw-ring-offset-opacity': '1',
-              '--tw-ring-offset-color': `hsl(var(--${b}) / var(--tw-ring-offset-opacity))`,
+              '--tw-ring-offset-color': `hsl(var(${varName}) / var(--tw-ring-offset-opacity))`,
             };
           else if (a === 'from')
             utils[cls] = {
-              '--tw-gradient-from': `hsl(var(--${b}) / 1)`,
+              '--tw-gradient-from': `hsl(var(${varName}) / 1)`,
               '--tw-gradient-to': 'rgb(255 255 255 / 0)',
               '--tw-gradient-stops': 'var(--tw-gradient-from), var(--tw-gradient-to)',
             };
           else if (a === 'via')
             utils[cls] = {
               '--tw-gradient-to': 'rgb(255 255 255 / 0)',
-              '--tw-gradient-stops': `var(--tw-gradient-from), hsl(var(--${b}) / 1), var(--tw-gradient-to)`,
+              '--tw-gradient-stops': `var(--tw-gradient-from), hsl(var(${varName}) / 1), var(--tw-gradient-to)`,
             };
-          else if (a === 'to') utils[cls] = { '--tw-gradient-to': `hsl(var(--${b}) / 1)` };
+          else if (a === 'to') utils[cls] = { '--tw-gradient-to': `hsl(var(${varName}) / 1)` };
           else if (a === 'outline')
             utils[cls] = {
               '--tw-outline-opacity': '1',
-              outlineColor: `hsl(var(--${b}) / var(--tw-outline-opacity))`,
+              outlineColor: `hsl(var(${varName}) / var(--tw-outline-opacity))`,
             };
           else if (a === 'fill')
             utils[cls] = {
               '--tw-fill-opacity': '1',
-              fill: `hsl(var(--${b}) / var(--tw-fill-opacity))`,
+              fill: `hsl(var(${varName}) / var(--tw-fill-opacity))`,
             };
           else if (a === 'stroke')
             utils[cls] = {
               '--tw-stroke-opacity': '1',
-              stroke: `hsl(var(--${b}) / var(--tw-stroke-opacity))`,
+              stroke: `hsl(var(${varName}) / var(--tw-stroke-opacity))`,
             };
 
-          // foreground token (…-semantic-<base>-foreground) for text/bg-foreground etc.
+          // foreground token (…-semantic-<base>-foreground) → uses --aibos-semantic-<base>-foreground
           const clsFg = `.${e(`${a}-semantic-${b}-foreground`)}`;
+          const varNameFg = `--aibos-semantic-${b}-foreground`;
           if (a === 'bg')
             utils[clsFg] = {
               '--tw-bg-opacity': '1',
-              backgroundColor: `hsl(var(--${b}-foreground) / var(--tw-bg-opacity))`,
+              backgroundColor: `hsl(var(${varNameFg}) / var(--tw-bg-opacity))`,
             };
           else if (a === 'text')
             utils[clsFg] = {
               '--tw-text-opacity': '1',
-              color: `hsl(var(--${b}-foreground) / var(--tw-text-opacity))`,
+              color: `hsl(var(${varNameFg}) / var(--tw-text-opacity))`,
             };
           else if (a === 'border')
             utils[clsFg] = {
               '--tw-border-opacity': '1',
-              borderColor: `hsl(var(--${b}-foreground) / var(--tw-border-opacity))`,
+              borderColor: `hsl(var(${varNameFg}) / var(--tw-border-opacity))`,
             };
           else if (a === 'ring')
             utils[clsFg] = {
               '--tw-ring-opacity': '1',
-              '--tw-ring-color': `hsl(var(--${b}-foreground) / var(--tw-ring-opacity))`,
+              '--tw-ring-color': `hsl(var(${varNameFg}) / var(--tw-ring-opacity))`,
             };
           else if (a === 'ring-offset')
             utils[clsFg] = {
               '--tw-ring-offset-opacity': '1',
-              '--tw-ring-offset-color': `hsl(var(--${b}-foreground) / var(--tw-ring-offset-opacity))`,
+              '--tw-ring-offset-color': `hsl(var(${varNameFg}) / var(--tw-ring-offset-opacity))`,
             };
           else if (a === 'from')
             utils[clsFg] = {
-              '--tw-gradient-from': `hsl(var(--${b}-foreground) / 1)`,
+              '--tw-gradient-from': `hsl(var(${varNameFg}) / 1)`,
               '--tw-gradient-to': 'rgb(255 255 255 / 0)',
               '--tw-gradient-stops': 'var(--tw-gradient-from), var(--tw-gradient-to)',
             };
           else if (a === 'via')
             utils[clsFg] = {
               '--tw-gradient-to': 'rgb(255 255 255 / 0)',
-              '--tw-gradient-stops': `var(--tw-gradient-from), hsl(var(--${b}-foreground) / 1), var(--tw-gradient-to)`,
+              '--tw-gradient-stops': `var(--tw-gradient-from), hsl(var(${varNameFg}) / 1), var(--tw-gradient-to)`,
             };
           else if (a === 'to')
-            utils[clsFg] = { '--tw-gradient-to': `hsl(var(--${b}-foreground) / 1)` };
+            utils[clsFg] = { '--tw-gradient-to': `hsl(var(${varNameFg}) / 1)` };
           else if (a === 'outline')
             utils[clsFg] = {
               '--tw-outline-opacity': '1',
-              outlineColor: `hsl(var(--${b}-foreground) / var(--tw-outline-opacity))`,
+              outlineColor: `hsl(var(${varNameFg}) / var(--tw-outline-opacity))`,
             };
           else if (a === 'fill')
             utils[clsFg] = {
               '--tw-fill-opacity': '1',
-              fill: `hsl(var(--${b}-foreground) / var(--tw-fill-opacity))`,
+              fill: `hsl(var(${varNameFg}) / var(--tw-fill-opacity))`,
             };
           else if (a === 'stroke')
             utils[clsFg] = {
               '--tw-stroke-opacity': '1',
-              stroke: `hsl(var(--${b}-foreground) / var(--tw-stroke-opacity))`,
+              stroke: `hsl(var(${varNameFg}) / var(--tw-stroke-opacity))`,
             };
         }
       }
